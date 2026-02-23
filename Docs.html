@@ -1,0 +1,235 @@
+<div class="space-y-8 text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-300">
+  <section class="relative overflow-hidden rounded-3xl border border-indigo-100 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-50 via-sky-50 to-cyan-50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-cyan-950/30 p-5 md:p-7 shadow-sm">
+    <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-indigo-300/20 dark:bg-indigo-400/10 blur-2xl"></div>
+    <div class="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-sky-300/20 dark:bg-sky-400/10 blur-2xl"></div>
+
+    <div class="relative">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <span class="inline-flex items-center gap-1 rounded-full bg-indigo-600 text-white text-[11px] font-black px-3 py-1 tracking-wide">
+          <i class="bi bi-journal-richtext"></i> USER GUIDE
+        </span>
+        <span class="inline-flex items-center gap-1 rounded-full bg-white/80 dark:bg-slate-800 text-slate-600 dark:text-slate-200 text-[11px] font-bold px-3 py-1 border border-slate-200 dark:border-slate-700">
+          이슈 관리 시스템
+        </span>
+      </div>
+
+      <h4 class="text-xl md:text-3xl font-black text-slate-900 dark:text-slate-100 leading-tight">
+        모르면 알고 가자!
+        <span class="text-indigo-600 dark:text-indigo-300">실전형 사용 설명서</span>
+      </h4>
+      <p class="mt-3 text-slate-600 dark:text-slate-300">
+        이 문서는 <strong>사용자용 안내서</strong>입니다. 
+        버튼을 언제 누르고, 어떤 순서로 입력해야하는지 상세하게 정리했습니다.
+      </p>
+    </div>
+  </section>
+
+  <section class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 p-4 md:p-5">
+    <div class="flex items-center gap-2 mb-3">
+      <i class="bi bi-compass text-indigo-500"></i>
+      <h5 class="text-sm md:text-base font-black text-indigo-600 dark:text-indigo-300">빠른 이동</h5>
+    </div>
+
+    <p class="text-[13px] text-slate-500 dark:text-slate-400 mb-3">
+      아래 버튼을 누르면 <strong>해당 섹션</strong>으로 바로 이동합니다.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+      <button type="button" data-call="scrollDocsTo('start')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>1.</strong> 시작하기</button>
+      <button type="button" data-call="scrollDocsTo('quick')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>2.</strong> 1분 빠른 사용 순서</button>
+      <button type="button" data-call="scrollDocsTo('notice')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>3.</strong> 공지사항 탭</button>
+      <button type="button" data-call="scrollDocsTo('write')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>4.</strong> 작성 탭</button>
+      <button type="button" data-call="scrollDocsTo('editor')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>5.</strong> 이슈내용 꾸미기 도구</button>
+      <button type="button" data-call="scrollDocsTo('read')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>6.</strong> 조회 탭</button>
+      <button type="button" data-call="scrollDocsTo('check')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>7.</strong> 교구 확인 탭</button>
+      <button type="button" data-call="scrollDocsTo('mistakes')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"><strong>8.</strong> 자주 하는 실수</button>
+      <button type="button" data-call="scrollDocsTo('faq')" class="text-left rounded-xl px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors md:col-span-2"><strong>9.</strong> FAQ</button>
+    </div>
+  </section>
+
+  <section id="start" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">1) 시작하기</h5>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[13px]">
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+        <p class="font-black text-slate-900 dark:text-slate-100">탭 이동</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">상단 탭으로 기능을 전환합니다.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+        <p class="font-black text-slate-900 dark:text-slate-100">테마 전환</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">달/해 아이콘으로 다크/라이트 모드 전환.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+        <p class="font-black text-slate-900 dark:text-slate-100">설명서 열기</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">우측 상단 설명서 버튼으로 즉시 열기.</p>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+      <p class="text-amber-800 dark:text-amber-200 text-[13px]"><strong>중요.</strong> 변경사항이 안 보이면 먼저 <em>새로고침</em>을 해주세요.</p>
+    </div>
+  </section>
+
+  <section id="quick" class="rounded-2xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300">2) 1분 빠른 사용 순서</h5>
+    <ol class="list-decimal pl-5 space-y-2 text-emerald-900 dark:text-emerald-100">
+      <li><strong>작성</strong> 탭으로 이동</li>
+      <li>작성자 입력</li>
+      <li>구분 선택 (기자재/운영진 확인/인수인계)</li>
+      <li>이슈 내용 작성 + 필요하면 글자 꾸미기</li>
+      <li>필요 시 사진 첨부</li>
+      <li><strong>근무일지 전송</strong></li>
+      <li><strong>조회</strong> 탭에서 방금 작성한 건 확인</li>
+    </ol>
+  </section>
+
+  <section id="notice" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">3) 공지사항 탭 사용법</h5>
+    <ul class="list-disc pl-5 space-y-1.5">
+      <li>목록에서 공지를 클릭하면 상세 모달이 열립니다.</li>
+      <li>상세 모달에서 <strong>제목</strong>, <strong>본문</strong>, <strong>이미지</strong>를 확인합니다.</li>
+      <li>중요 공지는 더 눈에 띄는 스타일로 강조됩니다.</li>
+      <li>본문에 적용된 <span class="font-semibold text-indigo-600 dark:text-indigo-300">글자 크기/굵기/색상</span>도 반영되어 보입니다.</li>
+    </ul>
+
+    <div class="rounded-xl border border-sky-200 dark:border-sky-800/50 bg-sky-50 dark:bg-sky-900/20 px-4 py-3">
+      <p class="text-sky-800 dark:text-sky-200 text-[13px]"><strong>팁.</strong> 공지 내용이 길면 모달 내부에서 스크롤해 전체 내용을 읽을 수 있습니다.</p>
+    </div>
+  </section>
+
+  <section id="write" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">4) 작성 탭 상세 가이드</h5>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[13px]">
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+        <p class="font-black mb-1">필수 입력</p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-300">
+          <li>작성자</li>
+          <li>이슈 내용</li>
+          <li>구분이 기자재면 주기번호</li>
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3">
+        <p class="font-black mb-1">선택 입력</p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-300">
+          <li>현장 사진</li>
+          <li>추가 주기번호</li>
+          <li>문서 꾸미기(색/링크/이모지)</li>
+        </ul>
+      </div>
+    </div>
+
+    <ol class="list-decimal pl-5 space-y-2">
+      <li><strong>발생 일자</strong>는 달력에서 선택합니다.</li>
+      <li><strong>작성자</strong>를 입력합니다.</li>
+      <li><strong>구분</strong>을 고릅니다.</li>
+      <li>기자재 이슈면 <strong>주기번호 훔쳐보기</strong>로 검색해 정확히 입력합니다.</li>
+      <li><strong>이슈 내용</strong>을 문장 단위로 명확히 씁니다. (무엇이, 어디서, 어떻게 문제인지)</li>
+      <li>필요 시 사진을 업로드합니다.</li>
+      <li>하단 <strong>근무일지 전송</strong> 버튼을 눌러 저장합니다.</li>
+    </ol>
+
+    <div class="rounded-xl border border-sky-200 dark:border-sky-800/50 bg-sky-50 dark:bg-sky-900/20 px-4 py-3">
+      <p class="text-sky-800 dark:text-sky-200 text-[13px]">
+        <strong>참고.</strong> 현장 사진은 작성 영역의 <strong>사진 업로드(이미지 추가) 버튼</strong>에서 첨부할 수 있습니다.
+      </p>
+    </div>
+  </section>
+
+  <section id="editor" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-4">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">5) 이슈내용 꾸미기 도구 (리치 에디터)</h5>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800"><strong>굵게</strong> / <em>기울임</em> / <span class="line-through">취소선</span></div>
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800">글자 <span class="text-lg font-bold">크게</span> / <span class="text-xs">작게</span> (단계별)</div>
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800"><span style="color:#dc2626;font-weight:700;">글자 색상</span> + 세부색상</div>
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800"><span class="text-blue-600 underline">하이퍼링크</span> 추가/해제</div>
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800">이모지 입력 😀 ✅ 🚨</div>
+      <div class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 bg-slate-50 dark:bg-slate-800">활성화된 버튼은 더 진하게 표시</div>
+    </div>
+
+    <div class="rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/20 px-4 py-3">
+      <p class="text-indigo-800 dark:text-indigo-200 text-[13px]">
+        <strong>사용 방법.</strong> 
+        먼저 텍스트를 <strong>드래그 선택</strong>한 뒤 버튼을 누르면 해당 구간에만 적용됩니다.
+      </p>
+    </div>
+
+    <div class="rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3">
+      <p class="text-emerald-800 dark:text-emerald-200 text-[13px]">
+        <strong>단축키.</strong>
+        Windows : <code class="px-1 py-0.5 rounded bg-white/80 dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700">Ctrl+B / Ctrl+I</code>
+        <span class="mx-1">|</span>
+        Mac : <code class="px-1 py-0.5 rounded bg-white/80 dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700">Command+B / Command+I</code>
+      </p>
+    </div>
+
+    <div class="rounded-xl border border-fuchsia-200 dark:border-fuchsia-800/50 bg-fuchsia-50 dark:bg-fuchsia-900/20 px-4 py-3">
+      <p class="text-fuchsia-800 dark:text-fuchsia-200 text-[13px]">
+        <strong>이모지.</strong>
+        Mac : <code class="px-1 py-0.5 rounded bg-white/80 dark:bg-slate-800 border border-fuchsia-200 dark:border-fuchsia-700">Control + Command + Space</code>,
+        Windows : <code class="px-1 py-0.5 rounded bg-white/80 dark:bg-slate-800 border border-fuchsia-200 dark:border-fuchsia-700">Win + .</code> 로 이모지/기호 창을 열 수 있습니다.
+      </p>
+    </div>
+  </section>
+
+  <section id="read" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">6) 조회 탭 사용법</h5>
+    <ol class="list-decimal pl-5 space-y-1.5">
+      <li>상단의 구분 버튼(기자재/운영진 확인/인수인계)을 선택합니다.</li>
+      <li>필요하면 <strong>필터</strong> 버튼으로 품목/날짜/조치결과를 조합합니다.</li>
+      <li>리스트에서 항목을 클릭하면 상세 모달이 열립니다.</li>
+      <li>상세 모달에서 이슈내용, 이미지, 조치 상태를 확인합니다.</li>
+    </ol>
+
+    <div class="rounded-xl border border-sky-200 dark:border-sky-800/50 bg-sky-50 dark:bg-sky-900/20 px-4 py-3">
+      <p class="text-sky-800 dark:text-sky-200 text-[13px]">
+        작성 시 적용한 글자 스타일(굵기/크기/색/링크)은 조회 상세에서도 유지됩니다.
+      </p>
+    </div>
+  </section>
+
+  <section id="check" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">7) 교구 확인 탭 사용법</h5>
+    <ul class="list-disc pl-5 space-y-1.5">
+      <li>품목별 카드(아코디언)를 클릭해 세부 목록을 펼칩니다.</li>
+      <li>주기번호, 보관 위치, 대여 정보, 파손 상태를 확인합니다.</li>
+      <li>상단 <strong>새로고침</strong> 버튼으로 최신 정보를 다시 불러옵니다.</li>
+    </ul>
+  </section>
+
+  <section id="mistakes" class="rounded-2xl border border-rose-200 dark:border-rose-800/50 bg-rose-50/70 dark:bg-rose-900/20 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-rose-700 dark:text-rose-300">8) 자주 하는 실수와 해결법</h5>
+
+    <div class="space-y-2 text-rose-900 dark:text-rose-100">
+      <div class="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white/70 dark:bg-slate-900/30 p-3">
+        <p><strong>전송 버튼이 비활성화</strong></p>
+        <p class="text-[13px] mt-1">작성자/이슈내용/필수 입력값이 빠지면 전송할 수 없습니다. 입력 후 다시 확인하세요.</p>
+      </div>
+
+      <div class="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white/70 dark:bg-slate-900/30 p-3">
+        <p><strong>링크가 안 걸리는 것처럼 보임</strong></p>
+        <p class="text-[13px] mt-1">텍스트를 선택한 뒤 링크 버튼을 누르세요. 선택이 없으면 커서 위치에 URL 텍스트 링크가 삽입됩니다.</p>
+      </div>
+
+      <div class="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white/70 dark:bg-slate-900/30 p-3">
+        <p><strong>이미지가 보이지 않음</strong></p>
+        <p class="text-[13px] mt-1">원본 이미지 URL 또는 접근 권한 문제일 수 있습니다. 파일 공개 범위를 확인하세요.</p>
+      </div>
+
+      <div class="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-white/70 dark:bg-slate-900/30 p-3">
+        <p><strong>다크모드에서 글자가 너무 어두움</strong></p>
+        <p class="text-[13px] mt-1">검정색 고정 글자 대신 기본색 또는 밝은 계열 색상을 사용하면 가독성이 좋아집니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 md:p-5 space-y-3">
+    <h5 class="text-base md:text-lg font-black text-indigo-600 dark:text-indigo-300">9) 자주 묻는 질문 (FAQ)</h5>
+
+    <div class="space-y-2">
+      <p><strong class="text-slate-900 dark:text-slate-100">Q1. 작성한 글자 크기/색상도 조회에서 그대로 보이나요?</strong><br><span class="text-slate-600 dark:text-slate-300">A. 네. 작성 시 적용한 스타일은 저장되어 조회/상세에서도 반영됩니다.</span></p>
+      <p><strong class="text-slate-900 dark:text-slate-100">Q2. 공지사항도 글자 스타일이 반영되나요?</strong><br><span class="text-slate-600 dark:text-slate-300">A. 네. 공지사항 상세에서도 글자 크기/강조가 반영됩니다.</span></p>
+    </div>
+  </section>
+</div>

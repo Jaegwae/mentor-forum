@@ -1,0 +1,1124 @@
+﻿<script>
+  // ===== 서버 데이터 로딩 =====
+  /** 조회 데이터 로드 */
+  function loadResults() {
+    /*
+      조회 데이터 로딩 파이프라인
+      - 스피너 표시 -> 서버 호출 -> currentData 캐시 -> 카드 렌더
+      - 성공 응답 후 isResultsLoaded=true로 표시해 중복 호출 방지
+    */
+    document.getElementById('tableSpinner').classList.remove('hidden');
+    document.getElementById('cardList').innerHTML = "";
+    google.script.run
+      .withSuccessHandler(data => {
+        document.getElementById('tableSpinner').classList.add('hidden');
+        currentData = Array.isArray(data) ? data : [];
+        resultDetailCacheByRow = {};
+        buildReadCategoryIndex_();
+        readRenderState = { rows: [], cursor: 0 };
+        isResultsLoaded = true;
+        filterResults();
+      })
+      .withFailureHandler(err => {
+        document.getElementById('tableSpinner').classList.add('hidden');
+        isResultsLoaded = false;
+        currentData = [];
+        resultDetailCacheByRow = {};
+        readCategoryIndex = {};
+        disconnectReadAutoPager_();
+        readRenderState = { rows: [], cursor: 0 };
+        const list = document.getElementById('cardList');
+        const errMsg = escapeHtml(err && err.message ? err.message : '오류');
+        list.innerHTML = `<div class="text-center py-12 text-rose-500 font-bold">불러오기 실패: ${errMsg}</div>`;
+      })
+      .getResultsSummaryData();
+  }
+
+  /**
+   * 조회 원본을 카테고리/필터 인덱스로 전처리한다.
+   * 필터 변경마다 전체 스캔하지 않도록 성능 최적화.
+   */
+  function buildReadCategoryIndex_() {
+    readCategoryIndex = {};
+    for (let i = 0; i < currentData.length; i++) {
+      const row = currentData[i];
+      const category = String(row[H.subject] || '');
+      if (!category) continue;
+
+      if (!readCategoryIndex[category]) {
+        readCategoryIndex[category] = {
+          all: [],
+          byItem: Object.create(null),
+          byDate: Object.create(null),
+          byStatus: Object.create(null),
+          itemList: [],
+          dateList: [],
+          statusList: []
+        };
+      }
+
+      const idxObj = readCategoryIndex[category];
+      const entry = { row, idx: i };
+      idxObj.all.push(entry);
+
+      const itemName = String(row[H.item] || '').trim();
+      const date = String(row[H.date] || '');
+      const status = getRowStatus(row);
+
+      if (itemName) {
+        if (!idxObj.byItem[itemName]) idxObj.byItem[itemName] = [];
+        idxObj.byItem[itemName].push(entry);
+      }
+      if (date) {
+        if (!idxObj.byDate[date]) idxObj.byDate[date] = [];
+        idxObj.byDate[date].push(entry);
+      }
+      if (!idxObj.byStatus[status]) idxObj.byStatus[status] = [];
+      idxObj.byStatus[status].push(entry);
+    }
+
+    Object.keys(readCategoryIndex).forEach((category) => {
+      const idxObj = readCategoryIndex[category];
+      idxObj.itemList = Object.keys(idxObj.byItem).sort((a, b) => a.localeCompare(b, 'ko'));
+      idxObj.dateList = Object.keys(idxObj.byDate).sort((a, b) => a.localeCompare(b));
+      idxObj.statusList = ['수리 중', '진행 중', '완료'].filter((status) => {
+        return Array.isArray(idxObj.byStatus[status]) && idxObj.byStatus[status].length > 0;
+      });
+      idxObj.controlVersion = [
+        idxObj.all.length,
+        idxObj.itemList.length,
+        idxObj.dateList.length,
+        idxObj.statusList.join(',')
+      ].join('|');
+    });
+  }
+
+  /** HTML 이스케이프 유틸(클라이언트 렌더링 안전성) */
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /** 공지 데이터 로드 */
+  function loadNoticeData() {
+    /*
+      공지 데이터 로딩 파이프라인
+      - 실패 시 모달이 아닌 리스트 영역에 즉시 오류 표시
+      - 성공 데이터는 noticeData에 저장 후 renderNoticeList로 분리 렌더
+    */
+    const spinner = document.getElementById('noticeSpinner');
+    const list = document.getElementById('noticeList');
+    if (isNoticeLoading) return;
+    isNoticeLoading = true;
+    spinner.classList.remove('hidden');
+    list.innerHTML = "";
+    google.script.run.withSuccessHandler(data => {
+      isNoticeLoading = false;
+      spinner.classList.add('hidden');
+      noticeData = Array.isArray(data) ? data : [];
+      isNoticeLoaded = true;
+      renderNoticeList();
+    }).withFailureHandler(err => {
+      isNoticeLoading = false;
+      spinner.classList.add('hidden');
+      const errMsg = escapeHtml(err && err.message ? err.message : '오류');
+      list.innerHTML = `<div class="text-center py-10 text-rose-500 text-sm font-bold">불러오기 실패: ${errMsg}</div>`;
+    }).getNoticeData();
+  }
+
+  /** 공지 데이터 강제 새로고침 */
+  function refreshNoticeData() {
+    isNoticeLoaded = false;
+    loadNoticeData();
+  }
+
+  // ===== 공지 렌더링 =====
+  /** 공지 리스트 카드 렌더링 (중요 공지 우선 정렬) */
+  function renderNoticeList() {
+    const list = document.getElementById('noticeList');
+    if (!noticeData.length) {
+      list.innerHTML = '<div class="text-center py-12 text-slate-400 font-bold opacity-70">공지사항이 없습니다.</div>';
+      return;
+    }
+
+    const importantItems = [];
+    const normalItems = [];
+    for (let i = 0; i < noticeData.length; i++) {
+      const entry = { item: noticeData[i], idx: i };
+      if (noticeData[i].isImportant) importantItems.push(entry);
+      else normalItems.push(entry);
+    }
+    const ordered = importantItems.concat(normalItems);
+
+    const parts = ordered.map(({ item, idx }) => {
+      const importantBadge = item.isImportant ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">중요!!</span>` : '';
+      const authorText = item.author ? ` · ${escapeHtml(item.author)}` : '';
+      const metaLine = (item.date || item.author || item.isImportant)
+        ? `<div class="flex items-center justify-between gap-2 mb-2">
+            <p class="text-[11px] font-bold ${item.isImportant ? 'text-rose-500 dark:text-rose-300' : 'text-slate-400'}">${item.date ? escapeHtml(item.date) : ''}${authorText}</p>
+            ${importantBadge}
+          </div>`
+        : '';
+      const cardTone = item.isImportant
+        ? 'border-rose-200 dark:border-rose-800/70 border-l-[6px] border-l-rose-500 bg-rose-50/80 dark:bg-rose-900/20 shadow-sm shadow-rose-100/80 dark:shadow-none'
+        : 'border-slate-100 dark:border-slate-800 border-l-[6px] border-l-indigo-300 dark:border-l-indigo-700 bg-white dark:bg-slate-900 shadow-sm';
+      const titleTone = item.isImportant ? 'text-rose-700 dark:text-rose-200' : 'text-slate-800 dark:text-slate-100';
+      return `<button type="button" data-action="open-notice-detail" data-idx="${idx}" class="w-full text-left border rounded-[1.5rem] px-4 py-4 transition-all active:scale-[0.99] hover:translate-y-[-1px] ${cardTone}">
+        ${metaLine}
+        <div class="flex items-start justify-between gap-2">
+          <p class="text-sm md:text-base font-black ${titleTone} line-clamp-2">${escapeHtml(item.displayTitle || '')}</p>
+          <span class="text-slate-300 dark:text-slate-600 text-sm pt-0.5"><i class="bi bi-chevron-right"></i></span>
+        </div>
+      </button>`;
+    });
+    list.innerHTML = parts.join('');
+  }
+
+  /** 공지 상세 모달 오픈 */
+  function openNoticeDetail(idx) {
+    const n = noticeData[idx];
+    if (!n) return;
+    const importantBadge = n.isImportant ? `<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">중요!!</span>` : '';
+    const authorText = n.author ? ` · ${escapeHtml(n.author)}` : '';
+    const dateMeta = (n.date || n.author || n.isImportant)
+      ? `<div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-bold ${n.isImportant ? 'text-rose-500 dark:text-rose-300' : 'text-slate-400'}">${n.date ? escapeHtml(n.date) : ''}${authorText}</p>
+          ${importantBadge}
+        </div>`
+      : '';
+    const title = n.title ? n.title : n.displayTitle;
+    const titleHtml = (n.titleHtml && String(n.titleHtml).trim()) ? n.titleHtml : escapeHtml(title || '(제목 없음)');
+    const contentHtml = (n.contentHtml && String(n.contentHtml).trim()) ? n.contentHtml : escapeHtml(n.content || '').replace(/\n/g, '<br>');
+    const imageBlock = n.imageUrl
+      ? `<div class="pt-1"><img src="${escapeHtml(n.imageUrl)}" alt="공지 이미지" class="w-full rounded-2xl border border-slate-100 dark:border-slate-800 object-contain bg-slate-50 dark:bg-slate-900" loading="lazy" onerror="if(this.dataset.fallback){this.onerror=null;this.src=this.dataset.fallback;} else { this.style.display='none'; }" data-fallback="${escapeHtml(n.imageRawUrl || '')}" /></div>`
+      : '';
+
+    document.getElementById('noticeModalBody').innerHTML = `
+      <div class="space-y-4">
+        ${dateMeta}
+        <div class="flex items-start justify-between gap-2">
+          <h4 class="notice-detail-title text-lg md:text-2xl font-black text-slate-800 dark:text-slate-100 leading-snug">${titleHtml}</h4>
+        </div>
+        <div class="notice-detail-content rich-viewer rich-viewer-notice text-sm md:text-base leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">${contentHtml || '-'}</div>
+        ${imageBlock}
+      </div>`;
+    polishRichContentInModal('noticeModalBody', 13, 24);
+    adjustNoticeTextColorsForDarkMode();
+    document.getElementById('noticeModal').classList.remove('hidden');
+  }
+
+  // ===== 다크모드 가독성 보정 =====
+  // 시트에서 온 진한 텍스트 색을 어두운 배경에서 읽기 좋게 보정
+  /** CSS color 문자열 파서 (#rgb/#rrggbb/rgb) */
+  function parseCssColorToRgb(color) {
+    const c = String(color || '').trim();
+    if (!c) return null;
+    let m = c.match(/^#([0-9a-fA-F]{3})$/);
+    if (m) {
+      const h = m[1];
+      return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
+    }
+    m = c.match(/^#([0-9a-fA-F]{6})$/);
+    if (m) {
+      const h6 = m[1];
+      return [parseInt(h6.slice(0, 2), 16), parseInt(h6.slice(2, 4), 16), parseInt(h6.slice(4, 6), 16)];
+    }
+    m = c.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+    if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+    return null;
+  }
+
+  /**
+   * 리치텍스트 뷰어의 과도한 폰트 크기를 범위 내로 보정한다.
+   * 디자인 균형을 위해 모달 본문에서만 적용한다.
+   * @param {string} rootId
+   * @param {number} minSize
+   * @param {number} maxSize
+   */
+  function polishRichContentInModal(rootId, minSize, maxSize) {
+    const root = document.getElementById(rootId);
+    if (!root) return;
+    const min = Number(minSize) || 12;
+    const max = Number(maxSize) || 24;
+    const viewers = root.querySelectorAll('.rich-viewer');
+    viewers.forEach((viewer) => {
+      const nodes = viewer.querySelectorAll('[style*="font-size"]');
+      nodes.forEach((el) => {
+        const raw = String(el.style.fontSize || '');
+        const m = raw.match(/(\d+(?:\.\d+)?)px/i);
+        if (!m) return;
+        const size = Number(m[1]);
+        if (!Number.isFinite(size)) return;
+        const clamped = Math.max(min, Math.min(max, size));
+        if (Math.abs(clamped - size) > 0.05) el.style.fontSize = clamped + 'px';
+      });
+    });
+  }
+
+  /** 다크모드에서 공지 상세 텍스트 색상 가독성 보정 */
+  function adjustNoticeTextColorsForDarkMode() {
+    if (!document.documentElement.classList.contains('dark')) return;
+    const root = document.getElementById('noticeModalBody');
+    if (!root) return;
+
+    const nodes = root.querySelectorAll('[style*="color"]');
+    nodes.forEach(el => {
+      const rgb = parseCssColorToRgb(el.style.color);
+      if (!rgb) return;
+      const [r, g, b] = rgb;
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      // 어두운 색상은 다크모드에서 가독성을 위해 밝게 보정.
+      if (luminance < 0.45) {
+        const nr = Math.min(255, Math.round(r + (255 - r) * 0.75));
+        const ng = Math.min(255, Math.round(g + (255 - g) * 0.75));
+        const nb = Math.min(255, Math.round(b + (255 - b) * 0.75));
+        el.style.color = `rgb(${nr}, ${ng}, ${nb})`;
+      }
+    });
+  }
+
+  /** 다크모드에서 조회 상세 텍스트 색상 가독성 보정 */
+  function adjustDetailTextColorsForDarkMode() {
+    if (!document.documentElement.classList.contains('dark')) return;
+    const root = document.getElementById('modalBody');
+    if (!root) return;
+
+    const nodes = root.querySelectorAll('[style*="color"]');
+    nodes.forEach(el => {
+      const rgb = parseCssColorToRgb(el.style.color);
+      if (!rgb) return;
+      const [r, g, b] = rgb;
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      if (luminance < 0.45) {
+        const nr = Math.min(255, Math.round(r + (255 - r) * 0.75));
+        const ng = Math.min(255, Math.round(g + (255 - g) * 0.75));
+        const nb = Math.min(255, Math.round(b + (255 - b) * 0.75));
+        el.style.color = `rgb(${nr}, ${ng}, ${nb})`;
+      }
+    });
+  }
+
+  // ===== 조회/교구 탭 =====
+  /** 조회 데이터 강제 새로고침 */
+  function refreshResults() {
+    isResultsLoaded = false;
+    loadResults();
+  }
+
+  /** 교구 확인 데이터 로드(캐시 사용) */
+  function loadEquipmentCheckData() {
+    const spinner = document.getElementById('checkSpinner');
+    const list = document.getElementById('checkList');
+    spinner.classList.remove('hidden');
+    list.innerHTML = "";
+    google.script.run.withSuccessHandler(data => {
+      spinner.classList.add('hidden');
+      equipmentCheckData = Array.isArray(data) ? data : [];
+      isEquipmentCheckLoaded = true;
+      if (openedCheckItemIndex >= equipmentCheckData.length) openedCheckItemIndex = -1;
+      renderEquipmentCheckList();
+    }).withFailureHandler(err => {
+      spinner.classList.add('hidden');
+      const errMsg = escapeHtml(err && err.message ? err.message : '오류');
+      list.innerHTML = `<div class="text-center py-10 text-rose-500 text-sm font-bold">불러오기 실패: ${errMsg}</div>`;
+    }).getEquipmentCheckData();
+  }
+
+  /** 교구 확인 데이터 강제 새로고침 */
+  function refreshEquipmentCheckData() {
+    isEquipmentCheckLoaded = false;
+    openedCheckItemIndex = -1;
+    const spinner = document.getElementById('checkSpinner');
+    const list = document.getElementById('checkList');
+    spinner.classList.remove('hidden');
+    list.innerHTML = "";
+    google.script.run.withSuccessHandler(data => {
+      spinner.classList.add('hidden');
+      equipmentCheckData = Array.isArray(data) ? data : [];
+      isEquipmentCheckLoaded = true;
+      renderEquipmentCheckList();
+    }).withFailureHandler(err => {
+      spinner.classList.add('hidden');
+      const errMsg = escapeHtml(err && err.message ? err.message : '오류');
+      list.innerHTML = `<div class="text-center py-10 text-rose-500 text-sm font-bold">불러오기 실패: ${errMsg}</div>`;
+    }).getEquipmentCheckDataFresh();
+  }
+
+  /** 교구 품목 아코디언 토글 */
+  function toggleEquipmentItemByIndex(index) {
+    const prevIndex = openedCheckItemIndex;
+    openedCheckItemIndex = (openedCheckItemIndex === index) ? -1 : index;
+
+    if (prevIndex !== -1) {
+      const prevDetail = document.getElementById(`check-item-detail-${prevIndex}`);
+      const prevArrow = document.getElementById(`check-item-arrow-${prevIndex}`);
+      if (prevDetail) prevDetail.classList.add('hidden');
+      if (prevArrow) prevArrow.className = 'bi bi-chevron-down text-slate-400';
+    }
+    if (openedCheckItemIndex !== -1) {
+      const curDetail = document.getElementById(`check-item-detail-${openedCheckItemIndex}`);
+      const curArrow = document.getElementById(`check-item-arrow-${openedCheckItemIndex}`);
+      if (curDetail) curDetail.classList.remove('hidden');
+      if (curArrow) curArrow.className = 'bi bi-chevron-up text-slate-400';
+    }
+  }
+
+  /** 교구 확인 리스트/테이블 렌더링 */
+  function renderEquipmentCheckList() {
+    const container = document.getElementById('checkList');
+    if (!equipmentCheckData.length) {
+      container.innerHTML = '<div class="text-center py-12 text-slate-400 font-bold opacity-70">표시할 교구 데이터가 없습니다.</div>';
+      return;
+    }
+
+    const parts = equipmentCheckData.map((item, idx) => {
+      const isOpen = openedCheckItemIndex === idx;
+      const safeItemName = escapeHtml(item.itemName || '-');
+      const badgeParts = [];
+      if (item.rentalCount > 0) {
+        badgeParts.push(`<span class="px-2.5 py-1 rounded-lg text-[9px] font-black tracking-wider bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">${item.rentalCount}개 대여</span>`);
+      }
+      if (item.damageCount > 0) {
+        badgeParts.push(`<span class="px-2.5 py-1 rounded-lg text-[9px] font-black tracking-wider bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">${item.damageCount}개 파손</span>`);
+      }
+      const summaryBadges = badgeParts.length > 0
+        ? `<div class="mt-1 flex flex-wrap items-center gap-1.5">${badgeParts.join('')}</div>`
+        : '';
+      const detailRows = (item.rows || []).map(row => {
+        const safeSerial = escapeHtml(row.serial || '-');
+        const safeLocation = escapeHtml(row.location || '-');
+        const safeRentalInfo = escapeHtml(row.rentalInfo || '-');
+        const safeDamage = escapeHtml(row.damage || '-');
+        const damageClass = row.isDamaged ? 'text-rose-500 font-bold' : 'text-slate-500 dark:text-slate-400';
+        return `
+          <tr class="border-b border-slate-100 dark:border-slate-800">
+            <td class="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-200">${safeSerial}</td>
+            <td class="px-3 py-2.5 text-slate-500 dark:text-slate-400">${safeLocation}</td>
+            <td class="px-3 py-2.5 text-slate-500 dark:text-slate-400">${safeRentalInfo}</td>
+            <td class="px-3 py-2.5 ${damageClass}">${safeDamage}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-900/40">
+          <button type="button" data-action="toggle-check-item" data-idx="${idx}" class="w-full px-4 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-all">
+            <div class="min-w-0">
+              <p class="font-black text-slate-800 dark:text-slate-100 truncate">${safeItemName}</p>
+              ${summaryBadges}
+            </div>
+            <i id="check-item-arrow-${idx}" class="bi ${isOpen ? 'bi-chevron-up' : 'bi-chevron-down'} text-slate-400"></i>
+          </button>
+          <div id="check-item-detail-${idx}" class="${isOpen ? 'animate-slideUp' : 'hidden'} border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-300">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-black">주기번호</th>
+                    <th class="px-3 py-2 text-left font-black">세부장소</th>
+                    <th class="px-3 py-2 text-left font-black">대여정보</th>
+                    <th class="px-3 py-2 text-left font-black">파손여부</th>
+                  </tr>
+                </thead>
+                <tbody>${detailRows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = parts.join('');
+  }
+
+  /** 조회 필터 패널 열고 닫기 */
+  function toggleReadFilters() {
+    const panel = document.getElementById('readFilterPanel');
+    const btn = document.getElementById('filterToggleBtn');
+    const isHidden = panel.classList.contains('hidden');
+    if (isHidden) {
+      panel.classList.remove('hidden');
+      btn.classList.add('is-active');
+    } else {
+      panel.classList.add('hidden');
+      btn.classList.remove('is-active');
+    }
+  }
+
+  // ===== 조회 필터 =====
+  /**
+   * 조회 row 상태 계산.
+   * 우선순위: 조치완료일 > 수리여부(true) > 진행중
+   */
+  function getRowStatus(row) {
+    if (row[H.actionDone] && row[H.actionDone] !== "") return "완료";
+    if (String(row[H.repairFlag]).toLowerCase() === "true") return "수리 중";
+    return "진행 중";
+  }
+
+  /** 필터 칩 스타일 반환 */
+  function getFilterChipClass(isActive) {
+    return isActive
+      ? 'px-3 py-1.5 rounded-full text-[11px] font-black bg-indigo-600 text-white shadow-sm transition-all'
+      : 'px-3 py-1.5 rounded-full text-[11px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 transition-all';
+  }
+
+  /** 날짜 필터 setter */
+  function setDateFilter(date) {
+    const picked = String(date || '');
+    if (!picked) {
+      selectedDateFilters = [];
+    } else {
+      const i = selectedDateFilters.indexOf(picked);
+      if (i >= 0) selectedDateFilters.splice(i, 1);
+      else selectedDateFilters.push(picked);
+    }
+    filterResults();
+  }
+
+  /** 품명 필터 setter */
+  function setItemFilter(itemName) {
+    const picked = String(itemName || '').trim();
+    if (!picked) {
+      selectedItemFilters = [];
+    } else {
+      const i = selectedItemFilters.indexOf(picked);
+      if (i >= 0) selectedItemFilters.splice(i, 1);
+      else selectedItemFilters.push(picked);
+    }
+    filterResults();
+  }
+
+  /** 구분 필터 setter */
+  function setSubjectFilter(subject) {
+    const picked = String(subject || '').trim();
+    if (!picked) {
+      selectedSubjectFilters = [];
+    } else {
+      const i = selectedSubjectFilters.indexOf(picked);
+      if (i >= 0) selectedSubjectFilters.splice(i, 1);
+      else selectedSubjectFilters.push(picked);
+    }
+    filterResults();
+  }
+
+  /** 상태 필터 setter */
+  function setStatusFilter(status) {
+    const picked = String(status || 'all');
+    if (!picked || picked === 'all') {
+      selectedStatusFilters = [];
+    } else {
+      const i = selectedStatusFilters.indexOf(picked);
+      if (i >= 0) selectedStatusFilters.splice(i, 1);
+      else selectedStatusFilters.push(picked);
+    }
+    filterResults();
+  }
+
+  /**
+   * 요약칩 X 버튼으로 단일 필터를 즉시 해제한다.
+   * @param {'subject'|'item'|'date'|'status'} group
+   * @param {string} value
+   */
+  function removeFilterChipSelection(group, value) {
+    const g = String(group || '').trim();
+    const v = String(value || '');
+    if (!g || !v) return;
+    if (g === 'subject') selectedSubjectFilters = selectedSubjectFilters.filter((x) => x !== v);
+    else if (g === 'item') selectedItemFilters = selectedItemFilters.filter((x) => x !== v);
+    else if (g === 'date') selectedDateFilters = selectedDateFilters.filter((x) => x !== v);
+    else if (g === 'status') selectedStatusFilters = selectedStatusFilters.filter((x) => x !== v);
+    filterResults();
+  }
+
+  /**
+   * 조회 필터 칩 UI 생성.
+   * 다른 필터 상태를 반영해 선택 가능한 옵션만 노출한다.
+   */
+  function renderFilterControls(activeCategoryNames) {
+    /*
+      인덱스 기반 필터칩 렌더:
+      - 대량 데이터에서 매번 baseRows 전체 스캔을 피한다.
+      - 옵션은 카테고리 단위 사전 계산 결과를 사용한다.
+    */
+    const subjectOptions = getSubjectOptions_();
+    selectedSubjectFilters = selectedSubjectFilters.filter((subject) => subjectOptions.indexOf(subject) >= 0);
+
+    const uniqueItemsSet = Object.create(null);
+    const uniqueDatesSet = Object.create(null);
+    const statusSet = Object.create(null);
+    for (let i = 0; i < activeCategoryNames.length; i++) {
+      const idxObj = readCategoryIndex[activeCategoryNames[i]];
+      if (!idxObj) continue;
+      for (let j = 0; j < idxObj.itemList.length; j++) uniqueItemsSet[idxObj.itemList[j]] = true;
+      for (let j = 0; j < idxObj.dateList.length; j++) uniqueDatesSet[idxObj.dateList[j]] = true;
+      for (let j = 0; j < idxObj.statusList.length; j++) statusSet[idxObj.statusList[j]] = true;
+    }
+    const uniqueItems = Object.keys(uniqueItemsSet).sort((a, b) => a.localeCompare(b, 'ko'));
+    const uniqueDates = Object.keys(uniqueDatesSet).sort((a, b) => a.localeCompare(b));
+    const availableStatuses = ['수리 중', '진행 중', '완료'].filter((status) => !!statusSet[status]);
+    const statuses = ['all'].concat(availableStatuses);
+    const optionsVersion = [
+      activeCategoryNames.join('|'),
+      uniqueItems.length,
+      uniqueDates.length,
+      availableStatuses.join('|')
+    ].join('§');
+
+    selectedItemFilters = selectedItemFilters.filter((itemName) => uniqueItems.indexOf(itemName) >= 0);
+    selectedDateFilters = selectedDateFilters.filter((date) => uniqueDates.indexOf(date) >= 0);
+    selectedStatusFilters = selectedStatusFilters.filter((status) => availableStatuses.indexOf(status) >= 0);
+
+    const controlStateKey = [
+      selectedSubjectFilters.slice().sort().join('|'),
+      selectedItemFilters.slice().sort().join('|'),
+      selectedDateFilters.slice().sort().join('|'),
+      selectedStatusFilters.slice().sort().join('|'),
+      optionsVersion
+    ].join('§');
+    if (controlStateKey === lastFilterControlsKey) return;
+    lastFilterControlsKey = controlStateKey;
+
+    const subjectChipContainer = document.getElementById('subjectFilterChips');
+    if (!subjectChipContainer) return;
+    const subjectChips = [
+      `<button type="button" data-action="set-subject-filter" data-subject="" class="${getFilterChipClass(selectedSubjectFilters.length === 0)}">전체</button>`
+    ];
+    subjectOptions.forEach((subject) => {
+      const encodedSubject = encodeURIComponent(subject);
+      const isActive = selectedSubjectFilters.indexOf(subject) >= 0;
+      subjectChips.push(`<button type="button" data-action="set-subject-filter" data-subject="${encodedSubject}" class="${getFilterChipClass(isActive)}">${escapeHtml(subject)}</button>`);
+    });
+    subjectChipContainer.innerHTML = subjectChips.join('');
+
+    const itemChipContainer = document.getElementById('itemFilterChips');
+    const itemChips = [
+      `<button type="button" data-action="set-item-filter" data-item="" class="${getFilterChipClass(selectedItemFilters.length === 0)}">전체</button>`
+    ];
+    uniqueItems.forEach(itemName => {
+      const encoded = encodeURIComponent(itemName);
+      itemChips.push(`<button type="button" data-action="set-item-filter" data-item="${encoded}" class="${getFilterChipClass(selectedItemFilters.indexOf(itemName) >= 0)}">${escapeHtml(itemName)}</button>`);
+    });
+    itemChipContainer.innerHTML = itemChips.join('');
+
+    const dateChipContainer = document.getElementById('dateFilterChips');
+    const dateChips = [
+      `<button type="button" data-action="set-date-filter" data-date="" class="${getFilterChipClass(selectedDateFilters.length === 0)}">전체</button>`
+    ];
+    uniqueDates.forEach(date => {
+      const encodedDate = encodeURIComponent(date);
+      dateChips.push(`<button type="button" data-action="set-date-filter" data-date="${encodedDate}" class="${getFilterChipClass(selectedDateFilters.indexOf(date) >= 0)}">${escapeHtml(date)}</button>`);
+    });
+    dateChipContainer.innerHTML = dateChips.join('');
+
+    const statusChipContainer = document.getElementById('statusFilterChips');
+    statusChipContainer.innerHTML = statuses.map(status => {
+      const label = status === 'all' ? '전체' : status;
+      const isActive = status === 'all'
+        ? selectedStatusFilters.length === 0
+        : selectedStatusFilters.indexOf(status) >= 0;
+      return `<button type="button" data-action="set-status-filter" data-status="${status}" class="${getFilterChipClass(isActive)}">${label}</button>`;
+    }).join('');
+  }
+
+  /**
+   * 현재 적용된 조회 필터를 사용자에게 요약 표시한다.
+   * - 선택이 없으면 "전체 데이터 표시 중"
+   * - 선택이 있으면 그룹별 칩으로 나열
+   */
+  function updateReadFilterSummary_() {
+    const summary = document.getElementById('readFilterSummary');
+    const filterToggleText = document.getElementById('filterToggleText');
+    if (!summary) return;
+
+    const chips = [];
+    selectedSubjectFilters.forEach((v) => chips.push({ group: 'subject', label: '구분', value: v, tone: 'indigo' }));
+    selectedItemFilters.forEach((v) => chips.push({ group: 'item', label: '교구', value: v, tone: 'sky' }));
+    selectedDateFilters.forEach((v) => chips.push({ group: 'date', label: '날짜', value: v, tone: 'slate' }));
+    selectedStatusFilters.forEach((v) => chips.push({ group: 'status', label: '상태', value: v, tone: 'amber' }));
+
+    if (filterToggleText) {
+      filterToggleText.textContent = chips.length > 0 ? `필터 ${chips.length}` : '필터';
+    }
+
+    if (chips.length === 0) {
+      summary.innerHTML = '<span class="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">전체 데이터 표시 중</span>';
+      return;
+    }
+
+    const chipClassByTone = {
+      indigo: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+      sky: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300',
+      slate: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+    };
+    summary.innerHTML = chips.map((chip) => {
+      const tone = chipClassByTone[chip.tone] || chipClassByTone.slate;
+      const encoded = encodeURIComponent(chip.value);
+      return `<button type="button" data-action="remove-filter-chip" data-group="${chip.group}" data-value="${encoded}" class="filter-summary-chip ${tone}" title="${escapeHtml(chip.label)} 필터 해제"><span>${escapeHtml(chip.label)} · ${escapeHtml(chip.value)}</span><span class="filter-summary-remove"><i class="bi bi-x-lg"></i></span></button>`;
+    }).join('');
+  }
+
+  /**
+   * 조회 카드 리스트 렌더링.
+   * 카테고리 + 추가 필터(item/date/status) 적용 후 카드 DOM 생성.
+   * @param {string} category
+   */
+  function filterResults() {
+    /*
+      조회 리스트 렌더링
+      - 카테고리 인덱스에서 후보 집합 계산
+      - 필터칩 반영
+      - 후보 축소 후 조건 검증
+      - 카드 목록은 페이지 단위 증분 렌더
+    */
+    const list = document.getElementById('cardList');
+    list.innerHTML = "";
+    const activeCategoryNames = getActiveSubjectFilterNames_();
+    renderFilterControls(activeCategoryNames);
+    updateReadFilterSummary_();
+
+    const filtered = getFilteredRowsByIndex_(activeCategoryNames);
+    renderReadCardsPaged_(filtered);
+  }
+
+  /**
+   * 인덱스를 이용해 현재 필터 조건의 후보를 계산한다.
+   * 가능한 한 작은 후보 집합부터 검증해 비용을 줄인다.
+   * @param {Object} categoryIndex
+   * @returns {Array<{row:Object, idx:number}>}
+   */
+  function getFilteredRowsByIndex_(activeCategoryNames) {
+    if (!Array.isArray(activeCategoryNames) || activeCategoryNames.length === 0) return [];
+
+    const candidates = [mergeCategoryEntries_(activeCategoryNames)];
+    if (selectedItemFilters.length > 0) candidates.push(mergeIndexEntriesByCategories_(activeCategoryNames, 'byItem', selectedItemFilters));
+    if (selectedDateFilters.length > 0) candidates.push(mergeIndexEntriesByCategories_(activeCategoryNames, 'byDate', selectedDateFilters));
+    if (selectedStatusFilters.length > 0) candidates.push(mergeIndexEntriesByCategories_(activeCategoryNames, 'byStatus', selectedStatusFilters));
+
+    let smallest = candidates[0];
+    for (let i = 1; i < candidates.length; i++) {
+      if (candidates[i].length < smallest.length) smallest = candidates[i];
+    }
+
+    const filtered = [];
+    for (let i = 0; i < smallest.length; i++) {
+      const entry = smallest[i];
+      const row = entry.row;
+      const subject = String(row[H.subject] || '');
+      if (activeCategoryNames.indexOf(subject) < 0) continue;
+      if (selectedItemFilters.length > 0 && selectedItemFilters.indexOf(String(row[H.item] || '').trim()) < 0) continue;
+      if (selectedDateFilters.length > 0 && selectedDateFilters.indexOf(String(row[H.date] || '')) < 0) continue;
+      if (selectedStatusFilters.length > 0 && selectedStatusFilters.indexOf(getRowStatus(row)) < 0) continue;
+      filtered.push(entry);
+    }
+    return filtered;
+  }
+
+  /**
+   * 선택된 구분 목록의 전체 엔트리를 병합한다.
+   * @param {Array<string>} categoryNames
+   * @returns {Array<{row:Object, idx:number}>}
+   */
+  function mergeCategoryEntries_(categoryNames) {
+    const merged = [];
+    const seen = Object.create(null);
+    for (let i = 0; i < categoryNames.length; i++) {
+      const idxObj = readCategoryIndex[categoryNames[i]];
+      if (!idxObj || !Array.isArray(idxObj.all)) continue;
+      for (let j = 0; j < idxObj.all.length; j++) {
+        const entry = idxObj.all[j];
+        const id = String(entry.idx);
+        if (seen[id]) continue;
+        seen[id] = true;
+        merged.push(entry);
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * 다중 선택된 키 목록을 단일 후보 집합으로 합친다(OR).
+   * @param {Array<string>} categoryNames
+   * @param {'byItem'|'byDate'|'byStatus'} mapName
+   * @param {Array<string>} selectedKeys
+   * @returns {Array<{row:Object, idx:number}>}
+   */
+  function mergeIndexEntriesByCategories_(categoryNames, mapName, selectedKeys) {
+    if (!Array.isArray(categoryNames) || categoryNames.length === 0) return [];
+    if (!Array.isArray(selectedKeys) || selectedKeys.length === 0) return [];
+    const merged = [];
+    const seen = Object.create(null);
+    for (let c = 0; c < categoryNames.length; c++) {
+      const idxObj = readCategoryIndex[categoryNames[c]];
+      if (!idxObj || !idxObj[mapName]) continue;
+      const indexMap = idxObj[mapName];
+      for (let i = 0; i < selectedKeys.length; i++) {
+        const key = selectedKeys[i];
+        const entries = indexMap[key] || [];
+        for (let j = 0; j < entries.length; j++) {
+          const entry = entries[j];
+          const id = String(entry.idx);
+          if (seen[id]) continue;
+          seen[id] = true;
+          merged.push(entry);
+        }
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * 필터 패널에 노출할 구분 목록(고정 우선순위 + 나머지 정렬) 반환.
+   * @returns {Array<string>}
+   */
+  function getSubjectOptions_() {
+    const names = Object.keys(readCategoryIndex || {});
+    if (!names.length) return [];
+    const preferred = ['기자재', '운영진 확인', '인수인계'];
+    const used = Object.create(null);
+    const ordered = [];
+    for (let i = 0; i < preferred.length; i++) {
+      if (names.indexOf(preferred[i]) >= 0) {
+        ordered.push(preferred[i]);
+        used[preferred[i]] = true;
+      }
+    }
+    names.sort((a, b) => a.localeCompare(b, 'ko')).forEach((name) => {
+      if (used[name]) return;
+      ordered.push(name);
+    });
+    return ordered;
+  }
+
+  /**
+   * 현재 선택 상태 기준으로 활성 구분 목록을 반환한다.
+   * 선택 없음 = 전체 구분.
+   * @returns {Array<string>}
+   */
+  function getActiveSubjectFilterNames_() {
+    const subjectOptions = getSubjectOptions_();
+    selectedSubjectFilters = selectedSubjectFilters.filter((subject) => subjectOptions.indexOf(subject) >= 0);
+    return selectedSubjectFilters.length > 0 ? selectedSubjectFilters.slice() : subjectOptions;
+  }
+
+  /**
+   * 조회 카드 목록을 페이지 단위로 증분 렌더링한다.
+   * 대량 데이터에서도 한 번에 수천 DOM을 만들지 않도록 제한한다.
+   * @param {Array<{row:Object, idx:number}>} rows
+   */
+  function renderReadCardsPaged_(rows) {
+    const list = document.getElementById('cardList');
+    list.innerHTML = '';
+    disconnectReadAutoPager_();
+
+    if (!rows.length) {
+      list.innerHTML = `<div class="text-center py-20 text-slate-400 font-bold opacity-50">조건에 맞는 내역이 없습니다.</div>`;
+      readRenderState = { rows: [], cursor: 0, isPaging: false };
+      return;
+    }
+
+    // 결과 건수/렌더링 안내 메타
+    const meta = document.createElement('div');
+    meta.className = 'mb-3 flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-4 py-2.5 text-[11px]';
+    meta.innerHTML = `<span class="font-black text-slate-600 dark:text-slate-300">조회 결과 <span class="text-indigo-600 dark:text-indigo-300">${rows.length}</span>건</span><span class="font-bold text-slate-400 dark:text-slate-500">스크롤하면 자동으로 이어서 로드</span>`;
+    list.appendChild(meta);
+
+    readRenderState = { rows: rows, cursor: 0, isPaging: false };
+    renderNextReadPage();
+  }
+
+  /**
+   * 조회 카드 다음 페이지를 렌더링한다.
+   */
+  function renderNextReadPage() {
+    const list = document.getElementById('cardList');
+    const state = readRenderState;
+    if (!state || !Array.isArray(state.rows)) return;
+    if (state.isPaging) return;
+    if (state.cursor >= state.rows.length) return;
+    state.isPaging = true;
+    try {
+      const oldMore = list.querySelector('[data-role="read-load-more"]');
+      if (oldMore) oldMore.remove();
+      const oldSentinel = list.querySelector('[data-role="read-auto-sentinel"]');
+      if (oldSentinel) oldSentinel.remove();
+
+      const start = state.cursor;
+      const end = Math.min(state.rows.length, start + READ_CARD_BATCH_SIZE);
+      const fragment = document.createDocumentFragment();
+
+      for (let i = start; i < end; i++) {
+        fragment.appendChild(createReadCardNode_(state.rows[i]));
+      }
+      list.appendChild(fragment);
+      state.cursor = end;
+
+      if (state.cursor < state.rows.length) {
+        if (typeof IntersectionObserver === 'function') {
+          const sentinel = createReadAutoSentinel_(state.cursor, state.rows.length);
+          list.appendChild(sentinel);
+          ensureReadAutoPager_();
+          if (readAutoPagerObserver) readAutoPagerObserver.observe(sentinel);
+        } else {
+          // IntersectionObserver 미지원 환경 fallback
+          const moreWrap = document.createElement('div');
+          moreWrap.setAttribute('data-role', 'read-load-more');
+          moreWrap.className = 'pt-3';
+          const moreBtn = document.createElement('button');
+          moreBtn.type = 'button';
+          moreBtn.className = 'w-full h-11 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-black shadow-sm active:scale-95 transition-all';
+          moreBtn.innerHTML = `<span class="inline-flex items-center gap-1.5"><i class="bi bi-arrow-down-circle"></i> 더 보기 (${state.cursor}/${state.rows.length})</span>`;
+          moreBtn.addEventListener('click', renderNextReadPage);
+          moreWrap.appendChild(moreBtn);
+          list.appendChild(moreWrap);
+        }
+      } else {
+        disconnectReadAutoPager_();
+        list.appendChild(createReadAllLoadedMarker_(state.rows.length));
+      }
+    } finally {
+      state.isPaging = false;
+    }
+  }
+
+  /**
+   * 자동 로딩 센티넬 UI 생성.
+   * @param {number} loaded
+   * @param {number} total
+   * @returns {HTMLDivElement}
+   */
+  function createReadAutoSentinel_(loaded, total) {
+    const ratio = total > 0 ? Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) : 0;
+    const sentinel = document.createElement('div');
+    sentinel.setAttribute('data-role', 'read-auto-sentinel');
+    sentinel.className = 'mt-2 rounded-2xl border border-slate-100 dark:border-slate-800 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900/80 dark:to-slate-900 px-4 py-3';
+    sentinel.innerHTML = `<div class="flex items-center justify-between text-[11px]"><span class="inline-flex items-center gap-2 font-black text-slate-500 dark:text-slate-300"><span class="inline-block w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>자동 로딩 중</span><span class="font-bold text-slate-400 dark:text-slate-500">${loaded}/${total} · ${ratio}%</span></div><div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-indigo-500/80 transition-all duration-300" style="width:${ratio}%;"></div></div>`;
+    return sentinel;
+  }
+
+  /**
+   * 전체 로드 완료 마커 UI 생성.
+   * @param {number} total
+   * @returns {HTMLDivElement}
+   */
+  function createReadAllLoadedMarker_(total) {
+    const done = document.createElement('div');
+    done.setAttribute('data-role', 'read-all-loaded');
+    done.className = 'mt-3 text-center rounded-2xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-900/10 px-4 py-3';
+    done.innerHTML = `<p class="text-[11px] font-black text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1.5"><i class="bi bi-check2-circle"></i>전체 ${total}건 로드를 완료했습니다</p>`;
+    return done;
+  }
+
+  /** 조회 자동 페이저 observer 준비 */
+  function ensureReadAutoPager_() {
+    if (readAutoPagerObserver || typeof IntersectionObserver !== 'function') return;
+    readAutoPagerObserver = new IntersectionObserver((entries) => {
+      for (let i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting) {
+          renderNextReadPage();
+        }
+      }
+    }, {
+      root: null,
+      // 화면 하단에 오기 전에 다음 배치를 미리 붙인다.
+      rootMargin: '220px 0px 220px 0px',
+      threshold: 0.01
+    });
+  }
+
+  /** 조회 자동 페이저 observer 해제 */
+  function disconnectReadAutoPager_() {
+    if (readAutoPagerObserver) {
+      try { readAutoPagerObserver.disconnect(); } catch (e) {}
+      readAutoPagerObserver = null;
+    }
+  }
+
+  /**
+   * 조회 카드 DOM 노드 생성.
+   * @param {{row:Object, idx:number}} entry
+   * @returns {HTMLDivElement}
+   */
+  function createReadCardNode_(entry) {
+    const row = entry.row;
+    const idx = entry.idx;
+    const status = getRowStatus(row);
+    let badgeStyle = "status-progress";
+    let statusText = "진행 중";
+    let borderL = "border-progress";
+    let statusCardTone = "status-card-progress";
+    let statusIcon = "bi-hourglass-split";
+    if (status === "완료") {
+      badgeStyle = "status-done";
+      statusText = "완료";
+      borderL = "border-done";
+      statusCardTone = "status-card-done";
+      statusIcon = "bi-check2-circle";
+    } else if (status === "수리 중") {
+      badgeStyle = "status-repair";
+      statusText = "수리 중";
+      borderL = "border-repair";
+      statusCardTone = "status-card-repair";
+      statusIcon = "bi-wrench-adjustable-circle";
+    }
+
+    const createdAt = escapeHtml(row[H.createdAt] || '-');
+    const author = escapeHtml(row[H.author] || '-');
+    const details = escapeHtml(row[H.details] || '');
+    const subject = String(row[H.subject] || '');
+
+    let titleHtml = escapeHtml(subject || '-');
+    if (subject === '기자재') {
+      const item = escapeHtml(row[H.item] || '-');
+      const serial = escapeHtml(row[H.serial] || '-');
+      titleHtml = `${item} <span class="text-indigo-500 text-xs ml-1">(${serial})</span>`;
+    }
+
+    const card = document.createElement('div');
+    card.setAttribute('data-action', 'open-read-detail');
+    card.setAttribute('data-idx', String(idx));
+    card.className = `read-status-card ${statusCardTone} bg-white dark:bg-slate-900 p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 border-l-[8px] ${borderL} shadow-sm active:scale-[0.98] transition-all cursor-pointer`;
+    card.innerHTML = `<div class="flex justify-between items-start mb-3"><span class="text-[10px] font-bold text-slate-400 uppercase">🗓 ${createdAt} · 👤 ${author}</span><span class="status-pill px-2.5 py-1 rounded-lg text-[9px] font-black tracking-wider ${badgeStyle}"><i class="bi ${statusIcon}"></i>${statusText}</span></div><h4 class="font-black text-slate-800 dark:text-slate-100 text-base mb-1 line-clamp-1">${titleHtml}</h4><p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">${details}</p>`;
+    return card;
+  }
+
+  // ===== 조회 상세 모달 =====
+  /**
+   * 조회 상세 모달 본문 렌더러.
+   * @param {Object} r
+   */
+  function renderDetailModalBody_(r) {
+    const isDone = r[H.actionDone] && r[H.actionDone] !== "";
+    const isRepaired = (String(r[H.repairFlag] || "").toLowerCase() === "true");
+    const rawSerial = String(r[H.serial] || '').trim();
+    const safeDate = escapeHtml(r[H.date] || '-');
+    const safeCreatedAt = escapeHtml(r[H.createdAt] || '-');
+    const safeAuthor = escapeHtml(r[H.author] || '-');
+    const safeSubject = escapeHtml(r[H.subject] || '-');
+    const safeSerial = escapeHtml(rawSerial);
+    const safeActionOwner = escapeHtml(r[H.actionOwner] || '-');
+    const safeActionDone = escapeHtml(r[H.actionDone] || '-');
+    const safeActionContent = escapeHtml(r[H.actionContent] || '기록된 내역이 없습니다.');
+    const safeRepairPlace = escapeHtml(r[H.repairPlace] || '-');
+    const safeRepairDate = escapeHtml(r[H.repairDate] || '-');
+    const detailsHtml = (r.__detailsHtml && String(r.__detailsHtml).trim())
+      ? String(r.__detailsHtml)
+      : escapeHtml(r[H.details] || '').replace(/\n/g, '<br>');
+
+    const displayImageUrl = String(r[H.image] || '').trim();
+    const rawImageUrl = String(r.__imageRawUrl || '').trim();
+    const imageBlock = displayImageUrl
+      ? `<div class="pt-1"><img src="${escapeHtml(displayImageUrl)}" alt="첨부 이미지" class="w-full rounded-2xl border border-slate-100 dark:border-slate-800 object-contain bg-slate-50 dark:bg-slate-900" loading="lazy" onerror="if(this.dataset.fallback){this.onerror=null;this.src=this.dataset.fallback;} else { this.style.display='none'; }" data-fallback="${escapeHtml(rawImageUrl)}" /></div>`
+      : '';
+
+    document.getElementById('modalBody').innerHTML = `
+      <div class="space-y-4">
+        <div class="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border dark:border-slate-800">
+          <h5 class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3">Issue Detail</h5>
+          <div class="space-y-2.5 text-xs">
+            <div class="flex justify-between items-center"><span class="text-slate-400 font-bold">발생일</span><span class="font-bold">${safeDate}</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400 font-bold">작성일시</span><span class="font-bold">${safeCreatedAt}</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400 font-bold">작성자</span><span class="font-bold">${safeAuthor}</span></div>
+            <div class="flex justify-between items-center"><span class="text-slate-400 font-bold">구분</span><span class="font-bold">${safeSubject}</span></div>
+            ${rawSerial ? `<div class="flex justify-between items-center"><span class="text-slate-400 font-bold">주기번호</span><span class="font-black text-indigo-500">${safeSerial}</span></div>` : ''}
+          </div>
+          <div class="mt-4 pt-4 border-t dark:border-slate-700">
+            <span class="text-slate-400 font-bold text-[10px] block mb-2 uppercase">Description</span>
+            <div class="issue-detail-content rich-viewer rich-viewer-issue text-slate-700 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-900 p-4 rounded-2xl border dark:border-slate-800 text-sm md:text-base whitespace-pre-wrap">${detailsHtml}</div>
+          </div>
+          ${imageBlock}
+        </div>
+        <div class="p-5 rounded-3xl border ${isDone ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/50' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/50'}">
+          <h5 class="text-[10px] font-black ${isDone ? 'text-emerald-500' : 'text-amber-500'} mb-3 uppercase tracking-widest">Action Log</h5>
+          <div class="space-y-2.5 text-xs">
+            <div class="flex justify-between items-center"><span class="opacity-50 font-bold">상태</span><span class="font-black">${isDone ? '조치 완료' : '진행 중'}</span></div>
+            <div class="flex justify-between items-center"><span class="opacity-50 font-bold">담당자</span><span class="font-bold">${safeActionOwner}</span></div>
+            <div class="flex justify-between items-center"><span class="opacity-50 font-bold">완료일시</span><span class="font-bold">${safeActionDone}</span></div>
+          </div>
+          <div class="mt-4 pt-4 border-t border-black/5 dark:border-white/5"><p class="text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 p-4 rounded-2xl text-sm italic">${safeActionContent}</p></div>
+        </div>
+        ${String(r[H.subject] || "") === "기자재" ? `
+        <div class="p-5 rounded-3xl border ${isRepaired ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800/50' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'}">
+          <h5 class="text-[10px] font-black ${isRepaired ? 'text-rose-500' : 'text-slate-400'} mb-3 uppercase tracking-widest">Repair Info</h5>
+          <div class="space-y-2.5 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="opacity-50 font-bold">수리여부</span>
+              <span class="font-black ${isRepaired ? 'text-rose-600' : ''}">${isRepaired ? '수리 중' : '수리 전'}</span>
+            </div>
+            ${isRepaired ? `
+              <div class="flex justify-between items-center"><span class="opacity-50 font-bold">수리장소</span><span class="font-bold">${safeRepairPlace}</span></div>
+              <div class="flex justify-between items-center"><span class="opacity-50 font-bold">수리날짜</span><span class="font-bold">${safeRepairDate}</span></div>
+            ` : `
+              <div class="text-center py-2 font-black text-slate-400 text-[10px] tracking-widest uppercase">🛠 Repair Pending</div>
+            `}
+          </div>
+        </div>` : ''}
+      </div>`;
+
+    polishRichContentInModal('modalBody', 13, 22);
+    adjustDetailTextColorsForDarkMode();
+  }
+
+  /**
+   * 조회 상세 모달 오픈.
+   * 리스트 데이터는 가볍게 유지하고, 상세는 단건 조회로 불러온다.
+   * @param {number} idx
+   */
+  function openDetail(idx) {
+    const summary = currentData[idx];
+    if (!summary) return;
+
+    const modal = document.getElementById('detailModal');
+    const body = document.getElementById('modalBody');
+    modal.classList.remove('hidden');
+    body.innerHTML = `<div class="py-20 text-center"><div class="inline-block w-7 h-7 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div><p class="mt-4 text-xs font-bold text-slate-400">상세 내용을 불러오는 중...</p></div>`;
+
+    const rowNumber = Number(summary.__rowNumber);
+    if (!Number.isFinite(rowNumber) || rowNumber < 2) {
+      renderDetailModalBody_(summary);
+      return;
+    }
+
+    if (resultDetailCacheByRow[rowNumber]) {
+      renderDetailModalBody_(resultDetailCacheByRow[rowNumber]);
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler((detail) => {
+        if (!detail) {
+          body.innerHTML = `<div class="py-16 text-center text-rose-500 font-bold">상세 데이터를 찾을 수 없습니다.</div>`;
+          return;
+        }
+        resultDetailCacheByRow[rowNumber] = detail;
+        renderDetailModalBody_(detail);
+      })
+      .withFailureHandler((err) => {
+        const errMsg = escapeHtml(err && err.message ? err.message : '오류');
+        body.innerHTML = `<div class="py-16 text-center text-rose-500 font-bold">상세 불러오기 실패: ${errMsg}</div>`;
+      })
+      .getResultDetailData(rowNumber);
+  }
+
+  /**
+   * 공통 모달 닫기 유틸.
+   * 상태 모달은 타이머/버튼 상태도 함께 초기화한다.
+   */
+  function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+    if (id === 'statusModal') {
+      if (statusAutoCloseTimer) {
+        clearTimeout(statusAutoCloseTimer);
+        statusAutoCloseTimer = null;
+      }
+      resetStatusModalContent();
+      const btn = document.getElementById('statusConfirmBtn');
+      if (btn) btn.classList.remove('hidden');
+    }
+  }
+</script>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!--
+    index.html
+    - 앱의 "정적 뼈대(레이아웃/마크업)"를 담당한다.
+    - 실제 동작 로직은 JavaScript.html, 스타일은 Style.html에서 관리한다.
+    - GAS 템플릿 include 문법으로 파일을 합쳐 단일 페이지처럼 렌더링한다.
+  -->
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <!-- Tailwind 유틸리티 클래스 기반 UI를 사용 (버전 고정) -->
+  <script src="https://cdn.tailwindcss.com/3.4.17" referrerpolicy="no-referrer"></script>
+  <!-- 기본 폰트/아이콘/날짜 선택기 (버전 고정 + SRI) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" integrity="sha512-7kBPJBwe3cglBGEnFxQ5+Y2PiUvsataTNRL8gcxkGuB4MSALi9St4Y8MKIzMevFv6J1rPFvhSL6V0CR8tpKLwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" integrity="sha512-rDTlSC+d3sQQeTwkSYI7grcqLTrDZjOEEddzt/7IRA+9Q7x1Zud4j++lH29VSlNrTI0RZ/9d45X6qrFK0RD94w==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css" integrity="sha512-MQXduO8IQnJVq1qmySpN87QQkiR1bZHtorbJBD0tzy7/0U9+YIC93QWHeGTEoojMVHWWNkoCp8V6OzVSYrX0oQ==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <!-- flatpickr 다크 테마는 JS에서 다크모드 상태에 맞춰 enable/disable -->
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/themes/dark.min.css" integrity="sha512-9j8LE+fuBZgXOsSyiXCw0LmM4LSLIo94AYem4pQzyqlbw5wC4qK2ytHjOLy9pGH3DbvoXawLPuiVfr8gXOKXWw==" crossorigin="anonymous" referrerpolicy="no-referrer" id="flatpickr-dark-theme" disabled>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js" integrity="sha512-K/oyQtMXpxI4+K0W7H25UopjM8pzq0yrVdFdG21Fh5dBe91I40pDd9A4lzNlHPHBIP2cwZuoxaUSX0GJSObvGA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/l10n/ko.min.js" integrity="sha512-9tQS7X8rTocA2tAzcLDn1O8OQLdbCm1TB8YCnWyFVxK1K7+/PU0o2N7x9c4OzKdr5+T5g22xv5gpX2kbzmM11g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+    // tailwind dark class 토글 방식 사용(html.dark)
+    // Tailwind CDN이 지연/차단되어도 여기서 ReferenceError가 나지 않도록 보호한다.
+    window.tailwind = window.tailwind || {};
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: { primary: '#6366f1' } } } };
+  </script>
+  <!-- 공통 스타일 로드 -->
+  <?!= include('Style'); ?>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-safe">
+
+<!--
+  메인 앱 컨테이너
+  - max width를 제한해 데스크톱에서 과도하게 넓어지지 않도록 제어
+  - 모바일/데스크톱 공통 여백을 여기서 통합 관리
+-->
+<div class="app-shell max-w-6xl mx-auto px-4 py-5 md:px-6 md:py-7">
+  <!--
+    상단 헤더
+    - 왼쪽: 서비스 타이틀
+    - 오른쪽: Docs(설명서) + 테마 토글 버튼
+    - 버튼 높이를 맞춰 시각적 균형 유지(h-11)
+  -->
+  <header class="app-header flex justify-between items-center mb-5 md:mb-6">
+    <div class="text-left">
+      <h1 class="text-2xl md:text-[30px] font-extrabold tracking-[-0.02em] text-slate-900 dark:text-slate-100">이슈 관리 시스템</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-[11px] md:text-xs font-semibold tracking-[0.08em] uppercase">Operations Dashboard</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button data-call="openMentorForum()" class="app-icon-btn h-10 px-3.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center gap-1.5">
+        <i class="bi bi-people-fill text-sky-500"></i> 멘토포럼
+      </button>
+      <button data-call="openDocsModal()" class="app-icon-btn h-10 px-3.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center gap-1.5">
+        <i class="bi bi-journal-richtext text-indigo-500"></i> 사용 가이드
+      </button>
+      <button data-call="toggleDarkMode()" class="app-icon-btn h-10 w-10 inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 active:scale-[0.98] transition-transform">
+        <i id="theme-icon" class="bi bi-moon-stars-fill text-indigo-500 text-lg md:text-xl"></i>
+      </button>
+    </div>
+  </header>
+
+  <!--
+    상단 탭 네비게이션
+    - switchTab('...') 호출로 컨텐츠 패널 active 전환
+    - 탭 버튼의 active/inactive 클래스는 JS에서 일괄 토글
+  -->
+  <nav class="app-tabs flex p-1 bg-slate-200/60 dark:bg-slate-800/50 rounded-xl mb-5">
+    <button data-call="switchTab('notice')" id="tab-notice-btn" class="app-tab-btn is-active">
+      <i class="bi bi-megaphone-fill"></i> 공지사항
+    </button>
+    <button data-call="switchTab('write')" id="tab-write-btn" class="app-tab-btn">
+      <i class="bi bi-pencil-fill"></i> 작성
+    </button>
+    <button data-call="switchTab('read')" id="tab-read-btn" class="app-tab-btn">
+      <i class="bi bi-grid-1x2-fill"></i> 조회
+    </button>
+    <button data-call="switchTab('check')" id="tab-check-btn" class="app-tab-btn">
+      <i class="bi bi-box-seam-fill"></i> 교구 확인
+    </button>
+  </nav>
+
+  <section id="noticeHero" class="hero-strip mb-6 md:mb-7">
+    <div class="hero-main">
+      <p class="hero-kicker">Mentor WorkSpace</p>
+      <h2 class="hero-title">이슈 관리 시스템</h2>
+      <p class="hero-sub">작성부터 조회, 교구 확인까지 한 화면에서 이어지는 운영형 워크플로우입니다.<br>입력 누락을 줄이고 처리 상태를 더 빠르게 공유할 수 있습니다.</p>
+      <div class="hero-actions">
+        <button type="button" data-call="openMentorForum()" class="hero-action-btn hero-action-secondary">
+          <i class="bi bi-people-fill"></i> 멘토포럼 이동
+        </button>
+        <button type="button" data-call="switchTab('write')" class="hero-action-btn hero-action-primary">
+          <i class="bi bi-pencil-square"></i> 근무일지 작성
+        </button>
+        <button type="button" data-call="switchTab('read')" class="hero-action-btn hero-action-secondary">
+          <i class="bi bi-grid-1x2-fill"></i> 이슈 조회
+        </button>
+        <button type="button" data-call="openDocsModal()" class="hero-action-btn hero-action-secondary">
+          <i class="bi bi-journal-text"></i> 사용 가이드
+        </button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-label">핵심 모듈</span>
+        <span class="hero-stat-value">작성 · 조회 · 교구확인</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">데이터 처리</span>
+        <span class="hero-stat-value">실시간 전송/동기화</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-label">운영 방향</span>
+        <span class="hero-stat-value">직관적 업무 중심 UI</span>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    공지사항 탭
+    - 리스트/스피너만 마크업으로 제공
+    - 데이터 로딩 및 카드 렌더링은 JavaScript.html에서 수행
+  -->
+  <section id="content-notice" class="tab-content active space-y-6">
+    <div class="panel bg-white dark:bg-slate-900 rounded-[2rem] p-5 md:p-6 border border-slate-100 dark:border-slate-800 shadow-xl dark:shadow-none">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm md:text-base font-black text-slate-700 dark:text-slate-200">공지사항</h3>
+        <button type="button" data-call="refreshNoticeData()" class="tool-btn h-9 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black inline-flex items-center gap-1.5 active:scale-95 transition-all">
+          <i class="bi bi-arrow-clockwise"></i> 새로고침
+        </button>
+      </div>
+      <div id="noticeSpinner" class="hidden text-center py-14"><div class="inline-block w-7 h-7 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>
+      <div id="noticeList" class="space-y-3"></div>
+    </div>
+  </section>
+
+  <!--
+    작성 탭
+    - 사용자가 직접 입력하는 primary form
+    - subject(구분)에 따라 주기번호 영역 노출/필수 여부가 동적으로 변경된다.
+    - 이슈내용은 contenteditable + hidden input(issueDetails, issueDetailsRich) 동기화 구조
+  -->
+  <section id="content-write" class="tab-content space-y-6">
+    <div class="panel bg-white dark:bg-slate-900 rounded-[2rem] p-6 md:p-8 border border-slate-100 dark:border-slate-800 shadow-xl dark:shadow-none">
+      <form id="issueForm" class="space-y-5 md:space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">발생 일자</label>
+            <div class="relative"><input type="text" name="date" id="currentDate" readonly class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer dark:text-white"><i class="bi bi-calendar-check absolute right-5 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none"></i></div>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">작성자 <span class="text-rose-500">*</span></label>
+            <input type="text" name="userName" id="userName" placeholder="성함" onchange="validateForm()" oninput="validateForm()" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" required>
+          </div>
+        </div>
+
+        <!--
+          구분(커스텀 드롭다운)
+          - 실제 제출값은 숨겨진 select#subject에 저장
+          - 표시 텍스트/애니메이션은 커스텀 UI로 렌더
+        -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">구분</label>
+          <div class="relative">
+            <!-- 숨겨진 실제 select -->
+            <select name="subject" id="subject" class="hidden">
+              <option value="기자재">📦 기자재 관리</option>
+              <option value="운영진 확인">👥 운영진 확인</option>
+              <option value="인수인계">🔄 업무 인수인계</option>
+            </select>
+            
+            <!-- 커스텀 드롭다운 -->
+            <div class="custom-dropdown">
+              <button type="button" data-call="toggleCustomDropdown()" class="custom-dropdown-btn w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer dark:text-white text-left flex justify-between items-center">
+                <span id="selectedOption">📦 기자재 관리</span>
+                <i class="bi bi-chevron-down text-indigo-500 dark:text-slate-400 transition-transform" id="dropdownArrow"></i>
+              </button>
+              
+              <div id="customDropdownMenu" class="hidden absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-slideUp">
+                <div data-call="selectOption('기자재', '📦 기자재 관리')" class="dropdown-item px-5 py-3.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer transition-all flex items-center gap-3 text-slate-800 dark:text-slate-100">
+                  <span class="text-lg">📦</span>
+                  <span class="font-medium">기자재 관리</span>
+                </div>
+                <div data-call="selectOption('운영진 확인', '👥 운영진 확인')" class="dropdown-item px-5 py-3.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer transition-all flex items-center gap-3 text-slate-800 dark:text-slate-100">
+                  <span class="text-lg">👥</span>
+                  <span class="font-medium">운영진 확인</span>
+                </div>
+                <div data-call="selectOption('인수인계', '🔄 업무 인수인계')" class="dropdown-item px-5 py-3.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer transition-all flex items-center gap-3 text-slate-800 dark:text-slate-100">
+                  <span class="text-lg">🔄</span>
+                  <span class="font-medium">업무 인수인계</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          기자재 전용 입력 영역
+          - subject === '기자재'일 때만 표시
+          - 주기번호를 복수로 입력할 수 있게 serial-row를 동적으로 추가/삭제
+        -->
+        <div id="equipmentFields" class="space-y-3" style="display: none;">
+          <div class="flex items-center gap-2 mb-1.5">
+            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">주기번호 <span class="text-rose-500">*</span></label>
+            <button type="button" data-call="openLookupModal()" class="text-[10px] px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 rounded-md font-bold hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors border border-indigo-200 dark:border-indigo-700/50">
+              <i class="bi bi-search mr-1"></i>주기번호 훔쳐보기
+            </button>
+          </div>
+          <div id="serial-container" class="space-y-3">
+            <div class="serial-row flex items-center gap-2">
+              <div class="serial-input-shell flex-1 flex items-center">
+                <span class="serial-prefix">GR-</span>
+                <input type="text" class="serial-input w-full bg-transparent border-none py-3.5 pr-5 outline-none text-sm" placeholder="000-00" onkeydown="handleSerialEnter(event, this)" oninput="validateForm()" required>
+              </div>
+              <div class="button-area serial-button-area flex gap-2">
+                <button type="button" data-call="addSerialField()" class="plus-btn serial-action-btn serial-add-btn"><i class="bi bi-plus-lg"></i></button>
+              </div>
+            </div>
+          </div>
+          <input type="hidden" name="allSerials" id="allSerials">
+        </div>
+
+        <!--
+          이슈 내용 에디터
+          - 상단 툴바: 서식 버튼/폰트 크기/색상/링크/이모지
+          - 하단 contenteditable: 실제 편집 영역
+          - hidden textarea/input: 서버 전송용 평문/리치데이터(JSON runs)
+        -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">이슈 내용 <span class="text-rose-500">*</span></label>
+          <div class="issue-editor-shell bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+            <div class="px-3 pt-3 pb-2 flex flex-wrap items-center gap-2 border-b border-slate-200/70 dark:border-slate-700/70">
+              <button type="button" id="issueBtnBold" onmousedown="preserveIssueSelection(event)" data-call="execIssueEditorCommand('bold')" class="issue-toolbar-btn" title="굵게"><i class="bi bi-type-bold"></i></button>
+              <button type="button" id="issueBtnItalic" onmousedown="preserveIssueSelection(event)" data-call="execIssueEditorCommand('italic')" class="issue-toolbar-btn" title="기울임"><i class="bi bi-type-italic"></i></button>
+              <button type="button" id="issueBtnStrike" onmousedown="preserveIssueSelection(event)" data-call="execIssueEditorCommand('strikeThrough')" class="issue-toolbar-btn" title="취소선"><i class="bi bi-type-strikethrough"></i></button>
+              <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+              <button type="button" id="issueBtnSizeDown" onmousedown="preserveIssueSelection(event)" data-call="stepIssueFontSize(-1)" class="issue-toolbar-btn" title="글씨 작게"><i class="bi bi-type"></i><span class="text-[9px] ml-0.5">-</span></button>
+              <button type="button" id="issueBtnSizeUp" onmousedown="preserveIssueSelection(event)" data-call="stepIssueFontSize(1)" class="issue-toolbar-btn" title="글씨 크게"><i class="bi bi-type"></i><span class="text-[9px] ml-0.5">+</span></button>
+              <span id="issueFontSizeLabel" class="issue-font-indicator">16px</span>
+              <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+              <div class="issue-color-wrap relative">
+                <button type="button" id="issueBtnColor" onmousedown="preserveIssueSelection(event)" data-call="toggleIssueColorPalette()" class="issue-toolbar-btn !h-8 !min-w-10 px-2" title="글씨 색상">
+                  <i class="bi bi-palette-fill"></i>
+                  <span id="issueColorSwatch" class="inline-block w-2.5 h-2.5 rounded-full border border-black/20 ml-1" style="background:#0f172a;"></span>
+                </button>
+                <div id="issueColorPalette" class="issue-color-panel hidden absolute top-[38px] left-0 z-[120]">
+                  <div class="issue-color-grid">
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#0f172a')" class="issue-swatch" style="background:#0f172a;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#334155')" class="issue-swatch" style="background:#334155;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#dc2626')" class="issue-swatch" style="background:#dc2626;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#ea580c')" class="issue-swatch" style="background:#ea580c;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#ca8a04')" class="issue-swatch" style="background:#ca8a04;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#16a34a')" class="issue-swatch" style="background:#16a34a;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#0d9488')" class="issue-swatch" style="background:#0d9488;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#0284c7')" class="issue-swatch" style="background:#0284c7;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#2563eb')" class="issue-swatch" style="background:#2563eb;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#4f46e5')" class="issue-swatch" style="background:#4f46e5;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#7c3aed')" class="issue-swatch" style="background:#7c3aed;"></button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueColor('#be185d')" class="issue-swatch" style="background:#be185d;"></button>
+                  </div>
+                  <div class="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <label class="issue-color-detail-btn" onmousedown="preserveIssueSelection(event)">
+                      세부 색상
+                      <input type="color" id="issueTextColor" onchange="chooseIssueColor(this.value)" value="#0f172a" class="issue-native-color-input" title="글씨 색상">
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <button type="button" id="issueBtnLink" onmousedown="preserveIssueSelection(event)" data-call="openIssueLinkModal()" class="issue-toolbar-btn" title="링크"><i class="bi bi-link-45deg"></i></button>
+              <button type="button" id="issueBtnUnlink" onmousedown="preserveIssueSelection(event)" data-call="removeIssueLink()" class="issue-toolbar-btn" title="링크 해제"><i class="bi bi-link-45deg text-slate-400"></i><i class="bi bi-slash-lg text-[9px] -ml-1"></i></button>
+              <div class="issue-emoji-wrap relative">
+                <button type="button" id="issueBtnEmoji" onmousedown="preserveIssueSelection(event)" data-call="toggleIssueEmojiPalette()" class="issue-toolbar-btn" title="이모지"><i class="bi bi-emoji-smile"></i></button>
+                <div id="issueEmojiPalette" class="issue-emoji-panel hidden absolute top-[38px] left-0 z-[120]">
+                  <div class="issue-emoji-grid">
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('😀')" class="issue-emoji-item">😀</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('😅')" class="issue-emoji-item">😅</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('👍')" class="issue-emoji-item">👍</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('🙏')" class="issue-emoji-item">🙏</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('✅')" class="issue-emoji-item">✅</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('⚠️')" class="issue-emoji-item">⚠️</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('🚨')" class="issue-emoji-item">🚨</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('🔧')" class="issue-emoji-item">🔧</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('📌')" class="issue-emoji-item">📌</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('📝')" class="issue-emoji-item">📝</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('📷')" class="issue-emoji-item">📷</button>
+                    <button type="button" onmousedown="preserveIssueSelection(event)" data-call="chooseIssueEmoji('📦')" class="issue-emoji-item">📦</button>
+                  </div>
+                  <div class="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-300 font-bold text-center">
+                    맥북 : Control + Command + Space
+                    윈도우 : Win + .
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="issueDetailsEditor" contenteditable="true" class="w-full min-h-[140px] max-h-[320px] overflow-y-auto px-5 py-4 outline-none text-sm leading-relaxed dark:text-white whitespace-pre-wrap" data-placeholder="상세 내용을 입력하세요"></div>
+          </div>
+          <textarea name="issueDetails" id="issueDetails" class="hidden"></textarea>
+          <input type="hidden" name="issueDetailsRich" id="issueDetailsRich">
+        </div>
+
+        <!--
+          이미지 업로드
+          - 사용자가 선택한 로컬 이미지 파일을 제출 시 Drive에 업로드
+          - 파일명/상태 텍스트는 JS에서 갱신
+        -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase">현장 사진</label>
+          <label class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-slate-200 dark:border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 transition-all">
+            <div class="flex flex-col items-center justify-center px-4"><i class="bi bi-camera-fill text-2xl text-indigo-400 mb-1"></i><p id="file-name" class="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-medium text-center truncate w-full px-2">사진 업로드 (선택)</p></div>
+            <input type="file" name="imageFile" id="imageFile" class="hidden" accept="image/*" onchange="updateFileName(this)" />
+          </label>
+        </div>
+
+        <button type="submit" id="submitBtn" class="primary-btn w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-black py-3.5 rounded-xl shadow-sm active:scale-[0.99] transition-all" disabled>근무일지 전송</button>
+      </form>
+    </div>
+  </section>
+
+  <!--
+    조회 탭
+    - 상단: 카테고리 서브탭 + 새로고침 + 필터 패널 토글
+    - 중단: 동적 필터칩(품목/날짜/상태)
+    - 하단: 카드 리스트(클릭 시 상세 모달)
+  -->
+  <section id="content-read" class="tab-content space-y-6">
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-[11px] font-black text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-2">조회 필터</p>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button" data-call="refreshResults()" class="tool-btn read-control-btn rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-black shadow-sm active:scale-95 transition-all inline-flex items-center gap-1.5" title="새로고침">
+          <i class="bi bi-arrow-clockwise text-[11px]"></i> 새로고침
+        </button>
+        <button type="button" id="filterToggleBtn" data-call="toggleReadFilters()" class="tool-btn read-control-btn filter-toggle-btn rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-black shadow-sm active:scale-95 transition-all inline-flex items-center gap-1.5">
+          <i class="bi bi-funnel-fill text-[11px]"></i> <span id="filterToggleText">필터</span>
+        </button>
+      </div>
+    </div>
+    <div id="readFilterSummary" class="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 px-3 py-2.5 flex flex-wrap items-center gap-1.5"></div>
+    <div id="readFilterPanel" class="panel hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 shadow-sm">
+      <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500">복수 선택 가능 · 선택 없음 = 전체</p>
+      <div class="space-y-2">
+        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">구분</p>
+        <div id="subjectFilterChips" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div class="space-y-2">
+        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">교구 이름</p>
+        <div id="itemFilterChips" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div class="space-y-2">
+        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">날짜</p>
+        <div id="dateFilterChips" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div class="space-y-2">
+        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">조치결과</p>
+        <div id="statusFilterChips" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+    <div id="tableSpinner" class="hidden text-center py-20"><div class="inline-block w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>
+    <div id="cardList" class="space-y-4"></div>
+  </section>
+
+  <!--
+    교구 확인 탭
+    - 외부 시트 집계 데이터를 품목 단위로 보여주는 읽기 전용 영역
+    - 상세는 아코디언 형태로 확장/축소
+  -->
+  <section id="content-check" class="tab-content space-y-6">
+    <div class="panel bg-white dark:bg-slate-900 rounded-[2rem] p-5 md:p-6 border border-slate-100 dark:border-slate-800 shadow-xl dark:shadow-none">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm md:text-base font-black text-slate-700 dark:text-slate-200">품목별 교구 현황</h3>
+        <button type="button" data-call="refreshEquipmentCheckData()" class="tool-btn h-9 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black inline-flex items-center gap-1.5 active:scale-95 transition-all">
+          <i class="bi bi-arrow-clockwise"></i> 새로고침
+        </button>
+      </div>
+      <div id="checkSpinner" class="hidden text-center py-14"><div class="inline-block w-7 h-7 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>
+      <div id="checkList" class="space-y-3"></div>
+    </div>
+  </section>
+</div>
+
+<!--
+  공지 상세 모달
+  - 공지 카드 클릭 시 열림
+  - 본문은 rich-viewer 스타일로 표시(가독성/다크모드 보정)
+-->
+<div id="noticeModal" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-3 md:p-4">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-md" data-call="closeModal('noticeModal')"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-[96vw] md:max-w-3xl lg:max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="px-6 py-5 border-b dark:border-slate-800 flex justify-between items-center flex-shrink-0"><h3 class="text-lg font-black">공지사항</h3><button data-call="closeModal('noticeModal')" class="app-icon-btn p-2 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500"><i class="bi bi-x-lg"></i></button></div>
+    <div id="noticeModalBody" class="p-6 overflow-y-auto space-y-5"></div>
+  </div>
+</div>
+
+<!--
+  조회 상세 모달
+  - 조회 카드 클릭 시 열림
+  - 이슈 상세/조치 로그/수리 정보를 섹션 단위로 렌더
+-->
+<div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-md" data-call="closeModal('detailModal')"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-[96vw] md:max-w-3xl lg:max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="px-6 py-5 border-b dark:border-slate-800 flex justify-between items-center flex-shrink-0"><h3 class="text-lg font-black">상세 보고서</h3><button data-call="closeModal('detailModal')" class="app-icon-btn p-2 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500"><i class="bi bi-x-lg"></i></button></div>
+    <div id="modalBody" class="p-6 overflow-y-auto space-y-6"></div>
+  </div>
+</div>
+
+<!--
+  주기번호 참조(훔쳐보기) 모달
+  - lookupList를 표 형태로 노출
+  - 검색어 필터링 + 클릭 시 작성 폼 주기번호 자동 입력
+-->
+<div id="lookupModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-md" data-call="closeModal('lookupModal')"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md relative z-10 overflow-hidden max-h-[80vh] flex flex-col border dark:border-slate-800 animate-slideUp">
+    <div class="px-6 py-4 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 flex-shrink-0">
+      <h3 class="text-sm font-black flex items-center gap-2"><span class="p-1.5 bg-indigo-500 rounded-lg text-white"><i class="bi bi-list-ul"></i></span> 주기번호 참조 리스트</h3>
+      <button data-call="closeModal('lookupModal')" class="app-icon-btn p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors"><i class="bi bi-x-lg"></i></button>
+    </div>
+    
+    <!-- 검색창 추가 -->
+    <div class="px-6 py-4 bg-slate-50/70 dark:bg-slate-800/70 backdrop-blur-sm flex-shrink-0">
+      <div class="relative">
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <i id="searchIcon" class="search-icon bi bi-search text-indigo-500 dark:text-indigo-400 text-sm"></i>
+        </div>
+        <input type="text" id="searchLookup" placeholder="기자재 품명으로 검색 (품목 클릭시 번호 자동 입력)" oninput="searchLookupList(this.value)" onfocus="toggleSearchIcon(true)" onblur="toggleSearchIcon(false)" class="search-input w-full pl-11 pr-5 py-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-0 focus:border-indigo-500 dark:focus:border-indigo-500 outline-none text-sm dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium transition-all" />
+      </div>
+    </div>
+    
+    <div class="modal-table-container overflow-y-auto scrollbar-hide">
+      <table class="w-full text-[11px] border-collapse text-left">
+        <thead class="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10">
+          <tr class="text-slate-400 border-b dark:border-slate-800"><th class="p-3 font-bold w-16">번호</th><th class="p-3 font-bold">품명</th></tr>
+        </thead>
+        <tbody id="lookupTableBody" class="divide-y dark:divide-slate-800"></tbody>
+      </table>
+    </div>
+    <div class="p-4 border-t dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-center"><p class="text-[10px] text-slate-400 font-medium italic">리스트에 없는 기자재는 운영진에게 문의하세요.</p></div>
+  </div>
+</div>
+
+<!--
+  상태(알림) 모달
+  - 제출 성공/실패/진행중 상태를 통합 표시
+  - 성공 케이스는 자동 닫힘 타이머 사용
+-->
+<div id="statusModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/40 backdrop-blur-sm"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-xs relative z-10 text-center shadow-2xl">
+    <div id="statusIcon" class="text-6xl mb-4"></div><h4 id="statusTitle" class="text-xl font-black mb-2"></h4><p id="statusMsg" class="text-slate-500 text-sm mb-6"></p>
+    <button id="statusConfirmBtn" data-call="closeModal('statusModal')" class="primary-btn w-full bg-slate-900 dark:bg-indigo-600 text-white py-3.5 rounded-xl font-black transition-all">확인</button>
+  </div>
+</div>
+
+<!--
+  링크 입력 모달
+  - 이슈내용 에디터의 링크 버튼 클릭 시 오픈
+  - URL 입력 후 적용하면 selection 기준 createLink/insertHTML 수행
+-->
+<div id="issueLinkModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/50 backdrop-blur-sm" data-call="closeIssueLinkModal()"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2rem] p-6 w-full max-w-sm relative z-10 shadow-2xl border border-slate-100 dark:border-slate-800">
+    <h4 class="text-base font-black mb-4">하이퍼링크 추가</h4>
+    <div class="space-y-2">
+      <label class="text-[11px] font-black text-slate-400 uppercase">URL</label>
+      <input id="issueLinkInput" type="url" onkeydown="if(event.key==='Enter'){event.preventDefault();applyIssueLinkFromModal();}" placeholder="https://example.com" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
+    </div>
+    <div class="flex gap-2 mt-5">
+      <button type="button" data-call="closeIssueLinkModal()" class="tool-btn flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-black">취소</button>
+      <button type="button" data-call="applyIssueLinkFromModal()" class="primary-btn flex-1 py-3 rounded-xl bg-indigo-600 text-white text-sm font-black">적용</button>
+    </div>
+  </div>
+</div>
+
+<!--
+  Docs(사용 설명서) 모달
+  - Docs.html partial을 include해 렌더
+  - 내부 전용 스크롤 컨테이너(.docs-modal-scroll)를 사용
+-->
+<div id="docsModal" class="hidden fixed inset-0 z-[115] flex items-start md:items-center justify-center p-3 md:p-4">
+  <div class="modal-backdrop fixed inset-0 bg-slate-950/70 backdrop-blur-md" data-call="closeModal('docsModal')"></div>
+  <div class="modal-surface bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-[96vw] md:max-w-3xl lg:max-w-4xl relative z-10 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="px-6 py-5 border-b dark:border-slate-800 flex justify-between items-center flex-shrink-0">
+      <h3 class="text-lg font-black">사용 설명서</h3>
+      <button data-call="closeModal('docsModal')" class="app-icon-btn p-2 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="docs-modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 md:p-7">
+      <div class="docs-content">
+        <?!= include('Docs'); ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 클라이언트 동작 로직 로드 -->
+<?!= include('JavaScriptCore'); ?>
+<?!= include('JavaScriptData'); ?>
+</body>
+</html>

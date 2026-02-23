@@ -1,0 +1,1542 @@
+<script>
+  /*
+    JavaScript.html
+    ==========================================================================
+    [목적]
+    - 이 파일은 화면의 "행동"을 전부 담당한다.
+    - 탭 전환, 폼 검증, 리치텍스트 에디터, 모달 오픈/닫기,
+      서버 호출(google.script.run), 응답 렌더링이 모두 여기에 있다.
+
+    [핵심 설계]
+    1) UI 상태를 전역 변수로 관리한다. (현재 탭/필터/로딩 여부 등)
+    2) 서버 데이터는 탭 진입 시 lazy-load한다.
+    3) 편집기 입력은 debounce로 직렬화해 타이핑 지연을 줄인다.
+    4) selectionchange는 requestAnimationFrame으로 throttle한다.
+    5) 렌더는 문자열 기반 innerHTML 일괄 주입 패턴을 사용한다.
+
+    [주의]
+    - 이 파일에서 쓰는 헤더명(H 객체)은 Code.gs ISSUE_HEADERS와 개념상 짝이 맞아야 한다.
+    - contenteditable 직렬화 로직(serializeIssueDetailsRichData)은 비용이 크므로
+      불필요한 즉시 호출을 피하도록 설계되어 있다.
+  */
+
+  // ===== 클라이언트 상태 =====
+  // 서버에서 불러온 데이터/필터/UI 상태를 전역으로 관리
+  // currentData: 조회 탭 원본 row 목록
+  // noticeData: 공지 목록 원본
+  // equipmentCheckData: 교구 확인 목록 원본
+  // resultDetailCacheByRow: 조회 상세 단건 캐시 (__rowNumber 기준)
+  let currentData = [];
+  let resultDetailCacheByRow = {};
+  // readCategoryIndex: 조회 탭 카테고리/필터 인덱스
+  let readCategoryIndex = {};
+  // readRenderState: 대량 카드 증분 렌더 상태
+  let readRenderState = { rows: [], cursor: 0 };
+  const READ_CARD_BATCH_SIZE = 80;
+  let readAutoPagerObserver = null;
+  let isResultsLoaded = false;
+  let noticeData = [];
+  let isNoticeLoaded = false;
+  let isNoticeLoading = false;
+  let equipmentCheckData = [];
+  let isEquipmentCheckLoaded = false;
+  let openedCheckItemIndex = -1;
+  let selectedItemFilters = [];
+  let selectedDateFilters = [];
+  let selectedStatusFilters = [];
+  let selectedSubjectFilters = [];
+  let issueSavedRange = null;
+  // issueSyncDebounceTimer:
+  // 입력 중 직렬화/검증을 120ms 지연시키는 타이머 id
+  let issueSyncDebounceTimer = null;
+  // issueToolbarRafId:
+  // selectionchange 고빈도 이벤트를 프레임당 1회로 제한하기 위한 requestAnimationFrame id
+  let issueToolbarRafId = 0;
+  // lookupSearchDebounceTimer:
+  // 주기번호 lookup 검색 디바운스 타이머 id
+  let lookupSearchDebounceTimer = null;
+  // lookupRowsCache:
+  // lookup 모달 테이블 행 노드 캐시(재조회/재선택 비용 절감)
+  let lookupRowsCache = null;
+  // lastFilterControlsKey:
+  // 조회 필터칩 렌더 결과를 상태키로 기억해 동일 상태 재렌더를 생략
+  let lastFilterControlsKey = '';
+  const ISSUE_FONT_MIN = 10;
+  const ISSUE_FONT_MAX = 48;
+  const ISSUE_FONT_STEP = 2;
+  // 같은 GAS 웹앱에서 멘토포럼 진입 페이지로 라우팅
+  const MENTOR_FORUM_URL = '?page=mentorforum';
+  let fp;
+  let H = {
+    date: "이슈 발생 날짜",
+    createdAt: "이슈 작성 일자",
+    author: "이슈 작성자",
+    subject: "구분",
+    item: "품명",
+    serial: "주기번호",
+    details: "이슈내용",
+    image: "이미지",
+    actionOwner: "조치담당자",
+    actionDone: "조치완료일",
+    actionContent: "조치내용",
+    repairPlace: "수리장소",
+    repairDate: "수리날짜",
+    repairFlag: "수리여부"
+  };
+
+  const lookupList = [
+    {id: 1, name: "에어바운스 드론축구경기장"}, {id: 2, name: "86W62B-246HE0024-001091 / TV"},
+    {id: 3, name: "데스크탑 T6-73252V7, 모니터 M-24A(P)"}, {id: 4, name: "알티노 라이트"},
+    {id: 5, name: "엠빌드 RC 카 (엠봇2)"}, {id: 6, name: "Micro:bit Genius Kit (with microbit)"},
+    {id: 7, name: "시마 카론슨 X26 미니 센서 드론"}, {id: 8, name: "지능형과학실 머지큐브(Merge cube)"},
+    {id: 9, name: "스카이킥 EVO"}, {id: 10, name: "netis MEX605 WIFI6"},
+    {id: 11, name: "메타퀘스트3"}, {id: 12, name: "메타퀘스트3 Maecker 고속 충전 도크 액세서리 스탠드"},
+    {id: 13, name: "시마 카론슨 X23W 드론"}, {id: 14, name: "SKD X6 드론"},
+    {id: 15, name: "로보링크 / 코드론 미니"}, {id: 16, name: "카미봇파이-본품"},
+    {id: 17, name: "카미봇파이-블루투스동글"}, {id: 18, name: "카미봇파이-AI카메라"},
+    {id: 19, name: "알티노-충전기"}, {id: 20, name: "알티노-블루투스"},
+    {id: 21, name: "핑퐁로봇-에듀스타트 α"}, {id: 22, name: "핑퐁로봇-핑퐁큐브"},
+    {id: 23, name: "핑퐁로봇-충전케이블"}, {id: 24, name: "디폼블럭"},
+    {id: 25, name: "디폼블럭-분리도구 3종세트"}, {id: 26, name: "태블릿(삼성)-태블릿펜"},
+    {id: 27, name: "Panasonic / 빔프로젝터"}, {id: 28, name: "DJI 포켓"},
+    {id: 29, name: "DJI Mavic 3 Pro"}, {id: 30, name: "DJI Air 3S"},
+    {id: 31, name: "[LG] 15ZG90R-GP79KN"}, {id: 32, name: "와콤펜"},
+    {id: 33, name: "전자칠판 펜"}, {id: 34, name: "[삼성] SM-X906NZAAKOO, 그라파이트, 128GB"},
+    {id: 35, name: "직류전원장치 / 스마트보관함"}, {id: 36, name: "주행트랙 / 카미봇 파이"},
+    {id: 37, name: "IECM-12U / 철제캐비넷"}, {id: 38, name: "DLOGIXS / 앰프"},
+    {id: 39, name: "SMARTMATE-8600-LK / TV"}, {id: 40, name: "WACOM Cintiq"},
+    {id: 41, name: "Epson LW-K200BL / 라벨 프린터기"}, {id: 42, name: "(CN)PTZC-203A 4K, 영상회의용 / 카메라"},
+    {id: 43, name: "SPD-9209, 8채널 / 영상분배기 8채널"}, {id: 44, name: "HGM-450, 60~16000Hz / 구즈넥마이크"},
+    {id: 45, name: "AHALTM-22WL, 54.6cm, P-CAP+EMR센서/무건전지펜/LED"}, {id: 46, name: "MC-SC-500, (부품)유선패널, 5회로"},
+    {id: 47, name: "MC-TPS-PL2201M, 스피치학습시스템"}, {id: 48, name: "MC-PG-15, (부품)650×500×700mm, 스피커보호망"},
+    {id: 49, name: "(CN)24MP500, 60.4cm / 모니터"}, {id: 50, name: "(CN)NT750XGK-KG51P, Intel Core i5 120U(1.4GHz) / 노트북"},
+    {id: 51, name: "MS-70A, 70W / 스피커"}
+  ];
+
+  // ===== 앱 초기화 =====
+  // 날짜/테마/에디터 초기화 후 마지막 탭 복원
+  // - 새로고침 유입이면 localStorage.lastTab을 우선 적용
+  // - 일반 첫 진입이면 notice 탭으로 시작
+  window.addEventListener('DOMContentLoaded', () => {
+    initFlatpickr();
+    applyThemeSettings();
+    initIssueEditor();
+    initDelegatedActions_();
+    toggleFields();
+    const navEntry = performance.getEntriesByType && performance.getEntriesByType('navigation')
+      ? performance.getEntriesByType('navigation')[0]
+      : null;
+    const isReload = !!(navEntry && navEntry.type === 'reload');
+    const savedTab = localStorage.getItem('lastTab');
+    const validTabs = { notice: true, write: true, read: true, check: true };
+    const initialTab = (isReload && savedTab && validTabs[savedTab]) ? savedTab : 'notice';
+    // 1) 초기 탭을 즉시 열어 첫 서버 요청을 지연시키지 않는다.
+    switchTab(initialTab);
+    // 2) 공지 데이터는 탭과 무관하게 백그라운드 프리로드한다.
+    primeNoticeData_();
+    // 3) 헤더 동기화는 병렬 비차단으로 처리한다.
+    loadIssueHeadersAsync_();
+  });
+
+  /**
+   * 공지 데이터 백그라운드 프리로드.
+   * 초기 진입 체감 속도를 위해 가능한 빨리 요청한다.
+   */
+  function primeNoticeData_() {
+    if (!isNoticeLoaded && !isNoticeLoading && typeof loadNoticeData === 'function') {
+      loadNoticeData();
+    }
+  }
+
+  /**
+   * 서버 헤더 사전을 비차단으로 동기화한다.
+   * (헤더 상수의 단일 소스는 Code.gs getIssueHeaders)
+   */
+  function loadIssueHeadersAsync_() {
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      return;
+    }
+    google.script.run
+      .withSuccessHandler((serverHeaders) => {
+        if (serverHeaders && typeof serverHeaders === 'object') {
+          H = Object.assign({}, H, serverHeaders);
+        }
+      })
+      .withFailureHandler(() => {})
+      .getIssueHeaders();
+  }
+
+  // data-call 허용 함수 화이트리스트
+  const DATA_CALL_ALLOWED = {
+    openMentorForum: true,
+    openDocsModal: true,
+    toggleDarkMode: true,
+    switchTab: true,
+    refreshNoticeData: true,
+    toggleCustomDropdown: true,
+    selectOption: true,
+    openLookupModal: true,
+    addSerialField: true,
+    execIssueEditorCommand: true,
+    stepIssueFontSize: true,
+    toggleIssueColorPalette: true,
+    chooseIssueColor: true,
+    openIssueLinkModal: true,
+    removeIssueLink: true,
+    toggleIssueEmojiPalette: true,
+    chooseIssueEmoji: true,
+    filterResults: true,
+    refreshResults: true,
+    toggleReadFilters: true,
+    refreshEquipmentCheckData: true,
+    closeModal: true,
+    closeIssueLinkModal: true,
+    applyIssueLinkFromModal: true,
+    scrollDocsTo: true,
+    selectLookupItem: true
+  };
+
+  /**
+   * data-call 인자 토큰을 안전하게 파싱한다.
+   * 허용: 문자열/숫자/true/false/event/element
+   * @param {string} rawArgs
+   * @param {Event} event
+   * @param {Element} element
+   * @returns {{ok:boolean, values:Array}}
+   */
+  function parseDataCallArgs_(rawArgs, event, element) {
+    const src = String(rawArgs || '').trim();
+    if (!src) return { ok: true, values: [] };
+
+    const tokens = [];
+    let cur = '';
+    let quote = '';
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (quote) {
+        cur += ch;
+        if (ch === '\\' && i + 1 < src.length) {
+          i++;
+          cur += src[i];
+          continue;
+        }
+        if (ch === quote) quote = '';
+        continue;
+      }
+      if (ch === '\'' || ch === '"') {
+        quote = ch;
+        cur += ch;
+        continue;
+      }
+      if (ch === ',') {
+        tokens.push(cur.trim());
+        cur = '';
+        continue;
+      }
+      cur += ch;
+    }
+    if (quote) return { ok: false, values: [] };
+    if (cur.trim() !== '') tokens.push(cur.trim());
+
+    const values = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (t === 'event') { values.push(event); continue; }
+      if (t === 'element') { values.push(element); continue; }
+      if (t === 'true') { values.push(true); continue; }
+      if (t === 'false') { values.push(false); continue; }
+      if (/^-?\d+(?:\.\d+)?$/.test(t)) { values.push(Number(t)); continue; }
+      if ((t.startsWith('\'') && t.endsWith('\'')) || (t.startsWith('"') && t.endsWith('"'))) {
+        const q = t[0];
+        let body = t.substring(1, t.length - 1);
+        if (q === '\'') {
+          body = body
+            .replace(/\\\\/g, '\\')
+            .replace(/\\'/g, '\'')
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\t/g, '\t');
+        } else {
+          body = body
+            .replace(/\\\\/g, '\\')
+            .replace(/\\"/g, '"')
+            .replace(/\\'/g, '\'')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\t/g, '\t');
+        }
+        values.push(body);
+        continue;
+      }
+      return { ok: false, values: [] };
+    }
+
+    return { ok: true, values: values };
+  }
+
+  /**
+   * data-call 단일 명령을 안전하게 실행한다.
+   * @param {string} command
+   * @param {Event} event
+   * @param {Element} element
+   * @returns {boolean}
+   */
+  function runDataCallCommand_(command, event, element) {
+    const cmd = String(command || '').trim();
+    if (!cmd) return true;
+
+    const m = cmd.match(/^([A-Za-z_$][\w$]*)\(([\s\S]*)\)$/);
+    if (!m) return false;
+    const fnName = m[1];
+    if (!DATA_CALL_ALLOWED[fnName]) return false;
+    const fn = globalThis[fnName];
+    if (typeof fn !== 'function') return false;
+
+    const parsed = parseDataCallArgs_(m[2], event, element);
+    if (!parsed.ok) return false;
+
+    fn.apply(null, parsed.values);
+    return true;
+  }
+
+  /**
+   * data-call 표현식을 세미콜론 단위로 안전 실행한다.
+   * @param {string} expr
+   * @param {Event} event
+   * @param {Element} element
+   */
+  function executeDataCall_(expr, event, element) {
+    const source = String(expr || '').trim();
+    if (!source) return;
+    const commands = source.split(';').map(v => v.trim()).filter(Boolean);
+    for (let i = 0; i < commands.length; i++) {
+      if (!runDataCallCommand_(commands[i], event, element)) {
+        console.warn('Blocked unsafe data-call:', commands[i]);
+        return;
+      }
+    }
+  }
+
+  /** data-action 기반 공통 클릭 핸들러 바인딩 */
+  function initDelegatedActions_() {
+    document.addEventListener('click', (e) => {
+      const callEl = e.target.closest('[data-call]');
+      if (callEl) {
+        const callExpr = String(callEl.getAttribute('data-call') || '').trim();
+        if (callExpr) {
+          try {
+            executeDataCall_(callExpr, e, callEl);
+          } catch (err) {
+            console.error('data-call execution failed:', callExpr, err);
+          }
+        }
+      }
+
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      const action = actionEl.getAttribute('data-action');
+      if (!action) return;
+
+      if (action === 'open-notice-detail') {
+        openNoticeDetail(Number(actionEl.getAttribute('data-idx')));
+        return;
+      }
+      if (action === 'open-read-detail') {
+        openDetail(Number(actionEl.getAttribute('data-idx')));
+        return;
+      }
+      if (action === 'toggle-check-item') {
+        toggleEquipmentItemByIndex(Number(actionEl.getAttribute('data-idx')));
+        return;
+      }
+      if (action === 'set-item-filter') {
+        const rawItem = actionEl.getAttribute('data-item') || '';
+        try {
+          setItemFilter(decodeURIComponent(rawItem));
+        } catch (e2) {
+          setItemFilter('');
+        }
+        return;
+      }
+      if (action === 'set-subject-filter') {
+        const rawSubject = actionEl.getAttribute('data-subject') || '';
+        try {
+          setSubjectFilter(decodeURIComponent(rawSubject));
+        } catch (e2) {
+          setSubjectFilter('');
+        }
+        return;
+      }
+      if (action === 'set-date-filter') {
+        const rawDate = actionEl.getAttribute('data-date') || '';
+        try {
+          setDateFilter(decodeURIComponent(rawDate));
+        } catch (e2) {
+          setDateFilter('');
+        }
+        return;
+      }
+      if (action === 'set-status-filter') {
+        setStatusFilter(actionEl.getAttribute('data-status') || 'all');
+        return;
+      }
+      if (action === 'remove-filter-chip') {
+        const group = actionEl.getAttribute('data-group') || '';
+        const rawValue = actionEl.getAttribute('data-value') || '';
+        try {
+          removeFilterChipSelection(group, decodeURIComponent(rawValue));
+        } catch (e2) {
+          removeFilterChipSelection(group, rawValue);
+        }
+        return;
+      }
+      if (action === 'remove-serial-row') {
+        const row = actionEl.closest('.serial-row');
+        if (row) row.remove();
+        updateSerialButtons();
+        validateForm();
+      }
+    });
+  }
+
+  /**
+   * 작성 폼의 발생일 입력에 flatpickr를 초기화한다.
+   * - 모바일 기본 date picker 대신 통일된 위젯 사용
+   * - 기본값: 오늘
+   */
+  function initFlatpickr() { fp = flatpickr("#currentDate", { locale: "ko", dateFormat: "Y-m-d", defaultDate: "today", disableMobile: "true" }); }
+  /**
+   * 저장된 테마(localStorage.theme)와 시스템 테마를 기준으로 초기 테마를 적용한다.
+   * flatpickr 다크 테마 CSS enable/disable까지 함께 처리한다.
+   */
+  function applyThemeSettings() {
+    const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) document.documentElement.classList.add('dark');
+    updateThemeIcon(isDark);
+    document.getElementById('flatpickr-dark-theme').disabled = !isDark;
+  }
+  /**
+   * 다크모드 토글 버튼 핸들러.
+   * html.dark 클래스를 토글하고 사용자 선택을 localStorage에 저장한다.
+   */
+  function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.theme = isDark ? 'dark' : 'light';
+    updateThemeIcon(isDark);
+    document.getElementById('flatpickr-dark-theme').disabled = !isDark;
+  }
+  /**
+   * 상단 테마 아이콘 상태(달/해)를 갱신한다.
+   * @param {boolean} isDark
+   */
+  function updateThemeIcon(isDark) { document.getElementById('theme-icon').className = isDark ? 'bi bi-sun-fill text-amber-400' : 'bi bi-moon-stars-fill text-indigo-500'; }
+
+  /** 상단 Docs 버튼으로 사용설명서 모달 오픈 */
+  function openMentorForum() {
+    var url = String(MENTOR_FORUM_URL || '').trim();
+    if (!url) return;
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function openDocsModal() {
+    const modal = document.getElementById('docsModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const scroller = modal.querySelector('.docs-modal-scroll');
+    if (scroller) scroller.scrollTop = 0;
+  }
+
+  /**
+   * Docs TOC 버튼 클릭 시 모달 내부 스크롤 영역에서 해당 섹션으로 이동한다.
+   * @param {string} sectionId
+   */
+  function scrollDocsTo(sectionId) {
+    const modal = document.getElementById('docsModal');
+    if (!modal || !sectionId) return;
+    const scroller = modal.querySelector('.docs-modal-scroll');
+    const root = modal.querySelector('.docs-content');
+    if (!scroller || !root) return;
+    const safeId = String(sectionId).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!safeId) return;
+    const target = root.querySelector('#' + safeId);
+    if (!target) return;
+    const top = Math.max(0, target.offsetTop - 12);
+    scroller.scrollTo({ top, behavior: 'smooth' });
+  }
+
+  // ===== 이슈내용 리치에디터 =====
+  // 입력값을 plain/rich(JSON run) 둘 다 동기화해 서버로 전송
+  /**
+   * contenteditable 기반 이슈 에디터 초기화.
+   * - 입력/선택/단축키 이벤트 바인딩
+   * - plain/rich 동기화 및 툴바 상태 갱신
+   */
+  function initIssueEditor() {
+    const editor = document.getElementById('issueDetailsEditor');
+    if (!editor) return;
+
+    editor.addEventListener('input', () => {
+      scheduleIssueSync();
+      scheduleIssueToolbarUpdate();
+    });
+
+    editor.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        // 문서 편집기 경험과 동일하게 기본 단축키 제공
+        const k = String(e.key || '').toLowerCase();
+        if (k === 'b') {
+          e.preventDefault();
+          execIssueEditorCommand('bold', true);
+          return;
+        }
+        if (k === 'i') {
+          e.preventDefault();
+          execIssueEditorCommand('italic', true);
+          return;
+        }
+        if (k === 'u') {
+          e.preventDefault();
+          execIssueEditorCommand('underline', true);
+          return;
+        }
+      }
+      if (e.key === 'Enter') {
+        // 단일 줄바꿈(<br>) 기준으로 직렬화 일관성 유지
+        e.preventDefault();
+        document.execCommand('insertLineBreak');
+        scheduleIssueSync();
+        scheduleIssueToolbarUpdate();
+      }
+    });
+
+    editor.addEventListener('mouseup', scheduleIssueToolbarUpdate);
+    editor.addEventListener('keyup', scheduleIssueToolbarUpdate);
+    editor.addEventListener('blur', () => {
+      saveIssueEditorSelection();
+      flushIssueSync();
+      updateIssueToolbarState();
+    });
+    document.addEventListener('selectionchange', scheduleIssueToolbarUpdate);
+
+    flushIssueSync();
+    updateIssueToolbarState();
+  }
+
+  /**
+   * 에디터 입력 직렬화/검증을 debounce로 예약한다.
+   * 입력 폭주 시 직렬화 비용을 줄이기 위한 성능 최적화.
+   */
+  function scheduleIssueSync() {
+    if (issueSyncDebounceTimer) clearTimeout(issueSyncDebounceTimer);
+    issueSyncDebounceTimer = setTimeout(() => {
+      issueSyncDebounceTimer = null;
+      // 타이핑 중에는 평문만 동기화해 직렬화 비용을 줄인다.
+      syncIssueDetailFields({ rich: false });
+      validateForm();
+    }, 120);
+  }
+
+  /**
+   * 예약된 debounce를 즉시 플러시한다.
+   * blur/submit 직전 최신 입력 보장을 위해 사용한다.
+   */
+  function flushIssueSync() {
+    if (issueSyncDebounceTimer) {
+      clearTimeout(issueSyncDebounceTimer);
+      issueSyncDebounceTimer = null;
+    }
+    // blur/submit 직전에는 리치 데이터까지 동기화한다.
+    syncIssueDetailFields({ rich: true });
+    validateForm();
+  }
+
+  /**
+   * selectionchange 고빈도 이벤트를 rAF 1프레임 1회로 제한한다.
+   */
+  function scheduleIssueToolbarUpdate() {
+    if (issueToolbarRafId) return;
+    issueToolbarRafId = requestAnimationFrame(() => {
+      issueToolbarRafId = 0;
+      updateIssueToolbarState();
+    });
+  }
+
+  /**
+   * 에디터 plain text 추출.
+   * 직렬화 전 공백/개행 정규화에 사용한다.
+   * @returns {string}
+   */
+  function getIssueEditorPlainText() {
+    const editor = document.getElementById('issueDetailsEditor');
+    if (!editor) return '';
+    return String(editor.innerText || '')
+      .replace(/\u00A0/g, ' ')
+      .replace(/\r/g, '');
+  }
+
+  /**
+   * inline style 문자열을 run style 객체에 반영한다.
+   * ex) "font-size:16px;color:#111"
+   * @param {string} styleText
+   * @param {Object} targetStyle
+   */
+  function parseInlineStyleText(styleText, targetStyle) {
+    // contenteditable 내부 inline-style을 직렬화 가능한 객체로 파싱
+    if (!styleText) return;
+    const styleParts = String(styleText).split(';');
+    styleParts.forEach((part) => {
+      const chunks = part.split(':');
+      if (chunks.length < 2) return;
+      const key = chunks[0].trim().toLowerCase();
+      const value = chunks.slice(1).join(':').trim().toLowerCase();
+
+      if (key === 'font-weight') {
+        if (value === 'bold' || Number(value) >= 600) targetStyle.bold = true;
+      } else if (key === 'font-style') {
+        if (value === 'italic') targetStyle.italic = true;
+      } else if (key === 'text-decoration' || key === 'text-decoration-line') {
+        if (value.includes('line-through')) targetStyle.strikethrough = true;
+        if (value.includes('underline')) targetStyle.underline = true;
+      } else if (key === 'color') {
+        targetStyle.color = value;
+      } else if (key === 'font-size') {
+        const m = value.match(/(\d+(?:\.\d+)?)px/);
+        if (m) targetStyle.fontSize = Math.round(Number(m[1]));
+      }
+    });
+  }
+
+  /**
+   * style 객체 복사 유틸.
+   * 문자 단위 스타일 배열 생성 시 참조 공유를 피한다.
+   */
+  function cloneIssueStyle(style) {
+    return {
+      bold: !!style.bold,
+      italic: !!style.italic,
+      strikethrough: !!style.strikethrough,
+      underline: !!style.underline,
+      color: style.color || '',
+      fontSize: style.fontSize || 0,
+      link: style.link || ''
+    };
+  }
+
+  /**
+   * 스타일 비교용 안정 키 생성.
+   * 인접 문자의 스타일이 동일한지 판단해 run 병합에 사용한다.
+   */
+  function issueStyleKey(style) {
+    return [
+      style.bold ? '1' : '0',
+      style.italic ? '1' : '0',
+      style.strikethrough ? '1' : '0',
+      style.underline ? '1' : '0',
+      style.color || '',
+      style.fontSize || '',
+      style.link || ''
+    ].join('|');
+  }
+
+  /**
+   * 에디터 DOM -> run 기반 Rich JSON 직렬화.
+   * 반환 예:
+   * { text: "...", runs: [{start,end,style:{bold,color,fontSize,...}}] }
+   */
+  function serializeIssueDetailsRichData() {
+    // DOM을 순회해 문자 단위 스타일 run(start/end)으로 직렬화
+    const editor = document.getElementById('issueDetailsEditor');
+    if (!editor) return { text: '', runs: [] };
+
+    const textChunks = [];
+    const styleByChar = [];
+    const baseStyle = { bold: false, italic: false, strikethrough: false, underline: false, color: '', fontSize: 0, link: '' };
+
+    /** 문자 단위로 text/style를 배열에 적재한다. */
+    function pushText(text, style) {
+      if (!text) return;
+      const normalized = String(text).replace(/\r/g, '');
+      for (let i = 0; i < normalized.length; i++) {
+        textChunks.push(normalized[i]);
+        styleByChar.push(cloneIssueStyle(style));
+      }
+    }
+
+    /** DOM 재귀 순회: 태그 의미를 스타일로 누적해 run을 생성한다. */
+    function walk(node, inheritedStyle) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        pushText(node.nodeValue || '', inheritedStyle);
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const tag = node.tagName.toLowerCase();
+      const nextStyle = cloneIssueStyle(inheritedStyle);
+
+      if (tag === 'b' || tag === 'strong') nextStyle.bold = true;
+      if (tag === 'i' || tag === 'em') nextStyle.italic = true;
+      if (tag === 'u') nextStyle.underline = true;
+      if (tag === 's' || tag === 'strike') nextStyle.strikethrough = true;
+      if (tag === 'a') {
+        const href = String(node.getAttribute('href') || '').trim();
+        if (href) nextStyle.link = href;
+      }
+
+      parseInlineStyleText(node.getAttribute('style') || '', nextStyle);
+
+      if (tag === 'br') {
+        pushText('\n', nextStyle);
+        return;
+      }
+
+      if (tag === 'li') {
+        let prefix = '• ';
+        const p = node.parentElement;
+        if (p && p.tagName && p.tagName.toLowerCase() === 'ol') {
+          const siblings = Array.from(p.children || []).filter(el => el.tagName && el.tagName.toLowerCase() === 'li');
+          const idx = siblings.indexOf(node);
+          prefix = String(idx >= 0 ? (idx + 1) : 1) + '. ';
+        }
+        pushText(prefix, inheritedStyle);
+        const children = Array.from(node.childNodes || []);
+        children.forEach(child => walk(child, nextStyle));
+        if (node.nextSibling || (node.parentNode && node.parentNode.nextSibling)) {
+          pushText('\n', inheritedStyle);
+        }
+        return;
+      }
+
+      if (tag === 'ul' || tag === 'ol') {
+        const children = Array.from(node.childNodes || []);
+        children.forEach(child => walk(child, nextStyle));
+        if (node.nextSibling) pushText('\n', inheritedStyle);
+        return;
+      }
+
+      const children = Array.from(node.childNodes || []);
+      children.forEach(child => walk(child, nextStyle));
+
+      if ((tag === 'div' || tag === 'p') && node.nextSibling) {
+        pushText('\n', inheritedStyle);
+      }
+    }
+
+    const topNodes = Array.from(editor.childNodes || []);
+    topNodes.forEach(node => walk(node, baseStyle));
+
+    const text = textChunks.join('');
+    if (!text) return { text: '', runs: [] };
+
+    const runs = [];
+    let start = 0;
+    let prevKey = issueStyleKey(styleByChar[0]);
+    for (let i = 1; i <= styleByChar.length; i++) {
+      const curKey = (i < styleByChar.length) ? issueStyleKey(styleByChar[i]) : null;
+      if (i === styleByChar.length || curKey !== prevKey) {
+        const st = styleByChar[start];
+        const styleObj = {};
+        if (st.bold) styleObj.bold = true;
+        if (st.italic) styleObj.italic = true;
+        if (st.strikethrough) styleObj.strikethrough = true;
+        if (st.underline) styleObj.underline = true;
+        if (st.color) styleObj.color = st.color;
+        if (st.fontSize) styleObj.fontSize = st.fontSize;
+        if (st.link) styleObj.link = st.link;
+        if (Object.keys(styleObj).length > 0) {
+          runs.push({ start, end: i, style: styleObj });
+        }
+        start = i;
+        prevKey = curKey;
+      }
+    }
+
+    return { text, runs };
+  }
+
+  /**
+   * 숨김 필드 동기화.
+   * - `issueDetails`: 평문(서버 fallback 저장용)
+   * - `issueDetailsRich`: run JSON(서식 복원용)
+   */
+  function syncIssueDetailFields(options) {
+    const opts = options || {};
+    const withRich = opts.rich !== false;
+
+    // 타이핑 중에는 평문만 동기화한다.
+    if (!withRich) {
+      document.getElementById('issueDetails').value = getIssueEditorPlainText();
+      return;
+    }
+
+    // submit/blur/명시 액션에서는 run JSON까지 갱신한다.
+    const richData = serializeIssueDetailsRichData();
+    document.getElementById('issueDetails').value = String(richData.text || '');
+    document.getElementById('issueDetailsRich').value = JSON.stringify(richData);
+  }
+
+  // ===== 에디터 선택/툴바 상태 =====
+  /** 에디터에 포커스를 준다. */
+  function focusIssueEditor() {
+    const editor = document.getElementById('issueDetailsEditor');
+    if (editor) editor.focus();
+  }
+
+  /**
+   * 툴바 버튼 mousedown 시 selection 유실을 막는다.
+   * @param {MouseEvent} e
+   */
+  function preserveIssueSelection(e) {
+    if (e) e.preventDefault();
+    if (selectionInsideIssueEditor()) {
+      saveIssueEditorSelection();
+      return;
+    }
+    focusIssueEditor();
+  }
+
+
+  /**
+   * 현재 selection이 이슈 에디터 내부인지 판별한다.
+   * @returns {boolean}
+   */
+  function selectionInsideIssueEditor() {
+    const editor = document.getElementById('issueDetailsEditor');
+    const sel = window.getSelection();
+    if (!editor || !sel || sel.rangeCount === 0) return false;
+    const anchorNode = sel.anchorNode;
+    if (!anchorNode) return false;
+    return editor.contains(anchorNode);
+  }
+
+  /** 현재 selection range를 저장해 후속 커맨드에서 복원 가능하게 한다. */
+  function saveIssueEditorSelection() {
+    if (!selectionInsideIssueEditor()) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    issueSavedRange = sel.getRangeAt(0).cloneRange();
+  }
+
+  /** 저장된 selection range를 복원한다. */
+  function restoreIssueEditorSelection() {
+    const sel = window.getSelection();
+    if (!sel) return;
+    if (!issueSavedRange) return;
+    sel.removeAllRanges();
+    sel.addRange(issueSavedRange);
+  }
+
+  /**
+   * 툴바 버튼 active 클래스 제어 유틸.
+   * @param {string} id
+   * @param {boolean} active
+   */
+  function setIssueToolbarButtonActive(id, active) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (active) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+
+  /**
+   * 현재 커서/선택 위치의 폰트 크기를 계산한다.
+   * 툴바의 "현재 크기 라벨" 표시 기준으로 사용한다.
+   * @returns {number}
+   */
+  function getIssueSelectionFontSize() {
+    const editor = document.getElementById('issueDetailsEditor');
+    const sel = window.getSelection();
+    let el = editor;
+    if (sel && sel.rangeCount > 0) {
+      const node = sel.anchorNode;
+      const picked = node && node.nodeType === Node.ELEMENT_NODE ? node : (node ? node.parentElement : null);
+      if (picked && editor && editor.contains(picked)) el = picked;
+    }
+    if (!el) return 16;
+
+    if (el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+    const computed = window.getComputedStyle(el);
+    const px = parseInt(computed.fontSize, 10);
+    return Number.isFinite(px) ? px : 16;
+  }
+
+  /**
+   * 현재 선택 위치의 글자색을 hex 문자열로 반환한다.
+   * @returns {string}
+   */
+  function getIssueSelectionColor() {
+    const sel = window.getSelection();
+    let el = null;
+    if (sel && sel.rangeCount > 0) {
+      const node = sel.anchorNode;
+      el = node && node.nodeType === Node.ELEMENT_NODE ? node : (node ? node.parentElement : null);
+    }
+    if (!el || !document.getElementById('issueDetailsEditor').contains(el)) {
+      el = document.getElementById('issueDetailsEditor');
+    }
+    const color = window.getComputedStyle(el).color || 'rgb(15, 23, 42)';
+    const m = String(color).match(/^rgb\(\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\s*\)$/i);
+    if (!m) return '#0f172a';
+    /** rgb decimal -> 2자리 hex */
+    function h(n) {
+      const v = Number(n).toString(16);
+      return v.length === 1 ? ('0' + v) : v;
+    }
+    return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+  }
+
+  /**
+   * 현재 선택/커서가 링크(<a>) 내부인지 판별한다.
+   * @returns {boolean}
+   */
+  function selectionHasLink() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return false;
+    let node = sel.anchorNode;
+    if (!node) return false;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    while (node && node !== document.getElementById('issueDetailsEditor')) {
+      if (node.tagName && node.tagName.toLowerCase() === 'a') return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  /**
+   * 선택 상태를 기반으로 툴바 UI를 동기화한다.
+   * - bold/italic/strike/link active
+   * - 폰트 크기 라벨, 색상 스와치
+   */
+  function updateIssueToolbarState() {
+    // 현재 선택 상태를 기반으로 토글 버튼(active)와 폰트/색상 표시 갱신
+    const editor = document.getElementById('issueDetailsEditor');
+    if (!editor) return;
+    const isInside = selectionInsideIssueEditor() || (document.activeElement === editor);
+
+    if (!isInside) {
+      setIssueToolbarButtonActive('issueBtnBold', false);
+      setIssueToolbarButtonActive('issueBtnItalic', false);
+      setIssueToolbarButtonActive('issueBtnStrike', false);
+      setIssueToolbarButtonActive('issueBtnLink', false);
+      return;
+    }
+
+    setIssueToolbarButtonActive('issueBtnBold', document.queryCommandState('bold'));
+    setIssueToolbarButtonActive('issueBtnItalic', document.queryCommandState('italic'));
+    setIssueToolbarButtonActive('issueBtnStrike', document.queryCommandState('strikeThrough'));
+    setIssueToolbarButtonActive('issueBtnLink', selectionHasLink());
+
+    const size = getIssueSelectionFontSize();
+    const sizeLabel = document.getElementById('issueFontSizeLabel');
+    if (sizeLabel) sizeLabel.innerText = String(size) + 'px';
+
+    const color = getIssueSelectionColor();
+    const colorInput = document.getElementById('issueTextColor');
+    if (colorInput) colorInput.value = color;
+    const swatch = document.getElementById('issueColorSwatch');
+    if (swatch) swatch.style.background = color;
+  }
+
+  // ===== 에디터 커맨드 =====
+  /**
+   * 범용 execCommand 래퍼.
+   * @param {string} command
+   * @param {boolean} useCurrentSelection - 단축키처럼 현재 selection을 그대로 사용할지 여부
+   */
+  function execIssueEditorCommand(command, useCurrentSelection) {
+    focusIssueEditor();
+    if (!useCurrentSelection) restoreIssueEditorSelection();
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand(command, false, null);
+    saveIssueEditorSelection();
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+  }
+
+  /** 강제 줄바꿈(<br>) 입력 */
+  function insertIssueLineBreak() {
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    document.execCommand('insertLineBreak', false, null);
+    saveIssueEditorSelection();
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+  }
+
+  /**
+   * 선택 영역의 글자색 적용.
+   * @param {string} color - hex/rgb
+   */
+  function applyIssueTextColor(color) {
+    if (!color) return;
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('foreColor', false, color);
+    saveIssueEditorSelection();
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+  }
+
+  // ===== 색상/이모지 팔레트 =====
+  /** 컬러 팔레트 토글 */
+  function toggleIssueColorPalette() {
+    const palette = document.getElementById('issueColorPalette');
+    if (!palette) return;
+    palette.classList.toggle('hidden');
+  }
+
+  /** 컬러 팔레트 닫기 */
+  function closeIssueColorPalette() {
+    const palette = document.getElementById('issueColorPalette');
+    if (palette) palette.classList.add('hidden');
+  }
+
+  /** 이모지 팔레트 토글 */
+  function toggleIssueEmojiPalette() {
+    const palette = document.getElementById('issueEmojiPalette');
+    if (!palette) return;
+    palette.classList.toggle('hidden');
+  }
+
+  /** 이모지 팔레트 닫기 */
+  function closeIssueEmojiPalette() {
+    const palette = document.getElementById('issueEmojiPalette');
+    if (palette) palette.classList.add('hidden');
+  }
+
+  /**
+   * 선택 위치에 이모지 삽입.
+   * @param {string} emoji
+   */
+  function chooseIssueEmoji(emoji) {
+    if (!emoji) return;
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    document.execCommand('insertText', false, emoji);
+    saveIssueEditorSelection();
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+    closeIssueEmojiPalette();
+  }
+
+  /**
+   * 팔레트에서 선택한 색상 적용.
+   * @param {string} color
+   */
+  function chooseIssueColor(color) {
+    if (!color) return;
+    applyIssueTextColor(color);
+    closeIssueColorPalette();
+  }
+
+  // ===== 글자 크기 =====
+  // A+/A-는 현재 선택 기준으로 2px 단위 증감
+  /**
+   * 선택 영역 폰트 크기 적용.
+   * - range 선택 시: 추출/랩핑 span(font-size)
+   * - collapsed 커서 시: zero-width span 컨텍스트 생성
+   * @param {number|string} sizePx
+   */
+  function applyIssueFontSize(sizePx) {
+    if (!sizePx) return;
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    const px = Number(sizePx);
+    if (!Number.isFinite(px)) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!selectionInsideIssueEditor()) return;
+
+    if (range.collapsed) {
+      const span = document.createElement('span');
+      span.style.fontSize = String(px) + 'px';
+      span.appendChild(document.createTextNode('\u200b'));
+      range.insertNode(span);
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild, 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      issueSavedRange = newRange.cloneRange();
+    } else {
+      const wrapper = document.createElement('span');
+      wrapper.style.fontSize = String(px) + 'px';
+      const extracted = range.extractContents();
+      wrapper.appendChild(extracted);
+      range.insertNode(wrapper);
+
+      const newRange = document.createRange();
+      newRange.selectNodeContents(wrapper);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      issueSavedRange = newRange.cloneRange();
+    }
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+  }
+
+  /**
+   * A+/A- 단계형 글자 크기 조절.
+   * @param {number} step - +1 or -1
+   */
+  function stepIssueFontSize(step) {
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    const current = getIssueSelectionFontSize();
+    const dir = step >= 0 ? 1 : -1;
+    const next = Math.max(ISSUE_FONT_MIN, Math.min(ISSUE_FONT_MAX, current + (dir * ISSUE_FONT_STEP)));
+    applyIssueFontSize(next);
+  }
+
+  // ===== 링크 모달 =====
+  /** 링크 입력 모달 열기 */
+  function openIssueLinkModal() {
+    saveIssueEditorSelection();
+    const modal = document.getElementById('issueLinkModal');
+    const input = document.getElementById('issueLinkInput');
+    if (!modal || !input) return;
+    input.value = '';
+    modal.classList.remove('hidden');
+    setTimeout(() => input.focus(), 0);
+  }
+
+  /** 링크 입력 모달 닫기 */
+  function closeIssueLinkModal() {
+    const modal = document.getElementById('issueLinkModal');
+    if (modal) modal.classList.add('hidden');
+    updateIssueToolbarState();
+  }
+
+  /** 링크 모달 값으로 createLink 적용 */
+  function applyIssueLinkFromModal() {
+    const input = document.getElementById('issueLinkInput');
+    if (!input) return;
+    const raw = String(input.value || '').trim();
+    if (!raw) {
+      closeIssueLinkModal();
+      return;
+    }
+    const normalized = /^https?:\/\//i.test(raw) ? raw : ('https://' + raw);
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && sel.toString().length === 0) {
+      const safeUrl = escapeHtml(normalized);
+      document.execCommand('insertHTML', false, '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeUrl + '</a>');
+      syncIssueDetailFields();
+      validateForm();
+      updateIssueToolbarState();
+      closeIssueLinkModal();
+      return;
+    }
+    document.execCommand('createLink', false, normalized);
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+    closeIssueLinkModal();
+  }
+
+  /** 선택 링크 제거(unlink) */
+  function removeIssueLink() {
+    focusIssueEditor();
+    restoreIssueEditorSelection();
+    document.execCommand('unlink', false, null);
+    syncIssueDetailFields();
+    validateForm();
+    updateIssueToolbarState();
+  }
+
+  // ===== 화면 탭/폼 =====
+  /**
+   * 상단 탭 전환.
+   * - 탭 버튼 스타일 갱신
+   * - 필요 데이터 lazy-load
+   * @param {'notice'|'write'|'read'|'check'} target
+   */
+  function switchTab(target) {
+    /*
+      탭 전환 처리 순서
+      1) 마지막 탭 localStorage 저장
+      2) 버튼 active/inactive 클래스 교체
+      3) 콘텐츠 패널 active 교체
+      4) 탭별 데이터 lazy-load(최초 진입만 서버 호출)
+    */
+    localStorage.setItem('lastTab', target);
+    const noticeBtn = document.getElementById('tab-notice-btn');
+    const writeBtn = document.getElementById('tab-write-btn');
+    const readBtn = document.getElementById('tab-read-btn');
+    const checkBtn = document.getElementById('tab-check-btn');
+    const noticeHero = document.getElementById('noticeHero');
+    const activeCls = 'app-tab-btn is-active';
+    const inactiveCls = 'app-tab-btn';
+    noticeBtn.className = target === 'notice' ? activeCls : inactiveCls;
+    writeBtn.className = target === 'write' ? activeCls : inactiveCls;
+    readBtn.className = target === 'read' ? activeCls : inactiveCls;
+    checkBtn.className = target === 'check' ? activeCls : inactiveCls;
+    if (noticeHero) {
+      noticeHero.classList.toggle('hidden', target !== 'notice');
+    }
+
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.getElementById('content-' + target).classList.add('active');
+    if (target !== 'read' && typeof disconnectReadAutoPager_ === 'function') {
+      disconnectReadAutoPager_();
+    }
+    if (target === 'notice') {
+      if (isNoticeLoaded) {
+        renderNoticeList();
+      } else {
+        loadNoticeData();
+      }
+    }
+    if (target === 'read') {
+      if (isResultsLoaded) {
+        filterResults();
+      } else {
+        loadResults();
+      }
+    }
+    if (target === 'check') {
+      if (!isEquipmentCheckLoaded) {
+        loadEquipmentCheckData();
+      }
+    }
+  }
+
+  /**
+   * subject에 따라 기자재 입력 필드 표시/required를 동기화한다.
+   */
+  function toggleFields() { 
+    const subject = document.getElementById('subject').value;
+    const equipmentFields = document.getElementById('equipmentFields');
+    const serialInputs = document.querySelectorAll('.serial-input');
+    
+    equipmentFields.style.display = (subject === '기자재') ? 'block' : 'none';
+    
+    // 기자재일 때만 주기번호 required 설정
+    if (subject === '기자재') {
+      serialInputs.forEach(input => input.setAttribute('required', 'required'));
+    } else {
+      serialInputs.forEach(input => input.removeAttribute('required'));
+    }
+    
+    validateForm(); // 폼 유효성 재검사
+  }
+  /**
+   * 사진 파일명 라벨 갱신.
+   * @param {HTMLInputElement} input
+   */
+  function updateFileName(input) { document.getElementById('file-name').innerText = input.files.length > 0 ? input.files[0].name : "사진 업로드 (선택)"; }
+  
+  // 폼 유효성 검사 - 작성자, 이슈내용 필수 / 기자재 선택 시 주기번호 필수
+  /**
+   * 제출 버튼 활성화 조건 검사.
+   * - 작성자/이슈내용 필수
+   * - 기자재 선택 시 주기번호 최소 1개
+   */
+  function validateForm() {
+    // 작성자/이슈내용 필수 + 기자재 선택 시 주기번호 최소 1개 필수
+    // 이 함수는 입력 이벤트마다 호출되므로 연산을 가볍게 유지한다.
+    const userName = document.getElementById('userName').value.trim();
+    const issueDetails = document.getElementById('issueDetails').value.trim();
+    const subject = document.getElementById('subject').value;
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // 작성자, 이슈내용 필수 확인
+    let isValid = userName.length > 0 && issueDetails.length > 0;
+    
+    // 기자재인 경우 주기번호 필수 확인
+    if (subject === '기자재') {
+      const serialInputs = document.querySelectorAll('.serial-input');
+      // 하나 이상의 serial input에 값이 있어야 함
+      const serialValues = Array.from(serialInputs).map(input => input.value.trim()).filter(Boolean);
+      const serialPattern = /^\d+(?:-\d+)?$/;
+      isValid = isValid
+        && serialValues.length > 0
+        && serialValues.every(v => serialPattern.test(v));
+    }
+    
+    if (isValid) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('disabled:bg-slate-300', 'disabled:cursor-not-allowed');
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.classList.add('disabled:bg-slate-300', 'disabled:cursor-not-allowed');
+    }
+  }
+
+  // 커스텀 드롭다운 토글
+  /** 커스텀 subject 드롭다운 열고 닫기 */
+  function toggleCustomDropdown() {
+    const menu = document.getElementById('customDropdownMenu');
+    const arrow = document.getElementById('dropdownArrow');
+    const isHidden = menu.classList.contains('hidden');
+    
+    if (isHidden) {
+      menu.classList.remove('hidden');
+      arrow.classList.add('rotate');
+    } else {
+      menu.classList.add('hidden');
+      arrow.classList.remove('rotate');
+    }
+  }
+  
+  // 옵션 선택
+  /**
+   * subject 선택값 반영.
+   * @param {string} value
+   * @param {string} displayText
+   */
+  function selectOption(value, displayText) {
+    document.getElementById('subject').value = value;
+    document.getElementById('selectedOption').textContent = displayText;
+    document.getElementById('customDropdownMenu').classList.add('hidden');
+    document.getElementById('dropdownArrow').classList.remove('rotate');
+    toggleFields(); // 기자재 필드 토글 + 유효성 검사
+  }
+  
+  // 외부 클릭시 드롭다운 닫기
+  document.addEventListener('click', function(e) {
+    const dropdown = document.querySelector('.custom-dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      document.getElementById('customDropdownMenu').classList.add('hidden');
+      document.getElementById('dropdownArrow').classList.remove('rotate');
+    }
+
+    const colorWrap = document.querySelector('.issue-color-wrap');
+    if (colorWrap && !colorWrap.contains(e.target)) {
+      closeIssueColorPalette();
+    }
+
+    const emojiWrap = document.querySelector('.issue-emoji-wrap');
+    if (emojiWrap && !emojiWrap.contains(e.target)) {
+      closeIssueEmojiPalette();
+    }
+  });
+
+  /** 주기번호 입력에서 Enter 시 다음 입력행 추가 */
+  function handleSerialEnter(e, input) { if (e.key === 'Enter') { e.preventDefault(); if (input.closest('.serial-row').querySelector('.plus-btn')) addSerialField(); } }
+
+  /** 주기번호 입력행 동적 추가 */
+  function addSerialField() {
+    const container = document.getElementById('serial-container');
+    const lastInput = container.querySelector('.serial-row:last-child .serial-input');
+    const prefix = lastInput.value.includes('-') ? lastInput.value.substring(0, lastInput.value.lastIndexOf('-') + 1) : "";
+    const newRow = document.createElement('div');
+    newRow.className = "serial-row flex items-center gap-2 animate-slideUp";
+    newRow.innerHTML = `<div class="serial-input-shell flex-1 flex items-center"><span class="serial-prefix">GR-</span><input type="text" class="serial-input w-full bg-transparent border-none py-3.5 pr-5 outline-none text-sm" value="${prefix}" onkeydown="handleSerialEnter(event, this)" oninput="validateForm()"></div><div class="button-area serial-button-area flex gap-2"></div>`;
+    container.appendChild(newRow);
+    updateSerialButtons();
+    
+    // 기자재일 경우 required 속성 추가
+    const subject = document.getElementById('subject').value;
+    if (subject === '기자재') {
+      newRow.querySelector('.serial-input').setAttribute('required', 'required');
+    }
+    
+    const input = newRow.querySelector('.serial-input');
+    input.focus();
+    const valLength = input.value.length;
+    input.setSelectionRange(valLength, valLength);
+  }
+
+  /** 주기번호 입력행의 +/-/삭제 버튼 상태를 재구성 */
+  function updateSerialButtons() {
+    const rows = document.querySelectorAll('.serial-row');
+    rows.forEach((row, index) => {
+      const area = row.querySelector('.button-area');
+      area.innerHTML = index === rows.length - 1 ? `<button type="button" data-call="addSerialField()" class="plus-btn serial-action-btn serial-add-btn"><i class="bi bi-plus-lg"></i></button>` : '';
+      if (rows.length > 1) area.innerHTML += `<button type="button" data-action="remove-serial-row" class="serial-action-btn serial-remove-btn"><i class="bi bi-trash3-fill"></i></button>`;
+    });
+  }
+
+  // ===== 주기번호 보조 모달 =====
+  /** 주기번호 참조 모달 오픈 및 목록 초기 렌더 */
+  function openLookupModal() {
+    /*
+      lookup 모달 오픈
+      - 테이블 HTML은 최초 1회만 생성
+      - 이후에는 기존 DOM을 재사용해 모달 오픈 속도를 유지
+    */
+    const tbody = document.getElementById('lookupTableBody');
+    if (tbody.innerHTML.trim() === "") {
+      tbody.innerHTML = lookupList.map(item => `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors" data-call="selectLookupItem(${item.id})" data-name="${item.name.toLowerCase()}">
+          <td class="p-3 font-black text-indigo-500">${item.id}</td>
+          <td class="p-3 text-slate-600 dark:text-slate-300 font-medium">${item.name}</td>
+        </tr>
+      `).join('');
+    }
+    lookupRowsCache = Array.from(document.querySelectorAll('#lookupTableBody tr'));
+    
+    // 검색창 초기화 및 모든 리스트 표시
+    document.getElementById('searchLookup').value = '';
+    document.getElementById('searchIcon').classList.remove('hidden'); // 아이콘 다시 표시
+    const rows = lookupRowsCache || Array.from(document.querySelectorAll('#lookupTableBody tr'));
+    rows.forEach(row => {
+      row.style.display = ''; // 모든 행 표시
+    });
+    
+    document.getElementById('lookupModal').classList.remove('hidden');
+  }
+  
+  // 검색 기능
+  /**
+   * 주기번호 참조 목록 검색 필터.
+   * @param {string} query
+   */
+  function searchLookupList(query) {
+    // 입력값이 빠르게 바뀌어도 DOM 필터링은 100ms 단위로만 실행
+    if (lookupSearchDebounceTimer) clearTimeout(lookupSearchDebounceTimer);
+    lookupSearchDebounceTimer = setTimeout(() => {
+      lookupSearchDebounceTimer = null;
+      const rows = lookupRowsCache || Array.from(document.querySelectorAll('#lookupTableBody tr'));
+      const searchTerm = String(query || '').toLowerCase().trim();
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        row.style.display = name.includes(searchTerm) ? '' : 'none';
+      });
+    }, 100);
+  }
+  
+  // 검색 아이콘 토글
+  /** 검색 아이콘 표시/숨김 토글 */
+  function toggleSearchIcon(isFocus) {
+    const icon = document.getElementById('searchIcon');
+    const input = document.getElementById('searchLookup');
+    
+    if (isFocus) {
+      // 포커스 시 아이콘 숨김
+      icon.classList.add('hidden');
+    } else {
+      // 블러 시 입력값이 없으면 아이콘 표시
+      if (input.value.trim() === '') {
+        icon.classList.remove('hidden');
+      }
+    }
+  }
+  
+  // 리스트 선택 시 주기번호에 자동 입력
+  /** 참조 목록 번호 선택 -> 마지막 주기번호 입력에 자동 반영 */
+  function selectLookupItem(id) {
+    const container = document.getElementById('serial-container');
+    const lastInput = container.querySelector('.serial-row:last-child .serial-input');
+    
+    if (lastInput) {
+      lastInput.value = id + '-';
+      lastInput.focus();
+      // 커서를 끝으로 이동
+      const valLength = lastInput.value.length;
+      lastInput.setSelectionRange(valLength, valLength);
+    }
+    
+    closeModal('lookupModal');
+  }
+
+  /** 작성 폼 전체 초기화 */
+  function resetForm() {
+    const form = document.getElementById('issueForm');
+    form.reset();
+    // reset 이후 subject 값과 커스텀 표시 텍스트를 반드시 같은 값으로 동기화한다.
+    document.getElementById('subject').value = '기자재';
+    document.getElementById('selectedOption').textContent = '📦 기자재 관리';
+    document.getElementById('customDropdownMenu').classList.add('hidden');
+    document.getElementById('dropdownArrow').classList.remove('rotate');
+    document.getElementById('userName').value = "";
+    document.getElementById('issueDetails').value = "";
+    document.getElementById('issueDetailsRich').value = "";
+    document.getElementById('issueDetailsEditor').innerHTML = "";
+    document.getElementById('imageFile').value = "";
+    document.getElementById('serial-container').innerHTML = `<div class="serial-row flex items-center gap-2"><div class="serial-input-shell flex-1 flex items-center"><span class="serial-prefix">GR-</span><input type="text" class="serial-input w-full bg-transparent border-none py-3.5 pr-5 outline-none text-sm" placeholder="000-00" onkeydown="handleSerialEnter(event, this)" oninput="validateForm()" required></div><div class="button-area serial-button-area flex gap-2"><button type="button" data-call="addSerialField()" class="plus-btn serial-action-btn serial-add-btn"><i class="bi bi-plus-lg"></i></button></div></div>`;
+    if(fp) fp.setDate(new Date());
+    document.getElementById('file-name').innerText = "사진 업로드 (선택)";
+    document.getElementById('submitBtn').disabled = true; // 전송 버튼 비활성화
+    toggleFields();
+    syncIssueDetailFields();
+    updateIssueToolbarState();
+  }
+
+  // ===== 제출 상태 모달 =====
+  let statusAutoCloseTimer = null;
+
+  /** 상태 모달 텍스트/아이콘 초기화 */
+  function resetStatusModalContent() {
+    document.getElementById('statusIcon').innerHTML = '';
+    document.getElementById('statusTitle').innerText = '';
+    document.getElementById('statusMsg').innerText = '';
+  }
+
+  /** 제출 중 상태 모달 표시 */
+  function showLoadingStatus(msg) {
+    const btn = document.getElementById('statusConfirmBtn');
+    if (btn) btn.classList.add('hidden');
+    if (statusAutoCloseTimer) {
+      clearTimeout(statusAutoCloseTimer);
+      statusAutoCloseTimer = null;
+    }
+    document.getElementById('statusIcon').innerText = '⏳';
+    document.getElementById('statusTitle').innerText = '전송 중';
+    document.getElementById('statusTitle').className = 'text-xl font-black mb-2 text-slate-700 dark:text-slate-200';
+    document.getElementById('statusMsg').innerText = msg || '근무일지 데이터 전송 중입니다.';
+    document.getElementById('statusModal').classList.remove('hidden');
+  }
+
+  document.getElementById('issueForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    flushIssueSync();
+    const serials = Array.from(document.getElementsByClassName('serial-input')).map(i => i.value.trim()).filter(Boolean);
+    document.getElementById('allSerials').value = serials.join('|');
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.innerHTML = `전송 중...`;
+    showLoadingStatus('근무일지 데이터 전송 중입니다.');
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerHTML = "근무일지 전송";
+        const isSuccess = !String(res || '').includes("에러");
+        showStatus(isSuccess, isSuccess ? "Success!" : "Error", String(res || '오류가 발생했습니다.'));
+        if (isSuccess) {
+          isResultsLoaded = false;
+          resultDetailCacheByRow = {};
+          resetForm();
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerHTML = "근무일지 전송";
+        const message = err && err.message ? err.message : '알 수 없는 오류';
+        showStatus(false, "Error", `전송 실패: ${message}`);
+      })
+      .processForm(this);
+  });
+
+  /**
+   * 제출 성공/실패 상태 모달 표시.
+   * 성공 시 자동 닫힘 타이머 동작.
+   */
+  function showStatus(isSuccess, title, msg) {
+    const btn = document.getElementById('statusConfirmBtn');
+    if (btn) btn.classList.remove('hidden');
+    document.getElementById('statusIcon').innerHTML = isSuccess ? '✨' : '⚠️';
+    document.getElementById('statusTitle').innerText = title;
+    document.getElementById('statusTitle').className = `text-xl font-black mb-2 ${isSuccess ? 'text-indigo-600' : 'text-rose-500'}`;
+    document.getElementById('statusMsg').innerText = msg;
+    document.getElementById('statusModal').classList.remove('hidden');
+    if (statusAutoCloseTimer) {
+      clearTimeout(statusAutoCloseTimer);
+      statusAutoCloseTimer = null;
+    }
+    if (isSuccess) {
+      statusAutoCloseTimer = setTimeout(() => closeModal('statusModal'), 3000);
+    }
+  }
+
+
+</script>

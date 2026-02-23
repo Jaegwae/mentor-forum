@@ -1,0 +1,15 @@
+﻿{
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": true,
+  "terminal.integrated.profiles.windows": {
+    "PowerShell (UTF-8)": {
+      "source": "PowerShell",
+      "args": [
+        "-NoExit",
+        "-Command",
+        "[Console]::InputEncoding=[System.Text.UTF8Encoding]::new($false); [Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); $OutputEncoding=[System.Text.UTF8Encoding]::new($false); $PSDefaultParameterValues['*:Encoding']='utf8'; chcp.com 65001 > $null"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell (UTF-8)"
+}

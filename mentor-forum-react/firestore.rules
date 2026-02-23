@@ -1,0 +1,654 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function boardPath(boardId) {
+      return /databases/$(database)/documents/boards/$(boardId);
+    }
+
+    function roleDefinitionPath(roleKey) {
+      return /databases/$(database)/documents/role_definitions/$(roleKey);
+    }
+
+    function postPath(postId) {
+      return /databases/$(database)/documents/posts/$(postId);
+    }
+
+    function nicknameIndexPath(nicknameKey) {
+      return /databases/$(database)/documents/nickname_index/$(nicknameKey);
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(userPath(uid));
+    }
+
+    function me() {
+      return userDoc(request.auth.uid).data;
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function roleRaw() {
+      return hasProfile()
+        && me().role is string
+        && me().role.size() > 0
+          ? me().role
+          : '';
+    }
+
+    function canonicalCoreRole(rawRole) {
+      return rawRole is string && rawRole.matches(
+        '^[^A-Za-z0-9]*[Ss][^A-Za-z0-9]*[Uu][^A-Za-z0-9]*[Pp][^A-Za-z0-9]*[Ee][^A-Za-z0-9]*[Rr][^A-Za-z0-9]*[Aa][^A-Za-z0-9]*[Dd][^A-Za-z0-9]*[Mm][^A-Za-z0-9]*[Ii][^A-Za-z0-9]*[Nn][^A-Za-z0-9]*$'
+      )
+          ? 'Super_Admin'
+          : rawRole is string && rawRole.matches(
+            '^[^A-Za-z0-9]*[Aa][^A-Za-z0-9]*[Dd][^A-Za-z0-9]*[Mm][^A-Za-z0-9]*[Ii][^A-Za-z0-9]*[Nn][^A-Za-z0-9]*$'
+          )
+            ? 'Admin'
+            : rawRole is string && rawRole.matches(
+              '^[^A-Za-z0-9]*[Ss][^A-Za-z0-9]*[Tt][^A-Za-z0-9]*[Aa][^A-Za-z0-9]*[Ff][^A-Za-z0-9]*[Ff][^A-Za-z0-9]*$'
+            )
+              ? 'Staff'
+              : rawRole is string && rawRole.matches(
+                '^[^A-Za-z0-9]*[Mm][^A-Za-z0-9]*[Ee][^A-Za-z0-9]*[Nn][^A-Za-z0-9]*[Tt][^A-Za-z0-9]*[Oo][^A-Za-z0-9]*[Rr][^A-Za-z0-9]*$'
+              )
+                ? 'Mentor'
+                : rawRole is string && rawRole.matches(
+                  '^[^A-Za-z0-9]*[Nn][^A-Za-z0-9]*[Ee][^A-Za-z0-9]*[Ww][^A-Za-z0-9]*[Bb][^A-Za-z0-9]*[Ii][^A-Za-z0-9]*[Ee][^A-Za-z0-9]*$'
+                )
+                  ? 'Newbie'
+                  : rawRole is string && rawRole.matches('^\\s*개발자\\s*$')
+                    ? 'Super_Admin'
+                    : rawRole is string && rawRole.matches('^\\s*관리자\\s*$')
+                      ? 'Admin'
+                      : rawRole is string && rawRole.matches('^\\s*운영진\\s*$')
+                        ? 'Staff'
+                        : rawRole is string && rawRole.matches('^\\s*멘토\\s*$')
+                          ? 'Mentor'
+                          : rawRole is string && rawRole.matches('^\\s*토\\s*$')
+                            ? 'Mentor'
+                            : rawRole is string && rawRole.matches('^\\s*새싹\\s*$')
+                              ? 'Newbie'
+                              : '';
+    }
+
+    function normalizedRoleKey(rawRole) {
+      return canonicalCoreRole(rawRole) != ''
+        ? canonicalCoreRole(rawRole)
+        : rawRole is string && rawRole.size() > 0
+          ? rawRole
+          : '';
+    }
+
+    function role() {
+      return normalizedRoleKey(roleRaw()) != ''
+        ? normalizedRoleKey(roleRaw())
+        : 'Newbie';
+    }
+
+    function roleDefinitionData(roleKey) {
+      return roleKey is string
+        && roleKey.size() > 0
+        && exists(roleDefinitionPath(roleKey))
+          ? get(roleDefinitionPath(roleKey)).data
+          : null;
+    }
+
+    function isSuper() {
+      return role() == 'Super_Admin';
+    }
+
+    function isCoreModeratorRole() {
+      return canonicalCoreRole(roleRaw()) in ['Admin', 'Super_Admin'];
+    }
+
+    function isPostOwnerDoc(data) {
+      return data is map
+        && (
+          (data.authorUid is string && data.authorUid == request.auth.uid)
+          || (data.authorId is string && data.authorId == request.auth.uid)
+          || (data.uid is string && data.uid == request.auth.uid)
+          || (
+            data.author is map
+            && data.author.uid is string
+            && data.author.uid == request.auth.uid
+          )
+          || (
+            data.createdBy is map
+            && data.createdBy.uid is string
+            && data.createdBy.uid == request.auth.uid
+          )
+          || (data.createdByUid is string && data.createdByUid == request.auth.uid)
+        );
+    }
+
+    function canModerate() {
+      return isCoreModeratorRole()
+        || isSuper()
+        || role() == 'Admin';
+    }
+
+    function canManageBoards() {
+      return isCoreModeratorRole()
+        || isSuper()
+        || role() == 'Admin';
+    }
+
+    function canManageRoles() {
+      return isCoreModeratorRole()
+        || isSuper()
+        || role() == 'Admin';
+    }
+
+    function canManageRoleDefinitions() {
+      return isSuper();
+    }
+
+    function canAccessAdminSite() {
+      return isCoreModeratorRole()
+        || isSuper()
+        || role() == 'Admin';
+    }
+
+    function coreRoleLevel(roleKey) {
+      return roleKey == 'Super_Admin'
+        ? 100
+        : roleKey == 'Admin'
+          ? 80
+          : roleKey == 'Staff'
+            ? 60
+          : roleKey == 'Mentor'
+            ? 40
+            : roleKey == 'Newbie'
+              ? 10
+              : 0;
+    }
+
+    function isCoreRole(roleKey) {
+      return roleKey in ['Newbie', 'Mentor', 'Staff', 'Admin', 'Super_Admin'];
+    }
+
+    function roleLevel(roleKey) {
+      return normalizedRoleKey(roleKey) != ''
+        && isCoreRole(normalizedRoleKey(roleKey))
+          ? coreRoleLevel(normalizedRoleKey(roleKey))
+          : (
+            normalizedRoleKey(roleKey) != ''
+            && roleDefinitionData(normalizedRoleKey(roleKey)) != null
+            && (
+              roleDefinitionData(normalizedRoleKey(roleKey)).level is int
+              || roleDefinitionData(normalizedRoleKey(roleKey)).level is float
+            )
+          )
+            ? roleDefinitionData(normalizedRoleKey(roleKey)).level
+            : 0;
+    }
+
+    function myRoleLevel() {
+      return roleLevel(role());
+    }
+
+    function isAssignableRole(roleKey) {
+      return normalizedRoleKey(roleKey) != ''
+        && (
+          isCoreRole(normalizedRoleKey(roleKey))
+          || roleDefinitionData(normalizedRoleKey(roleKey)) != null
+        );
+    }
+
+    function isLowerRole(roleKey) {
+      return roleLevel(roleKey) < myRoleLevel();
+    }
+
+    function actorCoreRole() {
+      return canonicalCoreRole(roleRaw());
+    }
+
+    function coreRoleAssignableByActor(actorRole, targetRole) {
+      return actorRole == 'Super_Admin'
+        ? targetRole in ['Admin', 'Staff', 'Mentor', 'Newbie']
+        : actorRole == 'Admin'
+          ? targetRole in ['Staff', 'Mentor', 'Newbie']
+          : false;
+    }
+
+    function coreRoleManageTransitionAllowed(currentRawRole, nextRawRole) {
+      return coreRoleAssignableByActor(actorCoreRole(), canonicalCoreRole(currentRawRole))
+        && coreRoleAssignableByActor(actorCoreRole(), canonicalCoreRole(nextRawRole));
+    }
+
+    function boardDataById(boardId) {
+      return boardId is string && exists(boardPath(boardId))
+        ? get(boardPath(boardId)).data
+        : null;
+    }
+
+    function canUseBoard(boardId) {
+      return canUseBoardByRawRole(boardId, role());
+    }
+
+    function isExplicitNewbieRawRole(rawRole) {
+      return canonicalCoreRole(rawRole) == 'Newbie'
+        || !(rawRole is string)
+        || rawRole.size() == 0;
+    }
+
+    function boardRoleCandidatesByRaw(rawRole) {
+      return normalizedRoleKey(rawRole) == 'Super_Admin'
+        ? ['Super_Admin', 'SUPER_ADMIN', 'super_admin', 'super-admin', 'super admin', '개발자', rawRole]
+        : normalizedRoleKey(rawRole) == 'Admin'
+          ? ['Admin', 'ADMIN', 'admin', '관리자', rawRole]
+          : normalizedRoleKey(rawRole) == 'Staff'
+            ? ['Staff', 'STAFF', 'staff', '운영진', rawRole]
+            : normalizedRoleKey(rawRole) == 'Mentor'
+              ? ['Mentor', 'MENTOR', 'mentor', '멘토', '토', rawRole]
+              : normalizedRoleKey(rawRole) == 'Newbie'
+                ? ['Newbie', 'NEWBIE', 'newbie', '새싹', rawRole]
+                : (
+                  rawRole is string && rawRole.size() > 0
+                    ? [rawRole]
+                    : ['Newbie', 'NEWBIE', 'newbie', '새싹']
+                );
+    }
+
+    function allowedRoleAt(roles, idx) {
+      return roles is list
+        && roles.size() > idx
+        && roles[idx] is string
+          ? roles[idx]
+          : '';
+    }
+
+    function allowedRolesContainCanonicalCoreRole(roles, coreRole) {
+      return coreRole != ''
+        && (
+          canonicalCoreRole(allowedRoleAt(roles, 0)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 1)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 2)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 3)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 4)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 5)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 6)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 7)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 8)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 9)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 10)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 11)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 12)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 13)) == coreRole
+          || canonicalCoreRole(allowedRoleAt(roles, 14)) == coreRole
+        );
+    }
+
+    function boardAllowsRawRole(boardData, rawRole) {
+      return boardData != null
+        && boardData.allowedRoles is list
+        && (
+          boardData.allowedRoles.hasAny(boardRoleCandidatesByRaw(rawRole))
+          || (
+            isCoreRole(normalizedRoleKey(rawRole))
+            && allowedRolesContainCanonicalCoreRole(
+              boardData.allowedRoles,
+              normalizedRoleKey(rawRole)
+            )
+          )
+        );
+    }
+
+    function canUseBoardDataByRawRole(boardData, rawRole) {
+      return boardData != null
+        && boardData.isDivider != true
+        && boardAllowsRawRole(boardData, rawRole);
+    }
+
+    function canUseBoardByRawRole(boardId, rawRole) {
+      return canUseBoardDataByRawRole(boardDataById(boardId), rawRole);
+    }
+
+    function canWriteBoardByRawRole(boardId, rawRole) {
+      return canUseBoardByRawRole(boardId, rawRole)
+        && !isExplicitNewbieRawRole(rawRole);
+    }
+
+    function canWriteBoard(boardId) {
+      return canWriteBoardByRawRole(boardId, role());
+    }
+
+    function canCommentPostBoard(postId) {
+      return postId is string
+        && exists(postPath(postId))
+        && canUseBoardByRawRole(get(postPath(postId)).data.boardId, role());
+    }
+
+    function viewIncrementOnly() {
+      return signedIn()
+        && resource.data.deleted != true
+        && (
+          canManageBoards()
+          || canUseBoard(resource.data.boardId)
+        )
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['views'])
+        && request.resource.data.views is int
+        && request.resource.data.views == ((resource.data.views is int) ? resource.data.views + 1 : 1);
+    }
+
+    function postCreateBaseFieldsValid(data) {
+      return data.boardId is string
+        && canWriteBoard(data.boardId)
+        && data.authorUid is string
+        && data.authorUid == request.auth.uid
+        && (
+          !(data.deleted is bool)
+          || data.deleted == false
+        );
+    }
+
+    function notificationTypeValid(value) {
+      return value is string
+        && value in ['post', 'comment', 'mention'];
+    }
+
+    function notificationSubtypeValid(value) {
+      return value == null
+        || (
+          value is string
+          && (
+            value.size() == 0
+            || value in ['post_create', 'post_comment', 'reply_comment', 'mention', 'mention_all']
+          )
+        );
+    }
+
+    function notificationFieldsValid(data, uid) {
+      return data.userUid is string
+        && data.userUid == uid
+        && data.postId is string
+        && data.postId.size() > 0
+        && data.boardId is string
+        && data.boardId.size() > 0
+        && data.boardName is string
+        && data.title is string
+        && data.actorUid is string
+        && data.actorUid.size() > 0
+        && data.actorName is string
+        && notificationTypeValid(data.type)
+        && notificationSubtypeValid(data.subtype)
+        && (
+          data.commentId == null
+          || data.commentId is string
+        )
+        && (
+          data.body == null
+          || (
+            data.body is string
+            && data.body.size() <= 240
+          )
+        )
+        && (
+          data.createdAtMs is int
+          || data.createdAtMs is float
+        )
+        && (
+          data.readAtMs is int
+          || data.readAtMs is float
+        );
+    }
+
+    function notificationCreateAllowed(data, uid) {
+      return notificationFieldsValid(data, uid)
+        && (
+          request.auth.uid == uid
+          || request.auth.uid == data.actorUid
+        );
+    }
+
+    function notificationActorUpsertAllowed(data, uid) {
+      return notificationFieldsValid(data, uid)
+        && request.auth.uid == data.actorUid;
+    }
+
+    function notificationReadUpdateAllowed(data, existing, uid) {
+      return request.auth.uid == uid
+        && request.resource.data.diff(existing).changedKeys().hasOnly([
+          'readAtMs',
+          'readAt',
+          'updatedAt'
+        ])
+        && (
+          data.readAtMs is int
+          || data.readAtMs is float
+        )
+        && data.readAtMs >= 0;
+    }
+
+    function viewedPostFieldsValid(postId, data, uid) {
+      return data.userUid is string
+        && data.userUid == uid
+        && data.postId is string
+        && data.postId == postId
+        && (
+          data.viewedAtMs is int
+          || data.viewedAtMs is float
+        );
+    }
+
+    function notificationPrefFieldsValid(boardId, data, uid) {
+      return data.userUid is string
+        && data.userUid == uid
+        && data.boardId is string
+        && data.boardId == boardId
+        && data.boardId.size() > 0
+        && data.enabled is bool;
+    }
+
+    match /role_definitions/{roleId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && canManageRoleDefinitions();
+    }
+
+    match /boards/{boardId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && canManageBoards();
+    }
+
+    match /venue_options/{venueId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && canManageBoards();
+    }
+
+    match /nickname_index/{nicknameKey} {
+      allow get: if true;
+      allow list: if signedIn();
+
+      allow create: if signedIn()
+        && !exists(nicknameIndexPath(nicknameKey))
+        && request.resource.data.uid is string
+        && (
+          request.resource.data.uid == request.auth.uid
+          || canAccessAdminSite()
+        )
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.size() > 0
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.nicknameKey is string
+        && request.resource.data.nicknameKey == nicknameKey;
+
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (
+        request.auth.uid == userId || canAccessAdminSite()
+      );
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'Newbie';
+
+      allow update: if signedIn() && (
+        (
+          request.auth.uid == userId
+          && (
+            request.resource.data.diff(resource.data).changedKeys().hasOnly([
+              'nickname',
+              'realName',
+              'updatedAt',
+              'emailVerified'
+            ])
+            || (
+              request.resource.data.diff(resource.data).changedKeys().hasOnly([
+                'role',
+                'updatedAt'
+              ])
+              && resource.data.role is string
+              && canonicalCoreRole(resource.data.role) != ''
+              && request.resource.data.role is string
+              && request.resource.data.role == canonicalCoreRole(resource.data.role)
+            )
+          )
+        )
+        ||
+        (
+          canManageRoles()
+          && request.auth.uid != userId
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'role',
+            'updatedAt'
+          ])
+          && request.resource.data.role is string
+          && (
+            coreRoleManageTransitionAllowed(resource.data.role, request.resource.data.role)
+            || (
+              (
+                (
+                  resource.data.role is string
+                  && isAssignableRole(resource.data.role)
+                  && isLowerRole(resource.data.role)
+                )
+                || (
+                  isSuper()
+                  && (
+                    !(resource.data.role is string)
+                    || !isAssignableRole(resource.data.role)
+                  )
+                )
+              )
+              && isAssignableRole(request.resource.data.role)
+              && isLowerRole(request.resource.data.role)
+            )
+          )
+        )
+      );
+
+      allow delete: if false;
+
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+
+        allow create: if signedIn()
+          && notificationCreateAllowed(request.resource.data, userId);
+
+        allow update: if signedIn()
+          && (
+            notificationReadUpdateAllowed(request.resource.data, resource.data, userId)
+            || notificationActorUpsertAllowed(request.resource.data, userId)
+          );
+
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+
+      match /notification_prefs/{boardId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+
+        allow create, update: if signedIn()
+          && request.auth.uid == userId
+          && notificationPrefFieldsValid(boardId, request.resource.data, userId);
+
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+
+      match /viewed_posts/{postId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+
+        allow create, update: if signedIn()
+          && request.auth.uid == userId
+          && viewedPostFieldsValid(postId, request.resource.data, userId);
+
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /posts/{postId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && postCreateBaseFieldsValid(request.resource.data);
+
+      allow update: if signedIn() && (
+        resource.data.authorUid == request.auth.uid
+        || resource.data.authorId == request.auth.uid
+        || resource.data.uid == request.auth.uid
+        || (
+          resource.data.author is map
+          && resource.data.author.uid == request.auth.uid
+        )
+        || (
+          resource.data.createdBy is map
+          && resource.data.createdBy.uid == request.auth.uid
+        )
+        || resource.data.createdByUid == request.auth.uid
+        || canModerate()
+        || isCoreModeratorRole()
+        || viewIncrementOnly()
+      );
+
+      allow delete: if signedIn() && (
+        resource.data.authorUid == request.auth.uid
+        || resource.data.authorId == request.auth.uid
+        || resource.data.uid == request.auth.uid
+        || (
+          resource.data.author is map
+          && resource.data.author.uid == request.auth.uid
+        )
+        || (
+          resource.data.createdBy is map
+          && resource.data.createdBy.uid == request.auth.uid
+        )
+        || resource.data.createdByUid == request.auth.uid
+        || canModerate()
+        || isCoreModeratorRole()
+      );
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.authorUid == request.auth.uid
+          && (
+            request.resource.data.depth is int
+            || request.resource.data.depth is float
+          )
+          && request.resource.data.depth >= 0
+          && canCommentPostBoard(postId);
+
+        allow update, delete: if signedIn() && (
+          isPostOwnerDoc(resource.data) || canModerate() || isCoreModeratorRole()
+        );
+      }
+    }
+
+    // Required for collectionGroup(db, 'comments') queries.
+    match /{path=**}/comments/{commentId} {
+      allow read: if signedIn();
+    }
+  }
+}
