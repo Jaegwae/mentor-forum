@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, ShieldCheck, Users2 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import {
   auth,
@@ -364,34 +364,6 @@ function coverForStatusLabel(statusValue) {
 function isClosedCoverForStatus(statusValue) {
   const status = normalizeCoverForStatus(statusValue);
   return status === COVER_FOR_STATUS.COMPLETED || status === COVER_FOR_STATUS.CANCELLED;
-}
-
-function coverDateActionButtonStyle(tone) {
-  if (tone === 'complete') {
-    return {
-      backgroundColor: '#eff6ff',
-      borderColor: '#93c5fd',
-      color: '#1d4ed8'
-    };
-  }
-
-  if (tone === 'cancelled') {
-    return {
-      backgroundColor: '#fff1f2',
-      borderColor: '#fda4af',
-      color: '#be123c'
-    };
-  }
-
-  if (tone === 'seeking') {
-    return {
-      backgroundColor: '#fff7ed',
-      borderColor: '#fdba74',
-      color: '#c2410c'
-    };
-  }
-
-  return {};
 }
 
 function normalizeCoverForDateKeys(values, fallbackKey = '') {
@@ -887,13 +859,27 @@ export default function PostPage() {
   }, [boardIdFromQuery]);
 
   useEffect(() => {
-    const rememberedTarget = fromBoardIdFromState || fromBoardIdFromQuery || boardIdFromQuery || boardIdFromState;
+    // Persist the most reliable board target for "back to list".
+    // Once post data is loaded, post.boardId becomes the highest-confidence source.
+    const rememberedTarget = normalizeText(currentPost?.boardId)
+      || fromBoardIdFromState
+      || fromBoardIdFromQuery
+      || boardIdFromQuery
+      || boardIdFromState;
     if (!rememberedTarget || rememberedTarget === ALL_BOARD_ID) return;
     writeLastBoardId(rememberedTarget);
-  }, [boardIdFromQuery, boardIdFromState, fromBoardIdFromQuery, fromBoardIdFromState]);
+  }, [boardIdFromQuery, boardIdFromState, currentPost?.boardId, fromBoardIdFromQuery, fromBoardIdFromState]);
 
   const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
   const backBoardId = useMemo(() => {
+    // Back-navigation priority:
+    // 1) actual post.boardId
+    // 2) explicit fromBoardId (state/query)
+    // 3) session remembered board
+    // 4) query/state fallback boardId
+    const postBoardId = normalizeText(currentPost?.boardId);
+    if (postBoardId && postBoardId !== ALL_BOARD_ID) return postBoardId;
+
     const stateFromBoardId = fromBoardIdFromState !== ALL_BOARD_ID ? fromBoardIdFromState : '';
     if (stateFromBoardId) return stateFromBoardId;
 
@@ -902,9 +888,6 @@ export default function PostPage() {
 
     const remembered = readLastBoardId();
     if (remembered) return remembered;
-
-    const postBoardId = normalizeText(currentPost?.boardId);
-    if (postBoardId) return postBoardId;
 
     const queryBoardId = boardIdFromQuery !== ALL_BOARD_ID ? boardIdFromQuery : '';
     if (queryBoardId) return queryBoardId;
@@ -1332,6 +1315,11 @@ export default function PostPage() {
     await signOut(auth);
     navigate(MENTOR_FORUM_CONFIG.app.loginPage, { replace: true });
   }, [clearCountdownTimer, clearExpiryTimer, navigate]);
+
+  const handleOpenGuide = useCallback(() => {
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+    navigate(`${appPage}?guide=1`);
+  }, [navigate]);
 
   const canUseBoardData = useCallback((boardId, boardData) => {
     if (!boardData || !currentUserProfile) return false;
@@ -1989,6 +1977,7 @@ export default function PostPage() {
       const postTitle = normalizeText(currentPost.title) || '(제목 없음)';
       const postAuthorUid = normalizeText(currentPost.authorUid);
       const mentionTargets = await resolveMentionTargets(payload.text);
+      // @all notification fan-out is intentionally restricted to admin/super-admin accounts.
       const canUseAllMentionCommand = isAdminOrSuper;
       const hasAllMention = canUseAllMentionCommand && hasAllMentionCommand(payload.text);
       const allMentionTargets = hasAllMention
@@ -2560,58 +2549,117 @@ export default function PostPage() {
     </form>
   );
 
+  const forumPage = MENTOR_FORUM_CONFIG.app.appPage;
+  const myPostsPage = MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts';
+  const myCommentsPage = MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments';
+  const handleMoveHome = useCallback(() => {
+    navigate(forumPage);
+  }, [forumPage, navigate]);
+  const handleBrandTitleKeyDown = useCallback((event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleMoveHome();
+  }, [handleMoveHome]);
+
   return (
     <>
       <motion.main
-        className="page stack"
+        className="page stack post-detail-shell"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
-      <section className="card hero-card">
-        <div id="userInfo" className="notice post-detail-account-row" style={{ marginTop: '12px' }}>
-          <div className="post-detail-account-main">
-            접속 계정: <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
-            {sessionRemainingMs != null ? (
-              <div className="session-ttl-row">
-                <span className="session-ttl-label">
-                  자동 로그아웃까지 <strong className="session-ttl-time">{formatTemporaryLoginRemaining(sessionRemainingMs)}</strong>
-                </span>
-                <button type="button" className="session-extend-btn" onClick={handleExtendSession}>연장</button>
-              </div>
-            ) : null}
+        <section className="card hero-card">
+        <div className="row space-between mobile-col">
+          <div>
+            <p className="hero-kicker"><Users2 size={15} /> Community Hub</p>
+            <h1
+              className="forum-brand-title is-link"
+              role="button"
+              tabIndex={0}
+              onClick={handleMoveHome}
+              onKeyDown={handleBrandTitleKeyDown}
+            >
+              멘토포럼
+            </h1>
+            <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
           </div>
-          <div className="row post-detail-mini-actions">
-            <button
-              id="adminBtn"
-              className={canAccessAdminSite ? 'btn-muted post-detail-mini-btn' : 'btn-muted post-detail-mini-btn hidden'}
-              type="button"
-              onClick={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}
-            >
-              <ShieldCheck size={14} />
-              관리자 사이트
-            </button>
 
-            <ThemeToggle className="post-detail-mini-toggle" />
-
+          <div className="row top-action-row">
             <button
-              id="logoutBtn"
-              className="btn-muted post-detail-mini-btn"
               type="button"
-              onClick={() => handleLogout().catch(() => {})}
+              className="btn-muted guide-help-btn"
+              aria-label="사용 설명서 열기"
+              title="사용 설명서"
+              onClick={handleOpenGuide}
             >
-              <LogOut size={14} />
-              로그아웃
+              <BookOpen size={16} />
+              <span className="guide-help-btn-text">사용 설명서</span>
             </button>
+            <ThemeToggle />
+          </div>
+        </div>
+
+        <div
+          id="userInfo"
+          className={sessionRemainingMs != null ? 'notice post-detail-account-row' : 'hidden'}
+          style={{ marginTop: '12px' }}
+        >
+          <div className="session-ttl-row" style={{ marginTop: 0 }}>
+            <span className="session-ttl-label">
+              자동 로그아웃까지 <strong className="session-ttl-time">{formatTemporaryLoginRemaining(sessionRemainingMs)}</strong>
+            </span>
+            <button type="button" className="session-extend-btn" onClick={handleExtendSession}>연장</button>
           </div>
         </div>
 
         <div id="message" className={message.text ? (message.type === 'error' ? 'error' : 'notice') : 'hidden'} style={{ marginTop: '12px' }}>
           {message.text}
         </div>
-      </section>
+        </section>
 
-      <section className="card post-detail-card">
+        <section className="post-detail-content-layout">
+          <aside className="board-rail post-detail-side-rail" aria-label="게시글 상세 내 정보">
+            <section className="board-rail-profile post-detail-side-profile">
+            <div className="board-profile-head-row">
+              <p className="board-rail-profile-kicker">내 정보</p>
+              <button
+                type="button"
+                className="board-notification-btn is-logout post-detail-side-logout"
+                onClick={() => handleLogout().catch(() => {})}
+              >
+                <LogOut size={13} />
+                <span className="board-top-logout-text">로그아웃</span>
+              </button>
+            </div>
+            <div className="board-rail-profile-user">
+              <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
+            </div>
+            <div className="board-rail-profile-actions">
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(forumPage)}>
+                <ArrowLeft size={14} />
+                포럼으로
+              </button>
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myPostsPage)}>
+                <FileText size={14} />
+                내가 쓴 글
+              </button>
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myCommentsPage)}>
+                <MessageSquare size={14} />
+                내가 쓴 댓글
+              </button>
+              {canAccessAdminSite ? (
+                <button type="button" className="board-rail-profile-btn" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}>
+                  <ShieldCheck size={14} />
+                  관리자 사이트
+                </button>
+              ) : null}
+            </div>
+            </section>
+          </aside>
+
+          <div className="post-detail-main-column">
+            <section className="card post-detail-card">
         <div className="row space-between mobile-col post-detail-nav-row">
           <button id="backToListLink" className="btn-muted" type="button" onClick={handleBackToList}>
             <ArrowLeft size={16} />
@@ -2761,7 +2809,6 @@ export default function PostPage() {
                           <button
                             type="button"
                             className={`cover-date-action-btn cover-date-action-${leftAction.tone}`}
-                            style={coverDateActionButtonStyle(leftAction.tone)}
                             disabled={statusUpdating}
                             onClick={() => updateCoverForDateStatus(entryIndex, leftAction.targetStatus).catch(() => {})}
                           >
@@ -2773,7 +2820,6 @@ export default function PostPage() {
                           <button
                             type="button"
                             className={`cover-date-action-btn cover-date-action-${rightAction.tone}`}
-                            style={coverDateActionButtonStyle(rightAction.tone)}
                             disabled={statusUpdating}
                             onClick={() => updateCoverForDateStatus(entryIndex, rightAction.targetStatus).catch(() => {})}
                           >
@@ -2790,7 +2836,7 @@ export default function PostPage() {
         ) : null}
       </section>
 
-      <section className="card">
+      <section className="card post-comment-card">
         <h3>댓글</h3>
 
         <div id="commentList" className="stack" style={{ marginTop: '10px' }}>
@@ -2893,7 +2939,9 @@ export default function PostPage() {
         </div>
 
         {!replyTarget ? renderCommentComposer(false) : null}
-      </section>
+            </section>
+          </div>
+        </section>
       </motion.main>
 
       <AnimatePresence>

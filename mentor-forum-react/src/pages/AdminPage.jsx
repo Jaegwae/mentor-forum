@@ -530,7 +530,7 @@ export default function AdminPage() {
 
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [appliedPopup, setAppliedPopup] = useState({ open: false, text: '반영되었습니다.' });
+  const [appliedPopup, setAppliedPopup] = useState({ open: false, text: '반영되었습니다.', tone: 'ok' });
 
   const [currentUser, setCurrentUser] = useState(null);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
@@ -625,13 +625,13 @@ export default function AdminPage() {
     setMessage({ type, text: String(text || '') });
   }, []);
 
-  const showAppliedPopup = useCallback((text = '반영되었습니다.') => {
+  const showAppliedPopup = useCallback((text = '반영되었습니다.', tone = 'ok') => {
     if (appliedPopupTimerRef.current) {
       window.clearTimeout(appliedPopupTimerRef.current);
       appliedPopupTimerRef.current = null;
     }
 
-    setAppliedPopup({ open: true, text });
+    setAppliedPopup({ open: true, text, tone });
 
     appliedPopupTimerRef.current = window.setTimeout(() => {
       setAppliedPopup((prev) => ({ ...prev, open: false }));
@@ -1274,7 +1274,7 @@ export default function AdminPage() {
     if (!ensurePermission('canManageRoleDefinitions', 'Role 관리 권한이 없습니다.')) return;
 
     if (!editableRoles.length) {
-      pushMessage('수정 가능한 커스텀 등급이 없습니다.', 'notice');
+      showAppliedPopup('수정 가능한 커스텀 등급이 없습니다.', 'notice');
       return;
     }
 
@@ -1302,7 +1302,7 @@ export default function AdminPage() {
     activeEditRoleKey,
     roleDefinitions,
     roleLevelOf,
-    pushMessage
+    showAppliedPopup
   ]);
 
   const openRoleCreateModal = useCallback(() => {
@@ -2069,28 +2069,8 @@ export default function AdminPage() {
               <p className="muted hero-copy" style={{ marginTop: '6px' }}>Admin / Super_Admin 권한 관리 화면</p>
             </div>
             <div className="row top-action-row">
-              <button className="btn-muted" type="button" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.appPage)}>
-                <MessageSquare size={16} />
-                포럼으로
-              </button>
               <ThemeToggle />
-              <button id="logoutBtn" className="btn-muted" type="button" onClick={() => handleLogout().catch(() => {})}>
-                <LogOut size={16} />
-                로그아웃
-              </button>
             </div>
-          </div>
-
-          <div id="adminInfo" className="notice" style={{ marginTop: '12px' }}>
-            접속 관리자: {adminNickname} · {adminRoleText}
-            {sessionRemainingMs != null ? (
-              <div className="session-ttl-row">
-                <span className="session-ttl-label">
-                  자동 로그아웃까지 <strong className="session-ttl-time">{formatTemporaryLoginRemaining(sessionRemainingMs)}</strong>
-                </span>
-                <button type="button" className="session-extend-btn" onClick={handleExtendSession}>연장</button>
-              </div>
-            ) : null}
           </div>
 
           <div id="message" className={message.text ? (message.type === 'error' ? 'error' : 'notice') : 'hidden'} style={{ marginTop: '12px' }}>
@@ -2098,7 +2078,39 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="card admin-panel">
+        <section className="admin-content-shell">
+          <aside className="admin-side-rail" aria-label="관리자 내 정보">
+            <section className="admin-side-profile">
+              <p className="admin-side-kicker">내 정보</p>
+              <div className="admin-side-user">
+                <p className="author-name">{adminNickname}</p>
+                <p className="meta admin-side-role">{adminRoleText}</p>
+              </div>
+
+              {sessionRemainingMs != null ? (
+                <div className="admin-side-session">
+                  <span className="session-ttl-label">
+                    자동 로그아웃까지 <strong className="session-ttl-time">{formatTemporaryLoginRemaining(sessionRemainingMs)}</strong>
+                  </span>
+                  <button type="button" className="session-extend-btn" onClick={handleExtendSession}>연장</button>
+                </div>
+              ) : null}
+
+              <div className="admin-side-actions">
+                <button className="board-rail-profile-btn" type="button" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.appPage)}>
+                  <MessageSquare size={14} />
+                  포럼으로
+                </button>
+                <button id="logoutBtn" className="board-rail-profile-btn is-logout" type="button" onClick={() => handleLogout().catch(() => {})}>
+                  <LogOut size={14} />
+                  로그아웃
+                </button>
+              </div>
+            </section>
+          </aside>
+
+          <div className="admin-main-column">
+            <section className="card admin-panel">
           <div className="row space-between mobile-col">
             <h2 className="section-title"><LayoutPanelTop size={18} /> 게시판 관리</h2>
             <div className="row mobile-wrap">
@@ -2146,9 +2158,9 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-        </section>
+            </section>
 
-        <section className="card admin-panel">
+            <section className="card admin-panel">
           <div className="row space-between mobile-col">
             <h2 className="section-title"><MapPin size={18} /> 체험관</h2>
             <div className="row mobile-wrap">
@@ -2243,9 +2255,9 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-        </section>
+            </section>
 
-        <section className="card admin-panel">
+            <section className="card admin-panel">
           <div className="row space-between mobile-col">
             <h2 className="section-title"><ShieldPlus size={18} /> 등급(Role) 정의</h2>
             <div className="row mobile-wrap">
@@ -2312,9 +2324,9 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-        </section>
+            </section>
 
-        <section className="card admin-panel">
+            <section className="card admin-panel">
           <div className="row space-between mobile-col">
             <div>
               <h2 className="section-title"><UsersRound size={18} /> 회원 등급 변경</h2>
@@ -2437,6 +2449,8 @@ export default function AdminPage() {
                 })}
               </tbody>
             </table>
+          </div>
+            </section>
           </div>
         </section>
       </motion.main>
@@ -2890,7 +2904,7 @@ export default function AdminPage() {
                 <p className="meta" style={{ margin: '0 0 6px' }}>권한</p>
                 <div id="editRolePermissionFlags" className="grid grid-3">
                   {roleFlagDefs.map((flag) => (
-                    <label key={`edit-role-flag-${flag.key}`} className="row" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px 8px' }}>
+                    <label key={`edit-role-flag-${flag.key}`} className="row role-flag-item">
                       <input
                         type="checkbox"
                         checked={!!editRoleForm.flags[flag.key]}
@@ -3024,7 +3038,7 @@ export default function AdminPage() {
               <p className="meta" style={{ margin: '0 0 6px' }}>권한</p>
               <div id="rolePermissionFlags" className="grid grid-3">
                 {roleFlagDefs.map((flag) => (
-                  <label key={`create-role-flag-${flag.key}`} className="row" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '6px 8px' }}>
+                  <label key={`create-role-flag-${flag.key}`} className="row role-flag-item">
                     <input
                       type="checkbox"
                       checked={!!createRoleForm.flags[flag.key]}
@@ -3055,7 +3069,7 @@ export default function AdminPage() {
         {appliedPopup.open ? (
           <motion.div
             id="appliedPopup"
-            className="applied-popup show"
+            className={`applied-popup show ${appliedPopup.tone === 'notice' ? 'is-notice' : appliedPopup.tone === 'error' ? 'is-error' : 'is-ok'}`}
             role="status"
             aria-live="polite"
             initial={{ opacity: 0, y: 10, scale: 0.96 }}

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CircleCheck, KeyRound, Mail, UserPlus2, UserRound } from 'lucide-react';
+import { CircleCheck, Eye, EyeOff, KeyRound, Mail, UserPlus2, UserRound } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import {
   auth,
@@ -80,6 +80,7 @@ export default function SignupPage() {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [nicknameCheck, setNicknameCheck] = useState({
     status: 'idle',
@@ -89,7 +90,36 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [ready, setReady] = useState(false);
+  // Sequence guard to ignore stale nickname-check responses when user types quickly.
   const nicknameCheckSeqRef = useRef(0);
+
+  // Password reveal is "press-and-hold" so the value is not left exposed after a click.
+  const bindPressToReveal = (setVisible) => ({
+    onMouseDown: (event) => {
+      event.preventDefault();
+      setVisible(true);
+    },
+    onMouseUp: () => setVisible(false),
+    onMouseLeave: () => setVisible(false),
+    onTouchStart: (event) => {
+      event.preventDefault();
+      setVisible(true);
+    },
+    onTouchEnd: () => setVisible(false),
+    onTouchCancel: () => setVisible(false),
+    onBlur: () => setVisible(false),
+    onKeyDown: (event) => {
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        setVisible(true);
+      }
+    },
+    onKeyUp: (event) => {
+      if (event.key === ' ' || event.key === 'Enter') {
+        setVisible(false);
+      }
+    }
+  });
 
   useEffect(() => {
     try {
@@ -182,6 +212,7 @@ export default function SignupPage() {
       throw err;
     }
     if (requestId !== nicknameCheckSeqRef.current) {
+      // Newer check request has already been started; discard this stale response.
       return { available: false, cleanNickname, stale: true };
     }
 
@@ -247,6 +278,7 @@ export default function SignupPage() {
       const nicknameKey = buildNicknameKey(cleanNickname);
 
       try {
+        // Claim profile + nickname index atomically to prevent duplicate nickname race conditions.
         await runTransaction(db, async (tx) => {
           const userRef = doc(db, 'users', user.uid);
           const nicknameRef = doc(db, 'nickname_index', nicknameKey);
@@ -322,16 +354,16 @@ export default function SignupPage() {
         transition={{ duration: 0.32, ease: 'easeOut' }}
         className="mx-auto w-full max-w-[760px]"
       >
-        <Card className="auth-card border-primary/20">
+        <Card className="auth-card auth-signup-card border-primary/20">
           <CardHeader className="space-y-2">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
                 <p className="hero-kicker"><UserPlus2 size={15} /> Welcome</p>
                 <CardTitle>회원가입</CardTitle>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="auth-head-actions flex flex-wrap items-center justify-end gap-2">
                 <ThemeToggle className="theme-toggle-auth" />
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm" className="auth-secondary-btn">
                   <Link to="/login">로그인으로 이동</Link>
                 </Button>
               </div>
@@ -346,20 +378,18 @@ export default function SignupPage() {
             {message.text ? (
               <div
                 className={cn(
-                  'rounded-xl border px-4 py-3 text-sm font-semibold',
-                  message.type === 'error'
-                    ? 'border-red-200 bg-red-50 text-red-700'
-                    : 'border-sky-200 bg-sky-50 text-sky-800'
+                  'auth-inline-message',
+                  message.type === 'error' ? 'is-error' : 'is-notice'
                 )}
               >
                 {message.text}
               </div>
             ) : null}
 
-            <form className="space-y-4" onSubmit={onSubmit}>
+            <form className="auth-form space-y-4" onSubmit={onSubmit}>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="email" className="inline-flex items-center gap-2">
+                  <Label htmlFor="email" className="auth-label inline-flex items-center gap-2">
                     <Mail size={15} />
                     이메일
                   </Label>
@@ -370,14 +400,14 @@ export default function SignupPage() {
                     required
                     value={email}
                     aria-invalid={emailError ? 'true' : 'false'}
-                    className={cn(emailError ? 'border-red-500 focus-visible:ring-red-300' : '')}
+                    className={cn('auth-input', emailError ? 'border-red-500 focus-visible:ring-red-300' : '')}
                     onChange={(event) => {
                       setEmail(event.target.value);
                       if (emailError) setEmailError('');
                     }}
                   />
                   {emailError ? (
-                    <p className="text-xs font-semibold text-red-600">
+                    <p className="text-xs font-medium text-red-600">
                       {emailError}
                     </p>
                   ) : null}
@@ -387,7 +417,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="realName" className="inline-flex items-center gap-2">
+                  <Label htmlFor="realName" className="auth-label inline-flex items-center gap-2">
                     <UserRound size={15} />
                     실명
                   </Label>
@@ -396,13 +426,14 @@ export default function SignupPage() {
                     type="text"
                     maxLength={30}
                     required
+                    className="auth-input"
                     value={realName}
                     onChange={(event) => setRealName(event.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="nickname" className="inline-flex items-center gap-2">
+                  <Label htmlFor="nickname" className="auth-label inline-flex items-center gap-2">
                     <UserRound size={15} />
                     닉네임
                   </Label>
@@ -413,7 +444,7 @@ export default function SignupPage() {
                       maxLength={20}
                       required
                       value={nickname}
-                      className="min-w-0 flex-1"
+                      className="auth-input min-w-0 flex-1"
                       aria-invalid={nicknameCheck.status === 'unavailable' ? 'true' : 'false'}
                       onChange={(event) => {
                         const next = event.target.value;
@@ -433,7 +464,7 @@ export default function SignupPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-10 shrink-0 px-3"
+                      className="auth-secondary-btn h-10 shrink-0 px-3"
                       disabled={!ready || submitting || nicknameCheck.status === 'checking' || !normalizeNickname(nickname)}
                       onClick={() => {
                         void onCheckNickname();
@@ -443,34 +474,45 @@ export default function SignupPage() {
                     </Button>
                   </div>
                   {nicknameCheck.text ? (
-                    <p className={cn('text-xs font-semibold', nicknameCheckToneClass(nicknameCheck.status))}>
+                    <p className={cn('text-xs font-medium', nicknameCheckToneClass(nicknameCheck.status))}>
                       {nicknameCheck.text}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="inline-flex items-center gap-2">
+              <div className="space-y-2">
+                  <Label htmlFor="password" className="auth-label inline-flex items-center gap-2">
                     <KeyRound size={15} />
                     비밀번호
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    minLength={8}
-                    maxLength={72}
-                    autoComplete="new-password"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <p className={cn('text-xs font-semibold', helperToneClass(passwordRule.tone))}>
+                  <div className="auth-input-wrap">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      minLength={8}
+                      maxLength={72}
+                      autoComplete="new-password"
+                      required
+                      className="auth-input auth-input-with-toggle"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="auth-input-toggle"
+                      aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                      {...bindPressToReveal(setShowPassword)}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  <p className={cn('text-xs font-medium', helperToneClass(passwordRule.tone))}>
                     {passwordRule.text}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="passwordConfirm" className="inline-flex items-center gap-2">
+                  <Label htmlFor="passwordConfirm" className="auth-label inline-flex items-center gap-2">
                     <CircleCheck size={15} />
                     비밀번호 확인
                   </Label>
@@ -481,22 +523,23 @@ export default function SignupPage() {
                     maxLength={72}
                     autoComplete="new-password"
                     required
+                    className="auth-input"
                     value={passwordConfirm}
                     onChange={(event) => setPasswordConfirm(event.target.value)}
                   />
-                  <p className={cn('text-xs font-semibold', helperToneClass(passwordMatch.tone))}>
+                  <p className={cn('text-xs font-medium', helperToneClass(passwordMatch.tone))}>
                     {passwordMatch.text}
                   </p>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full md:w-auto" disabled={!ready || !formValid || submitting}>
+              <Button type="submit" className="w-full md:w-auto auth-submit-btn" disabled={!ready || !formValid || submitting}>
                 {submitting ? '가입 중...' : '회원가입 완료'}
               </Button>
             </form>
           </CardContent>
 
-          <CardFooter className="border-t border-border/70 pt-4">
+          <CardFooter className="auth-footer border-t border-border/70 pt-4">
             <p className="text-xs text-muted-foreground">
               회원가입 후에는 인증 메일 확인이 반드시 필요합니다.
             </p>

@@ -51,8 +51,8 @@ export default {
         sm: 'calc(var(--radius) - 4px)'
       },
       boxShadow: {
-        'soft-xl': '0 30px 60px -30px rgba(15, 23, 42, 0.42)',
-        'soft-lg': '0 18px 42px -24px rgba(15, 23, 42, 0.35)'
+        'soft-xl': '0 4px 12px -4px rgba(0, 0, 0, 0.08)',
+        'soft-lg': '0 2px 8px -3px rgba(0, 0, 0, 0.06)'
       }
     }
   },

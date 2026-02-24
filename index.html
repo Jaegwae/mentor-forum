@@ -4,7 +4,7 @@
   <!--
     index.html
     - 앱의 "정적 뼈대(레이아웃/마크업)"를 담당한다.
-    - 실제 동작 로직은 JavaScript.html, 스타일은 Style.html에서 관리한다.
+    - 실제 동작 로직은 JavaScriptCore/JavaScriptData, 스타일은 style.html에서 관리한다.
     - GAS 템플릿 include 문법으로 파일을 합쳐 단일 페이지처럼 렌더링한다.
   -->
   <base target="_top">
@@ -28,7 +28,7 @@
     tailwind.config = { darkMode: 'class', theme: { extend: { colors: { primary: '#6366f1' } } } };
   </script>
   <!-- 공통 스타일 로드 -->
-  <?!= include('Style'); ?>
+  <?!= include('style'); ?>
 </head>
 
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-safe">
@@ -51,11 +51,11 @@
       <p class="text-slate-500 dark:text-slate-400 text-[11px] md:text-xs font-semibold tracking-[0.08em] uppercase">Operations Dashboard</p>
     </div>
     <div class="flex items-center gap-2">
-      <button data-call="openMentorForum()" class="app-icon-btn h-10 px-3.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center gap-1.5">
-        <i class="bi bi-people-fill text-sky-500"></i> 멘토포럼
+      <button data-call="openMentorForum()" aria-label="멘토포럼" title="멘토포럼" class="app-icon-btn app-header-shortcut h-10 w-10 px-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center justify-center">
+        <i class="bi bi-people-fill text-sky-500"></i><span class="app-header-shortcut-label">멘토포럼</span>
       </button>
-      <button data-call="openDocsModal()" class="app-icon-btn h-10 px-3.5 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center gap-1.5">
-        <i class="bi bi-journal-richtext text-indigo-500"></i> 사용 가이드
+      <button data-call="openDocsModal()" aria-label="사용 가이드" title="사용 가이드" class="app-icon-btn app-header-shortcut h-10 w-10 px-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-[11px] md:text-xs font-bold text-slate-600 dark:text-slate-200 active:scale-[0.98] transition-transform inline-flex items-center justify-center">
+        <i class="bi bi-journal-richtext text-indigo-500"></i><span class="app-header-shortcut-label">사용 가이드</span>
       </button>
       <button data-call="toggleDarkMode()" class="app-icon-btn h-10 w-10 inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 active:scale-[0.98] transition-transform">
         <i id="theme-icon" class="bi bi-moon-stars-fill text-indigo-500 text-lg md:text-xl"></i>

@@ -531,12 +531,8 @@ function processForm(formObject) {
  * @returns {GoogleAppsScript.HTML.HtmlOutput}
  */
 function doGet(e) {
-  var page = (e && e.parameter && e.parameter.page) ? String(e.parameter.page).trim().toLowerCase() : "";
-  var view = (page === "mentorforum") ? "mentorforum" : "index";
-  var title = (view === "mentorforum") ? "멘토포럼" : "구로 이슈 관리 시스템";
-
-  return HtmlService.createTemplateFromFile(view).evaluate()
-    .setTitle(title)
+  return HtmlService.createTemplateFromFile("index").evaluate()
+    .setTitle("구로 이슈 관리 시스템")
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }

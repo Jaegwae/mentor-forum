@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, LogOut, MessageSquare } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, Users2 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
 import {
@@ -141,6 +141,7 @@ export default function MyPostsPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
+      // Load boards + authored posts in parallel, then hydrate board labels client-side.
       const [boardSnap, postSnap] = await Promise.all([
         getDocs(collection(db, 'boards')),
         getDocs(query(collection(db, 'posts'), where('authorUid', '==', uid)))
@@ -242,12 +243,18 @@ export default function MyPostsPage() {
     navigate(MENTOR_FORUM_CONFIG.app.loginPage, { replace: true });
   }, [navigate]);
 
+  const handleOpenGuide = useCallback(() => {
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+    navigate(`${appPage}?guide=1`);
+  }, [navigate]);
+
   const movePostDetail = useCallback((post) => {
     const postPage = MENTOR_FORUM_CONFIG.app.postPage || '/post';
     const boardId = normalizeText(post?.boardId);
     const qs = new URLSearchParams();
     qs.set('postId', String(post?.id || ''));
     if (boardId) {
+      // Pass both boardId and fromBoardId so detail/back navigation can restore the original board context.
       qs.set('boardId', boardId);
       qs.set('fromBoardId', boardId);
     }
@@ -260,6 +267,17 @@ export default function MyPostsPage() {
     });
   }, [navigate]);
 
+  const forumPage = MENTOR_FORUM_CONFIG.app.appPage;
+  const myCommentsPage = MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments';
+  const handleMoveHome = useCallback(() => {
+    navigate(forumPage);
+  }, [forumPage, navigate]);
+  const handleBrandTitleKeyDown = useCallback((event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleMoveHome();
+  }, [handleMoveHome]);
+
   return (
     <motion.main
       className="page stack my-activity-shell"
@@ -270,28 +288,50 @@ export default function MyPostsPage() {
       <section className="card hero-card my-activity-hero">
         <div className="row space-between mobile-col">
           <div>
-            <p className="hero-kicker"><FileText size={15} /> My Activity</p>
-            <h1>내가 쓴 글</h1>
-            <p className="hero-copy">내가 작성한 게시글을 최신순으로 모아봅니다.</p>
+            <p className="hero-kicker"><Users2 size={15} /> Community Hub</p>
+            <h1
+              className="forum-brand-title is-link"
+              role="button"
+              tabIndex={0}
+              onClick={handleMoveHome}
+              onKeyDown={handleBrandTitleKeyDown}
+            >
+              멘토포럼
+            </h1>
+            <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
           </div>
+
           <div className="row top-action-row">
-            <button type="button" className="btn-muted" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.appPage)}>
-              <ArrowLeft size={16} />
-              포럼으로
-            </button>
-            <button type="button" className="btn-muted" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments')}>
-              <MessageSquare size={16} />
-              내 댓글
+            <button
+              type="button"
+              className="btn-muted guide-help-btn"
+              aria-label="사용 설명서 열기"
+              title="사용 설명서"
+              onClick={handleOpenGuide}
+            >
+              <BookOpen size={16} />
+              <span className="guide-help-btn-text">사용 설명서</span>
             </button>
             <ThemeToggle />
-            <button type="button" className="btn-muted" onClick={() => handleLogout().catch(() => {})}>
-              <LogOut size={16} />
-              로그아웃
-            </button>
           </div>
         </div>
 
-        <div className="notice" style={{ marginTop: '12px' }}>
+        <div className="row top-action-row my-activity-top-actions">
+          <button type="button" className="btn-muted" onClick={() => navigate(forumPage)}>
+            <ArrowLeft size={16} />
+            포럼으로
+          </button>
+          <button type="button" className="btn-muted" onClick={() => navigate(myCommentsPage)}>
+            <MessageSquare size={16} />
+            내 댓글
+          </button>
+          <button type="button" className="btn-muted" onClick={() => handleLogout().catch(() => {})}>
+            <LogOut size={16} />
+            로그아웃
+          </button>
+        </div>
+
+        <div className="notice my-activity-mobile-account" style={{ marginTop: '12px' }}>
           계정: <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
         </div>
 
@@ -300,68 +340,99 @@ export default function MyPostsPage() {
         </div>
       </section>
 
-      <section className="card my-activity-list-card">
-        <div className="row space-between mobile-col">
-          <h2 className="section-title"><FileText size={18} /> 작성한 글 목록</h2>
-          <span className="badge">{posts.length}건</span>
-        </div>
-
-        <div className="table-wrap" style={{ marginTop: '10px' }}>
-          <table className="table my-activity-table">
-            <thead>
-              <tr>
-                <th style={{ width: '72px' }}>번호</th>
-                <th>제목</th>
-                <th style={{ width: '180px' }}>게시판</th>
-                <th style={{ width: '160px' }}>작성일</th>
-                <th style={{ width: '96px' }}>조회</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!ready || loading ? (
-                <tr>
-                  <td colSpan={5} className="muted">불러오는 중...</td>
-                </tr>
-              ) : posts.map((post, idx) => {
-                const no = posts.length - idx;
-                const boardLabel = boardNameMap[post.boardId] || post.boardId || '-';
-                return (
-                  <tr key={post.id} className="my-activity-row" onClick={() => movePostDetail(post)}>
-                    <td>{no}</td>
-                    <td><span className="text-ellipsis-1" title={post.title || '(제목 없음)'}>{post.title || '(제목 없음)'}</span></td>
-                    <td><span className="text-ellipsis-1" title={boardLabel}>{boardLabel}</span></td>
-                    <td>{formatDate(post.createdAt)}</td>
-                    <td>{numberOrZero(post.views)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="my-activity-mobile-list">
-          {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
-          {ready && !loading && !posts.length ? <p className="muted">아직 작성한 게시글이 없습니다.</p> : null}
-          {ready && !loading ? posts.map((post, idx) => {
-            const no = posts.length - idx;
-            const boardLabel = boardNameMap[post.boardId] || post.boardId || '-';
-            return (
-              <button
-                key={`mobile-post-${post.id}`}
-                type="button"
-                className="my-activity-mobile-item"
-                onClick={() => movePostDetail(post)}
-              >
-                <div className="my-activity-mobile-top">
-                  <span className="my-activity-mobile-no">#{no}</span>
-                  <span className="my-activity-mobile-board text-ellipsis-1">{boardLabel}</span>
-                </div>
-                <p className="my-activity-mobile-title text-ellipsis-2">{post.title || '(제목 없음)'}</p>
-                <p className="my-activity-mobile-meta">{formatDate(post.createdAt)} · 조회 {numberOrZero(post.views)}</p>
+      <section className="my-activity-content-layout">
+        <aside className="board-rail my-activity-side-rail" aria-label="내 정보">
+          <section className="board-rail-profile my-activity-side-profile">
+            <div className="board-profile-head-row">
+              <p className="board-rail-profile-kicker">내 정보</p>
+              <button type="button" className="board-notification-btn is-logout my-activity-side-logout" onClick={() => handleLogout().catch(() => {})}>
+                <LogOut size={13} />
+                <span className="board-top-logout-text">로그아웃</span>
               </button>
-            );
-          }) : null}
-        </div>
+            </div>
+            <div className="board-rail-profile-user">
+              <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
+            </div>
+            <div className="board-rail-profile-actions">
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(forumPage)}>
+                <ArrowLeft size={14} />
+                포럼으로
+              </button>
+              <button type="button" className="board-rail-profile-btn is-current" disabled>
+                <FileText size={14} />
+                내가 쓴 글
+              </button>
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myCommentsPage)}>
+                <MessageSquare size={14} />
+                내가 쓴 댓글
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <section className="card my-activity-list-card">
+          <div className="row space-between mobile-col">
+            <h2 className="section-title"><FileText size={18} /> 작성한 글 목록</h2>
+            <span className="badge">{posts.length}건</span>
+          </div>
+
+          <div className="table-wrap" style={{ marginTop: '10px' }}>
+            <table className="table my-activity-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '72px' }}>번호</th>
+                  <th>제목</th>
+                  <th style={{ width: '180px' }}>게시판</th>
+                  <th style={{ width: '160px' }}>작성일</th>
+                  <th style={{ width: '96px' }}>조회</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!ready || loading ? (
+                  <tr>
+                    <td colSpan={5} className="muted">불러오는 중...</td>
+                  </tr>
+                ) : posts.map((post, idx) => {
+                  const no = posts.length - idx;
+                  const boardLabel = boardNameMap[post.boardId] || post.boardId || '-';
+                  return (
+                    <tr key={post.id} className="my-activity-row" onClick={() => movePostDetail(post)}>
+                      <td>{no}</td>
+                      <td><span className="text-ellipsis-1" title={post.title || '(제목 없음)'}>{post.title || '(제목 없음)'}</span></td>
+                      <td><span className="text-ellipsis-1" title={boardLabel}>{boardLabel}</span></td>
+                      <td>{formatDate(post.createdAt)}</td>
+                      <td>{numberOrZero(post.views)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="my-activity-mobile-list">
+            {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
+            {ready && !loading && !posts.length ? <p className="muted">아직 작성한 게시글이 없습니다.</p> : null}
+            {ready && !loading ? posts.map((post, idx) => {
+              const no = posts.length - idx;
+              const boardLabel = boardNameMap[post.boardId] || post.boardId || '-';
+              return (
+                <button
+                  key={`mobile-post-${post.id}`}
+                  type="button"
+                  className="my-activity-mobile-item"
+                  onClick={() => movePostDetail(post)}
+                >
+                  <div className="my-activity-mobile-top">
+                    <span className="my-activity-mobile-no">#{no}</span>
+                    <span className="my-activity-mobile-board text-ellipsis-1">{boardLabel}</span>
+                  </div>
+                  <p className="my-activity-mobile-title text-ellipsis-2">{post.title || '(제목 없음)'}</p>
+                  <p className="my-activity-mobile-meta">{formatDate(post.createdAt)} · 조회 {numberOrZero(post.views)}</p>
+                </button>
+              );
+            }) : null}
+          </div>
+        </section>
       </section>
     </motion.main>
   );

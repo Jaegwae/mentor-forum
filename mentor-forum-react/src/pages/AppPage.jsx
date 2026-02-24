@@ -11,6 +11,8 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Pin,
+  PinOff,
   PencilLine,
   ShieldCheck,
   Users2
@@ -36,6 +38,7 @@ import {
   updateDoc,
   addDoc,
   collection,
+  collectionGroup,
   query,
   where,
   orderBy,
@@ -81,6 +84,14 @@ const LAST_BOARD_STORAGE_KEY = 'mentor_forum_last_board_id';
 const NOTIFICATION_MAX_ITEMS = 200;
 const NOTIFICATION_RECENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const NEW_POST_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const RECENT_COMMENT_MAX_ITEMS = 5;
+const RECENT_COMMENT_FETCH_LIMIT = 48;
+const RECENT_COMMENT_PREVIEW_LIMIT = 72;
+const PINNED_POST_FETCH_LIMIT = 120;
+const POST_LIST_VIEW_MODE = {
+  LATEST: 'latest',
+  POPULAR: 'popular'
+};
 const MENTION_MAX_ITEMS = 8;
 const MENTION_MENU_ESTIMATED_WIDTH = 248;
 const MENTION_ALL_TOKEN = 'ALL';
@@ -317,6 +328,13 @@ function formatPostListDateMobile(value) {
   const hh = String(date.getHours()).padStart(2, '0');
   const mm = String(date.getMinutes()).padStart(2, '0');
   return `${m}.${d} ${hh}:${mm}`;
+}
+
+function buildRecentCommentPreview(value) {
+  const compact = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!compact) return '(내용 없음)';
+  if (compact.length <= RECENT_COMMENT_PREVIEW_LIMIT) return compact;
+  return `${compact.slice(0, RECENT_COMMENT_PREVIEW_LIMIT)}...`;
 }
 
 function notificationCollectionRef(uid) {
@@ -925,6 +943,35 @@ function toMillis(value) {
   return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
+function isPinnedPost(post) {
+  return !!post && isTruthyLegacyValue(post.isPinned);
+}
+
+function pinnedAtMillis(post) {
+  const pinnedAtMs = Number(post?.pinnedAtMs);
+  if (Number.isFinite(pinnedAtMs) && pinnedAtMs > 0) return pinnedAtMs;
+  return toMillis(post?.pinnedAt);
+}
+
+function comparePostsWithPinnedPriority(a, b, mode = POST_LIST_VIEW_MODE.LATEST) {
+  const aPinned = isPinnedPost(a);
+  const bPinned = isPinnedPost(b);
+
+  if (aPinned !== bPinned) return bPinned ? 1 : -1;
+
+  if (aPinned && bPinned) {
+    const byPinnedAt = pinnedAtMillis(b) - pinnedAtMillis(a);
+    if (byPinnedAt !== 0) return byPinnedAt;
+  }
+
+  if (mode === POST_LIST_VIEW_MODE.POPULAR) {
+    const byViews = numberOrZero(b?.views) - numberOrZero(a?.views);
+    if (byViews !== 0) return byViews;
+  }
+
+  return toMillis(b?.createdAt) - toMillis(a?.createdAt);
+}
+
 function isDividerItem(item) {
   return !!(item && item.isDivider === true);
 }
@@ -1123,7 +1170,7 @@ function mergePostsByCreatedAtDesc(groups, maxCount = 50) {
     });
   });
 
-  merged.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+  merged.sort((a, b) => comparePostsWithPinnedPriority(a, b, POST_LIST_VIEW_MODE.LATEST));
   return merged.slice(0, maxCount);
 }
 
@@ -1260,8 +1307,34 @@ async function queryPostsForBoard(boardId, maxCount = 50, options = {}) {
     boardName = ''
   } = options || {};
   const mapSnap = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data(), views: numberOrZero(d.data().views) }));
-  const sortAndLimit = (posts) => mergePostsByCreatedAtDesc([posts], maxCount);
+  let pinnedPosts = [];
+  const sortAndLimit = (posts) => mergePostsByCreatedAtDesc([posts, pinnedPosts], maxCount);
   let strictPosts = [];
+
+  try {
+    const pinnedSnap = await getDocs(query(
+      collection(db, 'posts'),
+      where('boardId', '==', boardId),
+      where('isPinned', '==', true),
+      limit(Math.max(PINNED_POST_FETCH_LIMIT, maxCount))
+    ));
+    pinnedPosts = mapSnap(pinnedSnap);
+  } catch (err) {
+    const code = String(err?.code || '');
+    if (code.includes('failed-precondition')) {
+      try {
+        const fallbackSnap = await getDocs(query(
+          collection(db, 'posts'),
+          where('boardId', '==', boardId)
+        ));
+        pinnedPosts = mapSnap(fallbackSnap).filter((post) => isPinnedPost(post));
+      } catch (_) {
+        pinnedPosts = [];
+      }
+    } else {
+      pinnedPosts = [];
+    }
+  }
 
   try {
     const snap = await getDocs(query(
@@ -1395,6 +1468,7 @@ export default function AppPage() {
   const [listMessage, setListMessage] = useState({ type: '', text: '' });
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [postListViewMode, setPostListViewMode] = useState(POST_LIST_VIEW_MODE.LATEST);
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
   const [boardDrawerOpen, setBoardDrawerOpen] = useState(false);
@@ -1445,6 +1519,10 @@ export default function AppPage() {
   const [notificationPrefs, setNotificationPrefs] = useState({});
   const [notificationFeedFilter, setNotificationFeedFilter] = useState(NOTIFICATION_FEED_FILTER.ALL);
   const [viewedPostIdMap, setViewedPostIdMap] = useState({});
+  const [recentComments, setRecentComments] = useState([]);
+  const [recentCommentsLoading, setRecentCommentsLoading] = useState(false);
+  const [selectedPinPostIdMap, setSelectedPinPostIdMap] = useState({});
+  const [pinActionPending, setPinActionPending] = useState(false);
 
   const roleDefMap = useMemo(() => createRoleDefMap(roleDefinitions), [roleDefinitions]);
   const currentUserUid = normalizeText(currentUser?.uid);
@@ -1476,12 +1554,13 @@ export default function AppPage() {
     return boardLookup.get(boardId) || null;
   }, [boardLookup, selectedBoardId]);
 
-  const isAllBoardSelected = selectedBoardId === ALL_BOARD_ID;
+  const isAllBoardSelected = normalizeText(selectedBoardId) === ALL_BOARD_ID;
 
   const currentBoardName = useMemo(() => {
     if (isAllBoardSelected) return '전체 게시글';
-    return currentBoard ? (currentBoard.name || currentBoard.id) : '-';
-  }, [currentBoard, isAllBoardSelected]);
+    if (currentBoard) return currentBoard.name || currentBoard.id;
+    return normalizeText(selectedBoardId) || '-';
+  }, [currentBoard, isAllBoardSelected, selectedBoardId]);
 
   const currentBoardRoles = useMemo(() => {
     if (!currentBoard) return [];
@@ -1492,8 +1571,46 @@ export default function AppPage() {
     if (!currentBoard) return 'mentor';
     return boardAutoVisibility(currentBoard, roleDefMap);
   }, [currentBoard, roleDefMap]);
+  const canManagePinInCurrentBoard = isAdminOrSuper && !isAllBoardSelected && !!currentBoard;
 
-  const totalPostCount = visiblePosts.length;
+  const visiblePostById = useMemo(() => {
+    const map = new Map();
+    visiblePosts.forEach((post) => {
+      const postId = normalizeText(post?.id);
+      if (!postId) return;
+      map.set(postId, post);
+    });
+    return map;
+  }, [visiblePosts]);
+
+  const listedPosts = useMemo(() => {
+    const sorted = [...visiblePosts];
+    return sorted.sort((a, b) => comparePostsWithPinnedPriority(a, b, postListViewMode));
+  }, [postListViewMode, visiblePosts]);
+  const selectedPinPostIds = useMemo(() => {
+    return Object.keys(selectedPinPostIdMap).filter((postId) => {
+      return selectedPinPostIdMap[postId] && visiblePostById.has(postId);
+    });
+  }, [selectedPinPostIdMap, visiblePostById]);
+  const selectedPinPostCount = selectedPinPostIds.length;
+  const selectedPinMode = useMemo(() => {
+    let hasPinned = false;
+    let hasUnpinned = false;
+
+    selectedPinPostIds.forEach((postId) => {
+      const post = visiblePostById.get(postId);
+      if (!post) return;
+      if (isPinnedPost(post)) hasPinned = true;
+      else hasUnpinned = true;
+    });
+
+    if (hasPinned && hasUnpinned) return 'mixed';
+    if (hasPinned) return 'pinned';
+    if (hasUnpinned) return 'unpinned';
+    return '';
+  }, [selectedPinPostIds, visiblePostById]);
+  const showPinToolbar = canManagePinInCurrentBoard && selectedPinPostCount > 0;
+  const totalPostCount = listedPosts.length;
   const latestTenPosts = useMemo(() => {
     return [...visiblePosts]
       .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
@@ -1516,8 +1633,27 @@ export default function AppPage() {
   const safeCurrentPage = Math.min(currentPage, totalPageCount);
   const currentPageStartIndex = (safeCurrentPage - 1) * POSTS_PER_PAGE;
   const currentPagePosts = useMemo(() => {
-    return visiblePosts.slice(currentPageStartIndex, currentPageStartIndex + POSTS_PER_PAGE);
-  }, [visiblePosts, currentPageStartIndex]);
+    return listedPosts.slice(currentPageStartIndex, currentPageStartIndex + POSTS_PER_PAGE);
+  }, [listedPosts, currentPageStartIndex]);
+  const postListViewTabs = useMemo(() => {
+    return [
+      { key: POST_LIST_VIEW_MODE.LATEST, label: '최신' },
+      { key: POST_LIST_VIEW_MODE.POPULAR, label: '인기' }
+    ];
+  }, []);
+  const postListEmptyText = useMemo(() => {
+    if (postListViewMode === POST_LIST_VIEW_MODE.POPULAR) return '인기 게시글이 없습니다.';
+    return '게시글이 없습니다.';
+  }, [postListViewMode]);
+  const activeListMessage = useMemo(() => {
+    if (listMessage.text) return listMessage;
+    if (!loadingPosts && totalPostCount <= 0) {
+      return { type: 'notice', text: postListEmptyText };
+    }
+    return { type: '', text: '' };
+  }, [listMessage, loadingPosts, postListEmptyText, totalPostCount]);
+  const isPostListEmptyState = !loadingPosts && !listMessage.text && totalPostCount <= 0;
+  const desktopPostTableColSpan = (isAllBoardSelected ? 6 : 5) + (canManagePinInCurrentBoard ? 1 : 0);
   const paginationPages = useMemo(() => {
     if (totalPageCount <= 1) return [];
     const windowSize = 5;
@@ -1621,6 +1757,7 @@ export default function AppPage() {
     });
     const next = [...byUid.values()].slice(0, MENTION_MAX_ITEMS);
     if (isAdminOrSuper) {
+      // Only privileged users can trigger @ALL mention; expose it in the suggestion list for them.
       const lowerQuery = normalizedQuery.toLowerCase();
       if (!lowerQuery || MENTION_ALL_TOKEN.toLowerCase().startsWith(lowerQuery)) {
         next.unshift({ uid: '__all__', nickname: MENTION_ALL_TOKEN });
@@ -1871,16 +2008,33 @@ export default function AppPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    const guideFlag = normalizeText(params.get('guide')).toLowerCase();
+    if (guideFlag !== '1' && guideFlag !== 'true' && guideFlag !== 'y') return;
+
+    setGuideModalOpen(true);
+    params.delete('guide');
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : ''
+      },
+      { replace: true, state: location.state }
+    );
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
+    // Keep board selection stable across route transitions by restoring the highest-priority source
+    // (state > query > fromBoard) into a pending ref, then applying it after boardList loads.
+    const params = new URLSearchParams(location.search);
     const boardId = normalizeText(params.get('boardId'));
     const fromBoardId = normalizeText(params.get('fromBoardId'));
     const routeState = (location && typeof location.state === 'object' && location.state) ? location.state : {};
     const statePreferredBoardId = normalizeText(routeState.preferredBoardId || routeState.fromBoardId || '');
-    const rememberedBoardId = readRememberedBoardId();
     const target = (
       (statePreferredBoardId && statePreferredBoardId !== ALL_BOARD_ID ? statePreferredBoardId : '')
       || (fromBoardId && fromBoardId !== ALL_BOARD_ID ? fromBoardId : '')
       || (boardId && boardId !== ALL_BOARD_ID ? boardId : '')
-      || rememberedBoardId
     );
     if (target) {
       pendingBoardIdRef.current = target;
@@ -2022,15 +2176,16 @@ export default function AppPage() {
   }, [clearCountdownTimer, clearExpiryTimer, navigate, scheduleTemporaryLoginExpiry]);
 
   useEffect(() => {
-    const validIds = new Set([ALL_BOARD_ID, ...boardList.map((board) => board.id)]);
+    const validIds = new Set([ALL_BOARD_ID, ...boardList.map((board) => normalizeText(board?.id)).filter(Boolean)]);
     setSelectedBoardId((prev) => {
       const pending = normalizeText(pendingBoardIdRef.current);
-      if (pending && validIds.has(pending) && pending !== prev) {
+      if (pending && pending !== prev) {
         pendingBoardIdRef.current = '';
         return pending;
       }
 
-      if (validIds.has(prev)) return prev;
+      const normalizedPrev = normalizeText(prev);
+      if (normalizedPrev && validIds.has(normalizedPrev)) return normalizedPrev;
 
       pendingBoardIdRef.current = '';
       return ALL_BOARD_ID;
@@ -2165,18 +2320,25 @@ export default function AppPage() {
           posts = mergePostsByCreatedAtDesc(groups, 50);
         }
       } else {
-        if (!currentBoard || !canUseBoard(currentBoard)) {
+        if (!currentBoard) {
+          const fallbackBoardId = normalizeText(selectedId);
+          const fallbackLimit = fallbackBoardId === COVER_FOR_BOARD_ID ? 320 : 50;
+          posts = await queryPostsForBoard(fallbackBoardId, fallbackLimit, {
+            allowLooseFallback: true,
+            boardName: fallbackBoardId
+          });
+        } else if (!canUseBoard(currentBoard)) {
           setVisiblePosts([]);
           setListMessage({ type: 'error', text: '선택한 게시판을 읽을 권한이 없습니다.' });
           setLoadingPosts(false);
           return;
+        } else {
+          const boardPostLimit = currentBoard.id === COVER_FOR_BOARD_ID ? 320 : 50;
+          posts = await queryPostsForBoard(currentBoard.id, boardPostLimit, {
+            allowLooseFallback: true,
+            boardName: currentBoard.name || ''
+          });
         }
-
-        const boardPostLimit = currentBoard.id === COVER_FOR_BOARD_ID ? 320 : 50;
-        posts = await queryPostsForBoard(currentBoard.id, boardPostLimit, {
-          allowLooseFallback: true,
-          boardName: currentBoard.name || ''
-        });
       }
     } catch (err) {
       if (requestId !== postsLoadRequestRef.current) return;
@@ -2267,13 +2429,220 @@ export default function AppPage() {
   }, [boardList, currentUserProfile, currentUserUid, ready]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedBoardId]);
+    if (!ready || !currentUserUid || !boardList.length) {
+      setRecentComments([]);
+      setRecentCommentsLoading(false);
+      return () => {};
+    }
+
+    // Recent comments are rendered from a cross-board view.
+    // Build both strict-id and loose-identity maps because legacy posts may store board references
+    // with different casing/name formats.
+    setRecentCommentsLoading(true);
+    const boardById = new Map(
+      boardList.map((board) => [normalizeText(board?.id), board])
+    );
+    const boardByIdentity = new Map();
+    boardList.forEach((board) => {
+      const boardId = normalizeText(board?.id);
+      const boardName = normalizeText(board?.name);
+      boardIdentityCandidates(boardId, boardName).forEach((candidate) => {
+        const key = normalizeBoardIdentity(candidate);
+        if (!key) return;
+        if (!boardByIdentity.has(key)) {
+          boardByIdentity.set(key, board);
+        }
+      });
+    });
+    const resolveBoardForPost = (post) => {
+      // Try loose identity matching first, then fall back to strict boardId lookup.
+      const candidates = postBoardIdentityCandidates(post);
+      for (let idx = 0; idx < candidates.length; idx += 1) {
+        const key = normalizeBoardIdentity(candidates[idx]);
+        if (!key) continue;
+        const matched = boardByIdentity.get(key);
+        if (matched) return matched;
+      }
+      return boardById.get(normalizeText(post?.boardId)) || null;
+    };
+
+    let cancelled = false;
+    let fallbackToken = 0;
+    const parseRowsFromSnapshot = (snap) => {
+      return snap.docs
+        .map((row) => {
+          const data = row.data() || {};
+          const postId = normalizeText(row.ref?.parent?.parent?.id);
+          const commentId = normalizeText(row.id);
+          if (!postId || !commentId) return null;
+
+          return {
+            postId,
+            commentId,
+            createdAt: data.createdAt || null,
+            createdAtMs: numberOrZero(data.createdAtMs),
+            updatedAt: data.updatedAt || null,
+            contentText: normalizeText(
+              data.contentText
+              || data.contentRich?.text
+              || data.content
+              || data.body
+              || ''
+            ),
+            authorName: normalizeText(data.authorName || data.authorUid || '')
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          const aMs = a.createdAtMs || toMillis(a.createdAt) || toMillis(a.updatedAt);
+          const bMs = b.createdAtMs || toMillis(b.createdAt) || toMillis(b.updatedAt);
+          return bMs - aMs;
+        });
+    };
+    const requestFallbackRows = async () => {
+      // Fallback path when ordered query returns empty/error due to legacy timestamps/index gaps.
+      try {
+        const fallbackSnap = await getDocs(query(
+          collectionGroup(db, 'comments'),
+          limit(Math.max(120, RECENT_COMMENT_FETCH_LIMIT * 4))
+        ));
+        return parseRowsFromSnapshot(fallbackSnap);
+      } catch (err) {
+        console.error('[recent-comments-fallback-fetch-failed]', err);
+        return [];
+      }
+    };
+    const commentsQuery = query(
+      collectionGroup(db, 'comments'),
+      orderBy('createdAt', 'desc'),
+      limit(RECENT_COMMENT_FETCH_LIMIT)
+    );
+
+    const applyRows = (rows) => {
+      // Resolve post metadata in batch, then keep only top N rows that map to readable posts.
+      const uniquePostIds = [...new Set(rows.map((item) => item.postId))];
+      Promise.all(uniquePostIds.map(async (postId) => {
+        try {
+          const postSnap = await getDoc(doc(db, 'posts', postId));
+          if (!postSnap.exists()) return [postId, null];
+          return [postId, { id: postSnap.id, ...postSnap.data() }];
+        } catch (_) {
+          return [postId, null];
+        }
+      }))
+        .then((pairs) => {
+          if (cancelled) return;
+
+          const postById = new Map(pairs);
+          const nextItems = [];
+
+          rows.forEach((row) => {
+            if (nextItems.length >= RECENT_COMMENT_MAX_ITEMS) return;
+
+            const post = postById.get(row.postId);
+            if (!post || isDeletedPost(post)) return;
+
+            const board = resolveBoardForPost(post);
+            const fallbackBoardId = normalizeText(post?.boardId || post?.board || post?.boardName);
+            const boardId = normalizeText(board?.id) || fallbackBoardId;
+            const boardName = normalizeText(board?.name) || boardId || '게시판';
+            if (!boardId) return;
+
+            nextItems.push({
+              key: `${row.postId}:${row.commentId}`,
+              postId: row.postId,
+              commentId: row.commentId,
+              boardId,
+              boardName,
+              postTitle: normalizeText(post.title) || '(제목 없음)',
+              preview: buildRecentCommentPreview(row.contentText),
+              authorName: row.authorName || '익명',
+              createdAt: row.createdAt || row.updatedAt || null,
+              createdAtMs: row.createdAtMs || toMillis(row.createdAt) || toMillis(row.updatedAt)
+            });
+          });
+
+          nextItems.sort((a, b) => b.createdAtMs - a.createdAtMs);
+          setRecentComments(nextItems);
+          setRecentCommentsLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setRecentComments([]);
+          setRecentCommentsLoading(false);
+        });
+    };
+
+    const unsubscribe = onSnapshot(commentsQuery, (snap) => {
+      const rows = parseRowsFromSnapshot(snap);
+      if (rows.length) {
+        applyRows(rows);
+        return;
+      }
+
+      fallbackToken += 1;
+      const token = fallbackToken;
+      requestFallbackRows()
+        .then((fallbackRows) => {
+          if (cancelled || token !== fallbackToken) return;
+          if (!fallbackRows.length) {
+            setRecentComments([]);
+            setRecentCommentsLoading(false);
+            return;
+          }
+          applyRows(fallbackRows);
+        })
+        .catch(() => {
+          if (cancelled || token !== fallbackToken) return;
+          setRecentComments([]);
+          setRecentCommentsLoading(false);
+        });
+    }, (err) => {
+      console.error('[recent-comments-realtime-failed]', err);
+      if (cancelled) return;
+
+      fallbackToken += 1;
+      const token = fallbackToken;
+      requestFallbackRows()
+        .then((fallbackRows) => {
+          if (cancelled || token !== fallbackToken) return;
+          if (!fallbackRows.length) {
+            setRecentComments([]);
+            setRecentCommentsLoading(false);
+            return;
+          }
+          applyRows(fallbackRows);
+        })
+        .catch(() => {
+          if (cancelled || token !== fallbackToken) return;
+          setRecentComments([]);
+          setRecentCommentsLoading(false);
+        });
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [boardList, currentUserUid, ready]);
 
   useEffect(() => {
-    const nextTotalPages = Math.max(1, Math.ceil(visiblePosts.length / POSTS_PER_PAGE));
+    setCurrentPage(1);
+  }, [postListViewMode, selectedBoardId]);
+
+  useEffect(() => {
+    setSelectedPinPostIdMap({});
+  }, [visiblePosts]);
+
+  useEffect(() => {
+    if (canManagePinInCurrentBoard) return;
+    setSelectedPinPostIdMap({});
+  }, [canManagePinInCurrentBoard]);
+
+  useEffect(() => {
+    const nextTotalPages = Math.max(1, Math.ceil(listedPosts.length / POSTS_PER_PAGE));
     setCurrentPage((prev) => Math.min(prev, nextTotalPages));
-  }, [visiblePosts.length]);
+  }, [listedPosts.length]);
 
   useEffect(() => {
     if (loadingPosts || !currentPagePosts.length) return;
@@ -2733,6 +3102,11 @@ export default function AppPage() {
         payloadToCreate.coverForVenueValues = nextCoverVenueValues;
         payloadToCreate.coverForVenue = normalizeCoverForVenue(nextCoverVenueValues[0]) || coverVenueDefault;
       }
+
+      payloadToCreate.isPinned = false;
+      payloadToCreate.pinnedAt = null;
+      payloadToCreate.pinnedAtMs = 0;
+      payloadToCreate.pinnedByUid = '';
 
       const createdRef = await addDoc(collection(db, 'posts'), payloadToCreate);
       createdPostId = normalizeText(createdRef?.id);
@@ -3312,8 +3686,33 @@ export default function AppPage() {
     const rememberedBoardId = readRememberedBoardId();
     const fromBoardId = (selectedId && selectedId !== ALL_BOARD_ID)
       ? selectedId
-      : (rememberedBoardId || normalizedPostBoardId);
-    const resolvedPostBoardId = normalizedPostBoardId || fromBoardId || ALL_BOARD_ID;
+      : (normalizedPostBoardId || rememberedBoardId);
+    const resolvedPostBoardId = normalizedPostBoardId || fromBoardId || rememberedBoardId || ALL_BOARD_ID;
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+
+    if (resolvedPostBoardId && resolvedPostBoardId !== ALL_BOARD_ID) {
+      try {
+        // Before entering detail, normalize the current history entry to the resolved board URL.
+        // This keeps browser back-navigation aligned with the post's source board.
+        const listQs = new URLSearchParams(location.search);
+        listQs.set('boardId', resolvedPostBoardId);
+        listQs.delete('fromBoardId');
+        const nextListUrl = listQs.toString() ? `${appPage}?${listQs.toString()}` : appPage;
+        const historyState = (window.history && typeof window.history.state === 'object' && window.history.state)
+          ? window.history.state
+          : {};
+        const historyUsr = (historyState && typeof historyState.usr === 'object' && historyState.usr)
+          ? historyState.usr
+          : {};
+        window.history.replaceState(
+          { ...historyState, usr: { ...historyUsr, preferredBoardId: resolvedPostBoardId } },
+          '',
+          nextListUrl
+        );
+      } catch (_) {
+        // Ignore history replacement failures.
+      }
+    }
 
     qs.set('boardId', resolvedPostBoardId);
     if (fromBoardId) qs.set('fromBoardId', fromBoardId);
@@ -3326,7 +3725,203 @@ export default function AppPage() {
         postBoardId: resolvedPostBoardId || ''
       }
     });
-  }, [navigate, selectedBoardId]);
+  }, [location.search, navigate, selectedBoardId]);
+
+  const handleSelectBoard = useCallback((nextBoardId) => {
+    // Single source of truth for board switching:
+    // 1) state update, 2) session remember, 3) URL sync (replace to avoid noisy history stack).
+    const normalizedBoardId = normalizeText(nextBoardId) || ALL_BOARD_ID;
+    setSelectedBoardId(normalizedBoardId);
+    pendingBoardIdRef.current = normalizedBoardId === ALL_BOARD_ID ? '' : normalizedBoardId;
+
+    if (normalizedBoardId !== ALL_BOARD_ID) {
+      writeRememberedBoardId(normalizedBoardId);
+    }
+
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+    const listQs = new URLSearchParams(location.search);
+    if (normalizedBoardId === ALL_BOARD_ID) {
+      listQs.delete('boardId');
+    } else {
+      listQs.set('boardId', normalizedBoardId);
+    }
+    listQs.delete('fromBoardId');
+
+    navigate(
+      {
+        pathname: appPage,
+        search: listQs.toString() ? `?${listQs.toString()}` : ''
+      },
+      {
+        replace: true,
+        state: normalizedBoardId === ALL_BOARD_ID
+          ? {}
+          : { preferredBoardId: normalizedBoardId }
+      }
+    );
+  }, [location.search, navigate]);
+
+  const handleMoveHome = useCallback(() => {
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+    navigate(appPage);
+  }, [navigate]);
+
+  const handleBrandTitleKeyDown = useCallback((event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleMoveHome();
+  }, [handleMoveHome]);
+
+  const isPostPinSelectionDisabled = useCallback((post) => {
+    if (!canManagePinInCurrentBoard || pinActionPending) return true;
+    const postId = normalizeText(post?.id);
+    if (!postId) return true;
+    if (selectedPinPostIdMap[postId]) return false;
+    if (!selectedPinMode || selectedPinMode === 'mixed') return false;
+
+    const pinned = isPinnedPost(post);
+    return selectedPinMode === 'pinned' ? !pinned : pinned;
+  }, [canManagePinInCurrentBoard, pinActionPending, selectedPinMode, selectedPinPostIdMap]);
+
+  const handleTogglePinSelect = useCallback((post, checked) => {
+    if (!canManagePinInCurrentBoard) return;
+    const normalizedPostId = normalizeText(post?.id);
+    if (!normalizedPostId) return;
+    const targetPinned = isPinnedPost(post);
+
+    setSelectedPinPostIdMap((prev) => {
+      if (!checked) {
+        if (!prev[normalizedPostId]) return prev;
+        const next = { ...prev };
+        delete next[normalizedPostId];
+        return next;
+      }
+
+      if (prev[normalizedPostId]) return prev;
+
+      let currentMode = '';
+      Object.keys(prev).forEach((postId) => {
+        if (!prev[postId]) return;
+        const selectedPost = visiblePostById.get(postId);
+        if (!selectedPost) return;
+        currentMode = isPinnedPost(selectedPost) ? 'pinned' : 'unpinned';
+      });
+
+      const targetMode = targetPinned ? 'pinned' : 'unpinned';
+      if (currentMode && currentMode !== targetMode) return prev;
+      return { ...prev, [normalizedPostId]: true };
+    });
+  }, [canManagePinInCurrentBoard, visiblePostById]);
+
+  const handleBulkPinUpdate = useCallback(async (nextPinned) => {
+    if (!canManagePinInCurrentBoard) {
+      alert('상단 고정은 개별 게시판에서만 가능합니다.');
+      return;
+    }
+
+    const targetPostIds = selectedPinPostIds
+      .map((postId) => normalizeText(postId))
+      .filter(Boolean);
+
+    if (!targetPostIds.length) {
+      alert('상단 고정할 게시글을 먼저 선택해주세요.');
+      return;
+    }
+
+    if (!selectedPinMode || selectedPinMode === 'mixed') {
+      alert('같은 상태(고정/일반)의 게시글만 선택해주세요.');
+      return;
+    }
+
+    if (selectedPinMode === 'unpinned' && !nextPinned) {
+      alert('선택한 게시글은 현재 고정되지 않아 고정 해제할 수 없습니다.');
+      return;
+    }
+
+    if (selectedPinMode === 'pinned' && nextPinned) {
+      alert('선택한 게시글은 이미 상단 고정 상태입니다.');
+      return;
+    }
+
+    setPinActionPending(true);
+
+    const nowMs = Date.now();
+    try {
+      const results = await Promise.allSettled(targetPostIds.map((postId) => {
+        const payload = nextPinned
+          ? {
+            isPinned: true,
+            pinnedAt: serverTimestamp(),
+            pinnedAtMs: nowMs,
+            pinnedByUid: currentUserUid,
+            updatedAt: serverTimestamp()
+          }
+          : {
+            isPinned: false,
+            pinnedAt: null,
+            pinnedAtMs: 0,
+            pinnedByUid: '',
+            updatedAt: serverTimestamp()
+          };
+        return updateDoc(doc(db, 'posts', postId), payload);
+      }));
+
+      const successIds = [];
+      const failedIds = [];
+
+      results.forEach((result, index) => {
+        const postId = targetPostIds[index];
+        if (result.status === 'fulfilled') successIds.push(postId);
+        else failedIds.push(postId);
+      });
+
+      if (successIds.length) {
+        const successIdSet = new Set(successIds);
+        setVisiblePosts((prev) => prev.map((post) => {
+          const postId = normalizeText(post?.id);
+          if (!successIdSet.has(postId)) return post;
+          return {
+            ...post,
+            isPinned: nextPinned,
+            pinnedAtMs: nextPinned ? nowMs : 0,
+            pinnedAt: nextPinned ? post?.pinnedAt : null,
+            pinnedByUid: nextPinned ? currentUserUid : ''
+          };
+        }));
+      }
+
+      setSelectedPinPostIdMap((prev) => {
+        if (!successIds.length) return prev;
+        const next = { ...prev };
+        successIds.forEach((postId) => {
+          delete next[postId];
+        });
+        return next;
+      });
+
+      if (!failedIds.length) {
+        setPageMessage({
+          type: 'notice',
+          text: nextPinned
+            ? `${successIds.length}개 게시글을 상단 고정했습니다.`
+            : `${successIds.length}개 게시글의 상단 고정을 해제했습니다.`
+        });
+        return;
+      }
+
+      setPageMessage({
+        type: 'error',
+        text: `${successIds.length}개 처리, ${failedIds.length}개 실패했습니다.`
+      });
+    } catch (err) {
+      setPageMessage({
+        type: 'error',
+        text: normalizeErrMessage(err, nextPinned ? '상단 고정 실패' : '상단 고정 해제 실패')
+      });
+    } finally {
+      setPinActionPending(false);
+    }
+  }, [canManagePinInCurrentBoard, currentUserUid, selectedPinMode, selectedPinPostIds]);
 
   const drawerItems = useMemo(() => {
     return [{ id: ALL_BOARD_ID, name: '전체 게시글', isDivider: false }, ...boardNavItems];
@@ -3506,7 +4101,15 @@ export default function AppPage() {
           <div className="row space-between mobile-col">
             <div>
               <p className="hero-kicker"><Users2 size={15} /> Community Hub</p>
-              <h1 className="forum-brand-title">멘토포럼</h1>
+              <h1
+                className="forum-brand-title is-link"
+                role="button"
+                tabIndex={0}
+                onClick={handleMoveHome}
+                onKeyDown={handleBrandTitleKeyDown}
+              >
+                멘토포럼
+              </h1>
               <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
             </div>
 
@@ -3561,82 +4164,114 @@ export default function AppPage() {
 
         <section className="forum-content-shell">
           <div className="forum-list-layout" style={{ marginTop: '10px' }}>
-            <aside className="board-rail" aria-label="게시판 목록">
-              <section className="board-rail-profile" aria-label="내 정보" style={profileSurface.cardStyle}>
-                <div className="board-profile-head-row">
-                  <p className="board-rail-profile-kicker" style={profileSurface.kickerStyle}>내 정보</p>
-                  <button
-                    type="button"
-                    className="board-notification-btn"
-                    aria-label="알림 센터 열기"
-                    onClick={() => setNotificationCenterOpen(true)}
-                  >
-                    <Bell size={15} />
-                    {hasUnreadNotifications ? <span className="board-notification-new">New</span> : null}
-                  </button>
-                </div>
-                <div className="board-rail-profile-user">
-                  <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
-                </div>
-                <div className="board-rail-profile-actions">
-                  <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myPostsPage)}>
-                    <FileText size={14} />
-                    내가 쓴 글
-                  </button>
-                  <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myCommentsPage)}>
-                    <MessageSquare size={14} />
-                    내가 쓴 댓글
-                  </button>
-                  {canAccessAdminSite ? (
+            <div className="forum-side-column">
+              <aside className="board-rail" aria-label="게시판 목록">
+                <section className="board-rail-profile" aria-label="내 정보" style={profileSurface.cardStyle}>
+                  <div className="board-profile-head-row">
+                    <p className="board-rail-profile-kicker" style={profileSurface.kickerStyle}>내 정보</p>
                     <button
                       type="button"
-                      className="board-rail-profile-btn"
-                      onClick={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}
+                      className="board-notification-btn is-logout"
+                      aria-label="로그아웃"
+                      title="로그아웃"
+                      onClick={() => handleLogout().catch(() => {})}
                     >
-                      <ShieldCheck size={14} />
-                      관리자 사이트
+                      <LogOut size={15} />
+                      <span className="board-top-logout-text">로그아웃</span>
                     </button>
+                  </div>
+                  <div className="board-rail-profile-user">
+                    <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
+                  </div>
+                  <div className="board-rail-profile-actions">
+                    <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myPostsPage)}>
+                      <FileText size={14} />
+                      내가 쓴 글
+                    </button>
+                    <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myCommentsPage)}>
+                      <MessageSquare size={14} />
+                      내가 쓴 댓글
+                    </button>
+                    {canAccessAdminSite ? (
+                      <button
+                        type="button"
+                        className="board-rail-profile-btn"
+                        onClick={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}
+                      >
+                        <ShieldCheck size={14} />
+                        관리자 사이트
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={hasUnreadNotifications ? 'board-rail-profile-btn has-unread' : 'board-rail-profile-btn'}
+                      onClick={() => setNotificationCenterOpen(true)}
+                    >
+                      <Bell size={14} />
+                      알림 센터
+                      {hasUnreadNotifications ? <span className="board-notification-new">N</span> : null}
+                    </button>
+                  </div>
+                </section>
+                <div className="board-rail-head">
+                  <p className="meta" style={{ margin: 0 }}>게시판</p>
+                </div>
+                <div className="board-rail-list">
+                  {drawerItems.map((item) => {
+                    if (isDividerItem(item)) {
+                      const label = normalizeText(item.dividerLabel);
+                      return (
+                        <div key={`rail-divider-${item.id}`} className="board-rail-divider" aria-hidden="true">
+                          <span className="board-rail-divider-line" />
+                          {label ? <span className="board-rail-divider-text">{label}</span> : null}
+                        </div>
+                      );
+                    }
+
+                    const active = item.id === selectedBoardId;
+                    return (
+                      <button
+                        key={`rail-board-${item.id}`}
+                        type="button"
+                        className={active ? 'board-rail-item active' : 'board-rail-item'}
+                        title={item.name || item.id}
+                        onClick={() => handleSelectBoard(item.id)}
+                      >
+                        <span className="board-rail-item-text">{item.name || item.id}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </aside>
+
+              <section className="board-rail-recent board-rail-recent-detached" aria-label="최근 댓글">
+                <div className="board-rail-recent-head">
+                  <p className="meta" style={{ margin: 0 }}>최근 댓글</p>
+                </div>
+                <div className="board-rail-recent-list">
+                  {recentCommentsLoading ? <p className="muted board-rail-recent-empty">불러오는 중...</p> : null}
+                  {!recentCommentsLoading && !recentComments.length ? (
+                    <p className="muted board-rail-recent-empty">표시할 댓글이 없습니다.</p>
                   ) : null}
-                  <button
-                    type="button"
-                    className="board-rail-profile-btn is-logout"
-                    onClick={() => handleLogout().catch(() => {})}
-                  >
-                    <LogOut size={14} />
-                    로그아웃
-                  </button>
+                  {!recentCommentsLoading && recentComments.map((item, idx) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="board-rail-recent-item forum-enter-animate"
+                      style={{ animationDelay: `${Math.min(idx, 10) * 34}ms` }}
+                      onClick={() => handleMovePost(item.postId, item.boardId, item.commentId)}
+                    >
+                      <span className="board-rail-recent-content text-ellipsis-1" title={item.preview}>
+                        {item.preview}
+                      </span>
+                      <span className="board-rail-recent-author text-ellipsis-1" title={item.authorName}>
+                        {item.authorName}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </section>
-              <div className="board-rail-head">
-                <p className="meta" style={{ margin: 0 }}>게시판</p>
-              </div>
-              <div className="board-rail-list">
-                {drawerItems.map((item) => {
-                  if (isDividerItem(item)) {
-                    const label = normalizeText(item.dividerLabel);
-                    return (
-                      <div key={`rail-divider-${item.id}`} className="board-rail-divider" aria-hidden="true">
-                        <span className="board-rail-divider-line" />
-                        {label ? <span className="board-rail-divider-text">{label}</span> : null}
-                      </div>
-                    );
-                  }
-
-                  const active = item.id === selectedBoardId;
-                  return (
-                    <button
-                      key={`rail-board-${item.id}`}
-                      type="button"
-                      className={active ? 'board-rail-item active' : 'board-rail-item'}
-                      title={item.name || item.id}
-                      onClick={() => setSelectedBoardId(item.id)}
-                    >
-                      <span className="board-rail-item-text">{item.name || item.id}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </aside>
+            </div>
 
             <div className="forum-list-main">
               <div id="coverForCalendarWrap" className={showCoverCalendar ? 'cover-calendar-wrap cover-calendar-in-main' : 'cover-calendar-wrap cover-calendar-in-main hidden'}>
@@ -3763,11 +4398,65 @@ export default function AppPage() {
                 </div>
               </div>
 
+              <div className="forum-category-bar">
+                <div className="forum-category-tabs" role="tablist" aria-label="게시글 정렬">
+                  {postListViewTabs.map((tab) => {
+                    const active = postListViewMode === tab.key;
+                    return (
+                      <button
+                        key={`post-list-view-${tab.key}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        className={active ? 'forum-category-tab active' : 'forum-category-tab'}
+                        onClick={() => setPostListViewMode(tab.key)}
+                      >
+                        <span>{tab.label}</span>
+                        {typeof tab.count === 'number' ? <span className="forum-category-tab-count">({tab.count})</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {showPinToolbar ? (
+                <div className="forum-pin-toolbar" aria-label="상단 고정 관리">
+                  <span className="forum-pin-toolbar-count">
+                    선택 {selectedPinPostCount}건
+                    {selectedPinMode === 'pinned' ? ' · 고정글' : selectedPinMode === 'unpinned' ? ' · 일반글' : ''}
+                  </span>
+                  <div className="forum-pin-toolbar-actions">
+                    {selectedPinMode === 'pinned' ? (
+                      <button
+                        type="button"
+                        className="forum-pin-action-btn is-unpin"
+                        disabled={pinActionPending || selectedPinPostCount <= 0}
+                        onClick={() => handleBulkPinUpdate(false)}
+                      >
+                        <PinOff size={14} />
+                        고정 해제
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="forum-pin-action-btn"
+                        disabled={pinActionPending || selectedPinPostCount <= 0}
+                        onClick={() => handleBulkPinUpdate(true)}
+                      >
+                        <Pin size={14} />
+                        상단 고정
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <div id="postList" className="dc-list-wrap" style={{ marginTop: '10px' }}>
                 {!compactListMode ? (
                   <table className="dc-list-table forum-post-table">
                     <thead>
                       <tr>
+                        {canManagePinInCurrentBoard ? <th style={{ width: '56px' }}>선택</th> : null}
                         <th style={{ width: '70px' }}>번호</th>
                         <th>제목</th>
                         <th style={{ width: '140px' }}>작성자</th>
@@ -3785,42 +4474,77 @@ export default function AppPage() {
                     <tbody id="postListTableBody">
                       {loadingPosts ? (
                         <tr>
-                          <td colSpan={isAllBoardSelected ? 6 : 5} className="muted">{loadingText}</td>
+                          <td colSpan={desktopPostTableColSpan} className="muted">{loadingText}</td>
                         </tr>
                       ) : currentPagePosts.map((post, idx) => {
                         const no = totalPostCount - (currentPageStartIndex + idx);
                         const board = boardLookup.get(normalizeText(post.boardId)) || null;
                         const boardLabel = board?.name || post.boardId || '-';
+                        const boardTone = buildPastelTone(board?.id || boardLabel);
                         const commentCount = numberOrZero(commentCountByPost[post.id]);
                         const isRecentPost = recentUnreadPostIdSet.has(String(post.id));
                         const coverSummary = isCoverForBoardId(post.boardId) ? summarizeCoverForPost(post) : null;
                         const coverStatusClass = coverSummary?.statusClass || '';
                         const isCoverClosed = !!coverSummary?.isClosed;
                         const coverStatusTag = coverSummary?.label || '';
+                        const isPinned = isPinnedPost(post);
                         const desktopTitleClass = [
                           commentCount > 0 ? 'dc-title with-comment text-ellipsis-1' : 'dc-title text-ellipsis-1',
                           isCoverClosed ? 'is-struck' : ''
                         ].join(' ');
+                        const rowClassName = [
+                          'dc-list-row',
+                          isCoverClosed ? 'is-closed' : '',
+                          isPinned ? 'is-pinned' : ''
+                        ].filter(Boolean).join(' ');
+                        const rowMotionStyle = {
+                          animationDelay: `${Math.min(idx, 12) * 20}ms`
+                        };
 
                         return (
                           <tr
                             key={post.id}
-                            className={isCoverClosed ? 'dc-list-row is-closed' : 'dc-list-row'}
+                            className={`${rowClassName} forum-enter-animate`}
+                            style={rowMotionStyle}
                             onClick={() => handleMovePost(post.id, post.boardId)}
                           >
+                            {canManagePinInCurrentBoard ? (
+                              <td className="post-pin-select-cell" onClick={(event) => event.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  className="post-pin-select-checkbox"
+                                  aria-label={`${post.title || '(제목 없음)'} 선택`}
+                                  checked={!!selectedPinPostIdMap[post.id]}
+                                  disabled={isPostPinSelectionDisabled(post)}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onChange={(event) => handleTogglePinSelect(post, event.target.checked)}
+                                />
+                              </td>
+                            ) : null}
                             <td>{no}</td>
                             <td>
-                              <span className="dc-title-row">
-                                {isRecentPost ? <span className="post-new-badge" title="새 글">N</span> : null}
-                                {coverStatusTag ? <span className={`cover-status-chip status-${coverStatusClass}`}>[{coverStatusTag}]</span> : null}
-                                <span
-                                  className={desktopTitleClass}
-                                  title={post.title || '(제목 없음)'}
-                                >
-                                  {post.title || '(제목 없음)'}
+                              <div className="dc-title-cell">
+                                <span className="dc-title-row">
+                                  {isPinned ? <span className="post-pin-badge" title="상단 고정">고정</span> : null}
+                                  {isRecentPost ? <span className="post-new-badge" title="새 글">N</span> : null}
+                                  {coverStatusTag ? <span className={`cover-status-chip status-${coverStatusClass}`}>[{coverStatusTag}]</span> : null}
+                                  <span
+                                    className={desktopTitleClass}
+                                    title={post.title || '(제목 없음)'}
+                                  >
+                                    {post.title || '(제목 없음)'}
+                                  </span>
+                                  {commentCount > 0 ? <span className="dc-comment-count">[{commentCount}]</span> : null}
                                 </span>
-                                {commentCount > 0 ? <span className="dc-comment-count">[{commentCount}]</span> : null}
-                              </span>
+                                <span className="dc-title-sub">
+                                  <span
+                                    className="dc-title-sub-dot"
+                                    aria-hidden="true"
+                                    style={{ backgroundColor: boardTone.border }}
+                                  />
+                                  <span className="dc-title-sub-text text-ellipsis-1" title={boardLabel}>{boardLabel}</span>
+                                </span>
+                              </div>
                             </td>
                             <td>
                               <AuthorWithRole
@@ -3856,52 +4580,78 @@ export default function AppPage() {
                     const coverStatusClass = coverSummary?.statusClass || '';
                     const isCoverClosed = !!coverSummary?.isClosed;
                     const coverStatusTag = coverSummary?.label || '';
+                    const isPinned = isPinnedPost(post);
 
                     return (
-                      <button
-                        key={`mobile-${post.id}`}
-                        type="button"
-                        className={isCoverClosed ? 'mobile-post-item is-closed' : 'mobile-post-item'}
-                        onClick={() => handleMovePost(post.id, post.boardId)}
-                      >
-                        <div className="mobile-post-top">
-                          <span className="mobile-post-no">#{no}</span>
-                          {isAllBoardSelected ? (
-                            <span className="mobile-post-board text-ellipsis-1" title={boardLabel}>{boardLabel}</span>
-                          ) : null}
-                        </div>
-                        <div className="mobile-post-title-row">
-                          <div className="mobile-post-title" title={post.title || '(제목 없음)'}>
-                            {isRecentPost ? <span className="post-new-badge" title="새 글">N</span> : null}
-                            {coverStatusTag ? <span className={`cover-status-chip status-${coverStatusClass}`}>[{coverStatusTag}]</span> : null}
-                            <span className={isCoverClosed ? 'mobile-post-title-text is-struck' : 'mobile-post-title-text'}>
-                              {post.title || '(제목 없음)'}
-                            </span>
-                            {commentCount > 0 ? <span className="mobile-comment-count">[{commentCount}]</span> : null}
+                      <div key={`mobile-${post.id}`} className={canManagePinInCurrentBoard ? 'mobile-post-row with-select' : 'mobile-post-row'}>
+                        {canManagePinInCurrentBoard ? (
+                          <input
+                            type="checkbox"
+                            className="post-pin-select-checkbox mobile-post-pin-checkbox"
+                            aria-label={`${post.title || '(제목 없음)'} 선택`}
+                            checked={!!selectedPinPostIdMap[post.id]}
+                            disabled={isPostPinSelectionDisabled(post)}
+                            onChange={(event) => handleTogglePinSelect(post, event.target.checked)}
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          className={[
+                            'mobile-post-item',
+                            'forum-enter-animate',
+                            isCoverClosed ? 'is-closed' : '',
+                            isPinned ? 'is-pinned' : ''
+                          ].filter(Boolean).join(' ')}
+                          style={{ animationDelay: `${Math.min(idx, 12) * 18}ms` }}
+                          onClick={() => handleMovePost(post.id, post.boardId)}
+                        >
+                          <div className="mobile-post-top">
+                            <span className="mobile-post-no">#{no}</span>
+                            {isAllBoardSelected ? (
+                              <span className="mobile-post-board text-ellipsis-1" title={boardLabel}>{boardLabel}</span>
+                            ) : null}
                           </div>
-                        </div>
-                        <div className="mobile-post-meta-row">
-                          <span className="mobile-post-author text-ellipsis-1" title={post.authorName || post.authorUid || '-'}>
-                            <AuthorWithRole
-                              name={post.authorName || post.authorUid || '-'}
-                              role={post.authorRole || 'Newbie'}
-                              roleDefMap={roleDefMap}
-                            />
-                          </span>
-                          <span className="mobile-post-date">{formatPostListDateMobile(post.createdAt)}</span>
-                          <span className="mobile-post-views">조회 {numberOrZero(post.views)}</span>
-                        </div>
-                      </button>
+                          <div className="mobile-post-title-row">
+                            <div className="mobile-post-title" title={post.title || '(제목 없음)'}>
+                              {isPinned ? <span className="post-pin-badge" title="상단 고정">고정</span> : null}
+                              {isRecentPost ? <span className="post-new-badge" title="새 글">N</span> : null}
+                              {coverStatusTag ? <span className={`cover-status-chip status-${coverStatusClass}`}>[{coverStatusTag}]</span> : null}
+                              <span className={isCoverClosed ? 'mobile-post-title-text is-struck' : 'mobile-post-title-text'}>
+                                {post.title || '(제목 없음)'}
+                              </span>
+                              {commentCount > 0 ? <span className="mobile-comment-count">[{commentCount}]</span> : null}
+                            </div>
+                          </div>
+                          <div className="mobile-post-meta-row">
+                            <span className="mobile-post-author text-ellipsis-1" title={post.authorName || post.authorUid || '-'}>
+                              <AuthorWithRole
+                                name={post.authorName || post.authorUid || '-'}
+                                role={post.authorRole || 'Newbie'}
+                                roleDefMap={roleDefMap}
+                              />
+                            </span>
+                            <span className="mobile-post-date">{formatPostListDateMobile(post.createdAt)}</span>
+                            <span className="mobile-post-views">조회 {numberOrZero(post.views)}</span>
+                          </div>
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
 
                 <div
                   id="postListEmpty"
-                  className={listMessage.text ? (listMessage.type === 'error' ? 'error' : 'notice') : 'hidden'}
-                  style={{ marginTop: '10px' }}
+                  className={
+                    !activeListMessage.text
+                      ? 'hidden'
+                      : activeListMessage.type === 'error'
+                        ? 'error'
+                        : isPostListEmptyState
+                          ? 'post-list-empty-state'
+                          : 'notice'
+                  }
                 >
-                  {listMessage.text}
+                  {activeListMessage.text}
                 </div>
               </div>
 
@@ -3994,15 +4744,16 @@ export default function AppPage() {
                     <p className="board-drawer-profile-kicker" style={profileSurface.kickerStyle}>내 정보</p>
                     <button
                       type="button"
-                      className="board-notification-btn"
-                      aria-label="알림 센터 열기"
+                      className="board-notification-btn is-logout"
+                      aria-label="로그아웃"
+                      title="로그아웃"
                       onClick={() => {
                         setBoardDrawerOpen(false);
-                        setNotificationCenterOpen(true);
+                        handleLogout().catch(() => {});
                       }}
                     >
-                      <Bell size={15} />
-                      {hasUnreadNotifications ? <span className="board-notification-new">New</span> : null}
+                      <LogOut size={15} />
+                      <span className="board-top-logout-text">로그아웃</span>
                     </button>
                   </div>
                   <div className="board-drawer-profile-user">
@@ -4046,14 +4797,15 @@ export default function AppPage() {
                     ) : null}
                     <button
                       type="button"
-                      className="board-drawer-profile-btn is-logout"
+                      className={hasUnreadNotifications ? 'board-drawer-profile-btn has-unread' : 'board-drawer-profile-btn'}
                       onClick={() => {
                         setBoardDrawerOpen(false);
-                        handleLogout().catch(() => {});
+                        setNotificationCenterOpen(true);
                       }}
                     >
-                      <LogOut size={14} />
-                      로그아웃
+                      <Bell size={14} />
+                      알림 센터
+                      {hasUnreadNotifications ? <span className="board-notification-new">N</span> : null}
                     </button>
                   </div>
                 </section>
@@ -4076,7 +4828,7 @@ export default function AppPage() {
                       className={active ? 'board-drawer-item active' : 'board-drawer-item'}
                       title={item.name || item.id}
                       onClick={() => {
-                        setSelectedBoardId(item.id);
+                        handleSelectBoard(item.id);
                         setBoardDrawerOpen(false);
                       }}
                     >
@@ -4093,59 +4845,43 @@ export default function AppPage() {
       <Dialog open={guideModalOpen} onOpenChange={setGuideModalOpen}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
           <DialogHeader className="space-y-2">
-            <DialogTitle className="text-balance text-2xl font-extrabold">멘토포럼 사용 설명서</DialogTitle>
+            <DialogTitle className="text-balance text-lg font-semibold">멘토포럼 사용 설명서</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
               처음 방문한 분도 바로 사용할 수 있도록, 실제 사용 순서와 실제 버튼 모양 기준으로 정리했습니다.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-1 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">1. 실제 버튼 모양으로 보기</p>
-              <p className="mt-1 text-xs text-muted-foreground">아래 예시는 실제 화면에서 쓰는 버튼과 같은 스타일/색상입니다.</p>
-
-              <div className="mt-2 rounded-2xl border border-border/70 bg-background p-3">
-                <p className="m-0 text-xs font-bold text-foreground">상단 바 버튼</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" className="btn-muted guide-help-btn guide-static-btn">
-                    <BookOpen size={16} />
-                    <span className="guide-help-btn-text">사용 설명서</span>
-                  </button>
-                  <ThemeToggle className="guide-static-btn" />
-                </div>
-              </div>
-
-              <div className="mt-2 rounded-2xl border border-border/70 bg-background p-3">
-                <p className="m-0 text-xs font-bold text-foreground">내 정보 버튼</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <button type="button" className="board-notification-btn guide-static-btn">
-                    <Bell size={15} />
-                    <span className="board-notification-new">New</span>
-                  </button>
-                  <span className="text-xs font-semibold text-muted-foreground">알림 센터(벨 아이콘)</span>
-                </div>
-                <div className="mt-2 flex max-w-xs flex-col gap-2">
-                  <button type="button" className="board-rail-profile-btn guide-static-btn">
-                    <FileText size={14} />
-                    내가 쓴 글
-                  </button>
-                  <button type="button" className="board-rail-profile-btn guide-static-btn">
-                    <MessageSquare size={14} />
-                    내가 쓴 댓글
-                  </button>
-                  <button type="button" className="board-rail-profile-btn is-logout guide-static-btn">
-                    <LogOut size={14} />
-                    로그아웃
-                  </button>
-                </div>
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">0. 시작 전에</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                처음 사용할 때는 아래 순서대로 따라하면 됩니다.
+                {' '}
+                <strong>게시판 선택 → 글 읽기 → 필요하면 글/댓글 작성 → 알림 확인</strong>
+                {' '}
+                순서입니다.
+              </p>
+              <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">전체 게시글</span>
+                  :
+                  {' '}
+                  여러 게시판 글을 모아보는 화면입니다.
+                </p>
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">글쓰기</span>
+                  :
+                  {' '}
+                  원하는 게시판을 먼저 선택해야 사용할 수 있습니다.
+                </p>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">2. 글 쓰는 방법 (처음부터 등록까지)</p>
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">1. 게시판 선택하고 글 읽기</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
                 <li>
-                  먼저
+                  왼쪽
                   {' '}
                   <button
                     type="button"
@@ -4155,10 +4891,27 @@ export default function AppPage() {
                     게시판
                   </button>
                   {' '}
-                  목록에서 글을 올릴 게시판을 선택합니다.
+                  목록에서 원하는 게시판을 선택합니다.
                 </li>
+                <li>목록에서 제목을 누르면 게시글 상세 화면으로 이동합니다.</li>
                 <li>
-                  메인 화면에서
+                  상세 화면에서는
+                  {' '}
+                  <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
+                    목록으로
+                  </button>
+                  {' '}
+                  버튼으로 다시 목록으로 돌아옵니다.
+                </li>
+              </ol>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">2. 글 작성하기</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>먼저 글을 올릴 게시판을 선택합니다.</li>
+                <li>
+                  화면에서
                   {' '}
                   <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
                     <PencilLine size={14} />
@@ -4168,30 +4921,21 @@ export default function AppPage() {
                   버튼을 눌러 작성창을 엽니다.
                 </li>
                 <li>
-                  작성창에서
-                  {' '}
-                  <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">제목</span>
-                  {' '}
-                  과 본문을 입력합니다.
-                </li>
-                <li>
-                  대체근무요청 게시판에서는 날짜/시간/체험관 항목이 함께 표시되며, 해당 정보까지 입력해야 등록됩니다.
-                </li>
-                <li>
-                  마지막으로
+                  제목과 본문을 입력하고,
                   {' '}
                   <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
                     글 등록
                   </button>
                   {' '}
-                  버튼을 누르면 완료됩니다.
+                  을 누르면 완료됩니다.
                 </li>
+                <li>대체근무요청 게시판은 날짜/시간/체험관까지 입력해야 등록됩니다.</li>
               </ol>
               <div className="error" style={{ marginTop: '10px' }}>
                 중요: 게시글 작성은 각 게시판 화면에서만 가능합니다. <strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.
               </div>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                작성 중 취소하려면
+                작성을 취소할 때는
                 {' '}
                 <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
                   취소
@@ -4201,114 +4945,85 @@ export default function AppPage() {
               </p>
             </section>
 
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">3. 내가 쓴 글 / 내가 쓴 댓글 활용하기</p>
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">3. 댓글 쓰기와 멘션</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>게시글 상세 하단에서 댓글을 작성하고 등록합니다.</li>
+                <li>
+                  댓글/글 본문에서
+                  {' '}
+                  <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@닉네임</span>
+                  {' '}
+                  을 입력하면 해당 사용자에게 멘션 알림이 전달됩니다.
+                </li>
+                <li>
+                  {' '}
+                  <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@all</span>
+                  {' '}
+                  은 관리자 전용 기능이며, 사용 시 전체 멘션 알림을 보낼 수 있습니다.
+                </li>
+              </ol>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">4. 알림 확인하기</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>내 정보에서 알림 센터 버튼을 눌러 알림 창을 엽니다.</li>
+                <li>새 글/댓글/멘션 알림을 확인하고 바로 해당 글로 이동할 수 있습니다.</li>
+                <li>필요하면 댓글 알림, 멘션 알림, 게시판별 알림을 켜고 끌 수 있습니다.</li>
+              </ol>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">5. 내 활동 바로가기</p>
               <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                <p className="m-0 rounded-xl border border-border/70 bg-background px-3 py-2">
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
                   <span className="font-bold text-foreground">내가 쓴 글</span>
                   :
                   {' '}
-                  내가 작성한 게시글을 최신순으로 모아서 볼 수 있습니다.
-                  목록 항목을 누르면 해당 글 상세 화면으로 바로 이동합니다.
+                  내가 작성한 게시글을 최신순으로 확인할 수 있습니다.
                 </p>
-                <p className="m-0 rounded-xl border border-border/70 bg-background px-3 py-2">
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
                   <span className="font-bold text-foreground">내가 쓴 댓글</span>
                   :
                   {' '}
-                  내가 작성한 댓글 목록을 확인할 수 있습니다.
-                  항목을 누르면 원본 게시글로 이동하고 내 댓글 위치까지 스크롤됩니다.
+                  내가 작성한 댓글 목록에서 원본 게시글로 바로 이동할 수 있습니다.
                 </p>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">4. 내 정보에서 자주 쓰는 버튼</p>
-              <div className="mt-2 flex items-center gap-2">
-                <button type="button" className="board-notification-btn guide-static-btn">
-                  <Bell size={15} />
-                  <span className="board-notification-new">New</span>
-                </button>
-                <span className="text-xs font-semibold text-muted-foreground">알림 센터(벨 아이콘)</span>
-              </div>
-              <div className="mt-2 flex max-w-xs flex-col gap-2">
-                <button type="button" className="board-rail-profile-btn guide-static-btn">
-                  <FileText size={14} />
-                  내가 쓴 글
-                </button>
-                <button type="button" className="board-rail-profile-btn guide-static-btn">
-                  <MessageSquare size={14} />
-                  내가 쓴 댓글
-                </button>
-                <button type="button" className="board-rail-profile-btn is-logout guide-static-btn">
-                  <LogOut size={14} />
-                  로그아웃
-                </button>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                PC에서는 왼쪽
-                {' '}
-                <strong>내 정보</strong>
-                {' '}
-                카드에서, 모바일에서는
-                {' '}
-                <strong>메뉴(☰)</strong>
-                {' '}
-                안의 내 정보에서 같은 버튼을 사용할 수 있습니다.
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                관리자 사이트는 권한 계정에서만 보이는 운영 메뉴입니다.
-              </p>
-            </section>
-
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">5. 알림 확인과 글 이동</p>
-              <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                <p className="m-0 rounded-xl border border-border/70 bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">알림 센터</span>
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">최근 댓글</span>
                   :
                   {' '}
-                  새 글, 댓글, 멘션을 모아서 확인하고 바로 해당 글로 이동할 수 있습니다.
+                  왼쪽 패널에서 전체 댓글 기준 최신 5개를 빠르게 확인할 수 있습니다.
                 </p>
-                <p className="m-0 rounded-xl border border-border/70 bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">목록으로</span>
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">고정 배지</span>
                   :
                   {' '}
-                  글 상세 화면에서 현재 게시판 목록으로 빠르게 돌아갑니다.
+                  목록에서
+                  {' '}
+                  <strong>고정</strong>
+                  {' '}
+                  표시가 있는 글은 상단에 유지되는 중요 글입니다.
                 </p>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">6. 사용 중 헷갈릴 때</p>
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">6. 모바일에서 사용하기</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>오른쪽 위 메뉴(☰)를 엽니다.</li>
+                <li>게시판 선택, 내가 쓴 글/댓글, 알림 센터를 동일하게 사용할 수 있습니다.</li>
+                <li>글 읽기/댓글 작성 흐름은 PC와 동일합니다.</li>
+              </ol>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">7. 막힐 때 빠른 확인</p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">게시판이 안 보임 → 권한 게시판일 수 있음</span>
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">알림이 안 옴 → 알림 센터 설정 확인</span>
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">문제 지속 → 로그아웃 후 재로그인</span>
               </div>
-            </section>
-
-            <section className="rounded-2xl border border-border/70 bg-card/80 p-3">
-              <p className="text-sm font-extrabold text-foreground">작은 화면에서의 사용 팁</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                모바일에서는
-                {' '}
-                <strong>메뉴(☰)</strong>
-                {' '}
-                를 열면 내 정보 영역이 나타나며, 여기서
-                {' '}
-                <strong>알림 센터</strong>
-                ,
-                {' '}
-                <strong>내가 쓴 글</strong>
-                ,
-                {' '}
-                <strong>내가 쓴 댓글</strong>
-                ,
-                {' '}
-                <strong>로그아웃</strong>
-                {' '}
-                을 동일하게 사용할 수 있습니다.
-              </p>
             </section>
           </div>
 

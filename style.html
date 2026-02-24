@@ -119,6 +119,32 @@
     border-color: rgba(96, 165, 250, 0.5) !important;
   }
 
+  .app-header-shortcut {
+    width: 2.5rem !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+
+  .app-header-shortcut-label {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .app-header-shortcut {
+      width: auto !important;
+      padding-left: 0.875rem !important;
+      padding-right: 0.875rem !important;
+      justify-content: flex-start !important;
+      gap: 0.375rem !important;
+    }
+
+    .app-header-shortcut-label {
+      display: inline;
+    }
+  }
+
   .app-tabs {
     border: 1px solid rgba(148, 163, 184, 0.34);
     border-radius: 14px !important;

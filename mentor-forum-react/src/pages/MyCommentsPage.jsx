@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, LogOut, MessageSquare } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, Users2 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
 import {
@@ -149,6 +149,7 @@ export default function MyCommentsPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
+      // Cross-post comment lookup uses collectionGroup; board metadata is loaded together for label rendering.
       const [boardSnap, commentSnap] = await Promise.all([
         getDocs(collection(db, 'boards')),
         getDocs(query(collectionGroup(db, 'comments'), where('authorUid', '==', uid)))
@@ -284,6 +285,11 @@ export default function MyCommentsPage() {
     navigate(MENTOR_FORUM_CONFIG.app.loginPage, { replace: true });
   }, [navigate]);
 
+  const handleOpenGuide = useCallback(() => {
+    const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
+    navigate(`${appPage}?guide=1`);
+  }, [navigate]);
+
   const moveCommentPost = useCallback((comment) => {
     if (!comment?.postExists || !comment?.postId) {
       alert('원본 게시글 정보를 찾을 수 없습니다.');
@@ -294,6 +300,7 @@ export default function MyCommentsPage() {
     const qs = new URLSearchParams();
     qs.set('postId', String(comment.postId));
     if (comment.boardId) {
+      // Keep source board information so post detail can route back to the correct list tab.
       qs.set('boardId', String(comment.boardId));
       qs.set('fromBoardId', String(comment.boardId));
     }
@@ -307,6 +314,17 @@ export default function MyCommentsPage() {
     });
   }, [navigate]);
 
+  const forumPage = MENTOR_FORUM_CONFIG.app.appPage;
+  const myPostsPage = MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts';
+  const handleMoveHome = useCallback(() => {
+    navigate(forumPage);
+  }, [forumPage, navigate]);
+  const handleBrandTitleKeyDown = useCallback((event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleMoveHome();
+  }, [handleMoveHome]);
+
   return (
     <motion.main
       className="page stack my-activity-shell"
@@ -317,28 +335,50 @@ export default function MyCommentsPage() {
       <section className="card hero-card my-activity-hero">
         <div className="row space-between mobile-col">
           <div>
-            <p className="hero-kicker"><MessageSquare size={15} /> My Activity</p>
-            <h1>내가 쓴 댓글</h1>
-            <p className="hero-copy">댓글을 누르면 해당 게시글로 이동하고 내 댓글 위치로 스크롤됩니다.</p>
+            <p className="hero-kicker"><Users2 size={15} /> Community Hub</p>
+            <h1
+              className="forum-brand-title is-link"
+              role="button"
+              tabIndex={0}
+              onClick={handleMoveHome}
+              onKeyDown={handleBrandTitleKeyDown}
+            >
+              멘토포럼
+            </h1>
+            <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
           </div>
+
           <div className="row top-action-row">
-            <button type="button" className="btn-muted" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.appPage)}>
-              <ArrowLeft size={16} />
-              포럼으로
-            </button>
-            <button type="button" className="btn-muted" onClick={() => navigate(MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts')}>
-              <FileText size={16} />
-              내 게시글
+            <button
+              type="button"
+              className="btn-muted guide-help-btn"
+              aria-label="사용 설명서 열기"
+              title="사용 설명서"
+              onClick={handleOpenGuide}
+            >
+              <BookOpen size={16} />
+              <span className="guide-help-btn-text">사용 설명서</span>
             </button>
             <ThemeToggle />
-            <button type="button" className="btn-muted" onClick={() => handleLogout().catch(() => {})}>
-              <LogOut size={16} />
-              로그아웃
-            </button>
           </div>
         </div>
 
-        <div className="notice" style={{ marginTop: '12px' }}>
+        <div className="row top-action-row my-activity-top-actions">
+          <button type="button" className="btn-muted" onClick={() => navigate(forumPage)}>
+            <ArrowLeft size={16} />
+            포럼으로
+          </button>
+          <button type="button" className="btn-muted" onClick={() => navigate(myPostsPage)}>
+            <FileText size={16} />
+            내 게시글
+          </button>
+          <button type="button" className="btn-muted" onClick={() => handleLogout().catch(() => {})}>
+            <LogOut size={16} />
+            로그아웃
+          </button>
+        </div>
+
+        <div className="notice my-activity-mobile-account" style={{ marginTop: '12px' }}>
           계정: <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
         </div>
 
@@ -347,65 +387,98 @@ export default function MyCommentsPage() {
         </div>
       </section>
 
-      <section className="card my-activity-list-card">
-        <div className="row space-between mobile-col">
-          <h2 className="section-title"><MessageSquare size={18} /> 작성한 댓글 목록</h2>
-          <span className="badge">{comments.length}건</span>
-        </div>
-
-        <div className="table-wrap" style={{ marginTop: '10px' }}>
-          <table className="table my-activity-table">
-            <thead>
-              <tr>
-                <th style={{ width: '72px' }}>번호</th>
-                <th>댓글 내용</th>
-                <th style={{ width: '220px' }}>게시글</th>
-                <th style={{ width: '170px' }}>게시판</th>
-                <th style={{ width: '160px' }}>작성일</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!ready || loading ? (
-                <tr>
-                  <td colSpan={5} className="muted">불러오는 중...</td>
-                </tr>
-              ) : comments.map((comment, idx) => {
-                const no = comments.length - idx;
-                return (
-                  <tr key={`${comment.postId}-${comment.id}`} className="my-activity-row" onClick={() => moveCommentPost(comment)}>
-                    <td>{no}</td>
-                    <td><span className="text-ellipsis-2" title={snippetText(comment.contentText)}>{snippetText(comment.contentText)}</span></td>
-                    <td><span className="text-ellipsis-1" title={comment.postTitle}>{comment.postTitle}</span></td>
-                    <td><span className="text-ellipsis-1" title={comment.boardName}>{comment.boardName}</span></td>
-                    <td>{formatDate(comment.createdAt)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="my-activity-mobile-list">
-          {ready && !loading ? comments.map((comment, idx) => {
-            const no = comments.length - idx;
-            return (
-              <button
-                key={`mobile-comment-${comment.postId}-${comment.id}`}
-                type="button"
-                className="my-activity-mobile-item"
-                onClick={() => moveCommentPost(comment)}
-              >
-                <div className="my-activity-mobile-top">
-                  <span className="my-activity-mobile-no">#{no}</span>
-                  <span className="my-activity-mobile-board text-ellipsis-1">{comment.boardName}</span>
-                </div>
-                <p className="my-activity-mobile-title text-ellipsis-2">{snippetText(comment.contentText)}</p>
-                <p className="my-activity-mobile-post text-ellipsis-1">{comment.postTitle}</p>
-                <p className="my-activity-mobile-meta">{formatDate(comment.createdAt)}</p>
+      <section className="my-activity-content-layout">
+        <aside className="board-rail my-activity-side-rail" aria-label="내 정보">
+          <section className="board-rail-profile my-activity-side-profile">
+            <div className="board-profile-head-row">
+              <p className="board-rail-profile-kicker">내 정보</p>
+              <button type="button" className="board-notification-btn is-logout my-activity-side-logout" onClick={() => handleLogout().catch(() => {})}>
+                <LogOut size={13} />
+                <span className="board-top-logout-text">로그아웃</span>
               </button>
-            );
-          }) : null}
-        </div>
+            </div>
+            <div className="board-rail-profile-user">
+              <AuthorWithRole name={userDisplayName} role={currentUserProfile?.role} roleDefMap={roleDefMap} />
+            </div>
+            <div className="board-rail-profile-actions">
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(forumPage)}>
+                <ArrowLeft size={14} />
+                포럼으로
+              </button>
+              <button type="button" className="board-rail-profile-btn" onClick={() => navigate(myPostsPage)}>
+                <FileText size={14} />
+                내가 쓴 글
+              </button>
+              <button type="button" className="board-rail-profile-btn is-current" disabled>
+                <MessageSquare size={14} />
+                내가 쓴 댓글
+              </button>
+            </div>
+          </section>
+        </aside>
+
+        <section className="card my-activity-list-card">
+          <div className="row space-between mobile-col">
+            <h2 className="section-title"><MessageSquare size={18} /> 작성한 댓글 목록</h2>
+            <span className="badge">{comments.length}건</span>
+          </div>
+
+          <div className="table-wrap" style={{ marginTop: '10px' }}>
+            <table className="table my-activity-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '72px' }}>번호</th>
+                  <th>댓글 내용</th>
+                  <th style={{ width: '220px' }}>게시글</th>
+                  <th style={{ width: '170px' }}>게시판</th>
+                  <th style={{ width: '160px' }}>작성일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!ready || loading ? (
+                  <tr>
+                    <td colSpan={5} className="muted">불러오는 중...</td>
+                  </tr>
+                ) : comments.map((comment, idx) => {
+                  const no = comments.length - idx;
+                  return (
+                    <tr key={`${comment.postId}-${comment.id}`} className="my-activity-row" onClick={() => moveCommentPost(comment)}>
+                      <td>{no}</td>
+                      <td><span className="text-ellipsis-2" title={snippetText(comment.contentText)}>{snippetText(comment.contentText)}</span></td>
+                      <td><span className="text-ellipsis-1" title={comment.postTitle}>{comment.postTitle}</span></td>
+                      <td><span className="text-ellipsis-1" title={comment.boardName}>{comment.boardName}</span></td>
+                      <td>{formatDate(comment.createdAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="my-activity-mobile-list">
+            {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
+            {ready && !loading && !comments.length ? <p className="muted">아직 작성한 댓글이 없습니다.</p> : null}
+            {ready && !loading ? comments.map((comment, idx) => {
+              const no = comments.length - idx;
+              return (
+                <button
+                  key={`mobile-comment-${comment.postId}-${comment.id}`}
+                  type="button"
+                  className="my-activity-mobile-item"
+                  onClick={() => moveCommentPost(comment)}
+                >
+                  <div className="my-activity-mobile-top">
+                    <span className="my-activity-mobile-no">#{no}</span>
+                    <span className="my-activity-mobile-board text-ellipsis-1">{comment.boardName}</span>
+                  </div>
+                  <p className="my-activity-mobile-title text-ellipsis-2">{snippetText(comment.contentText)}</p>
+                  <p className="my-activity-mobile-post text-ellipsis-1">{comment.postTitle}</p>
+                  <p className="my-activity-mobile-meta">{formatDate(comment.createdAt)}</p>
+                </button>
+              );
+            }) : null}
+          </div>
+        </section>
       </section>
     </motion.main>
   );

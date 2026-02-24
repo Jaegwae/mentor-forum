@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils.js';
 const Label = React.forwardRef(({ className, ...props }, ref) => (
   <label
     ref={ref}
-    className={cn('text-sm font-semibold text-foreground/90 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)}
+    className={cn('text-sm font-medium text-foreground/90 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)}
     {...props}
   />
 ));
