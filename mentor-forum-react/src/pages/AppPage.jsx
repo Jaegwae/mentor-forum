@@ -8,6 +8,7 @@ import {
   BookOpen,
   CalendarDays,
   FileText,
+  Inbox,
   LogOut,
   Menu,
   MessageSquare,
@@ -1652,7 +1653,11 @@ export default function AppPage() {
     }
     return { type: '', text: '' };
   }, [listMessage, loadingPosts, postListEmptyText, totalPostCount]);
-  const isPostListEmptyState = !loadingPosts && !listMessage.text && totalPostCount <= 0;
+  const isPostListEmptyState = useMemo(() => {
+    const text = normalizeText(activeListMessage.text);
+    if (!text || loadingPosts || totalPostCount > 0) return false;
+    return text === '게시글이 없습니다.' || text === '인기 게시글이 없습니다.';
+  }, [activeListMessage.text, loadingPosts, totalPostCount]);
   const desktopPostTableColSpan = (isAllBoardSelected ? 6 : 5) + (canManagePinInCurrentBoard ? 1 : 0);
   const paginationPages = useMemo(() => {
     if (totalPageCount <= 1) return [];
@@ -4651,7 +4656,19 @@ export default function AppPage() {
                           : 'notice'
                   }
                 >
-                  {activeListMessage.text}
+                  {isPostListEmptyState ? (
+                    <div className="post-list-empty-inner">
+                      <span className="post-list-empty-icon" aria-hidden="true">
+                        <Inbox size={16} />
+                      </span>
+                      <p className="post-list-empty-title">{activeListMessage.text}</p>
+                      <p className="post-list-empty-copy">
+                        {postListViewMode === POST_LIST_VIEW_MODE.POPULAR
+                          ? '조회수나 댓글이 쌓인 글이 생기면 이곳에 자동으로 표시됩니다.'
+                          : '첫 게시글을 작성해서 게시판을 시작해보세요.'}
+                      </p>
+                    </div>
+                  ) : activeListMessage.text}
                 </div>
               </div>
 

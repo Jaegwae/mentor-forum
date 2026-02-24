@@ -516,8 +516,44 @@
   .error { @apply rounded-lg border px-4 py-3 text-sm font-medium; }
   .notice { @apply border-blue-200 bg-blue-50/90 text-blue-800; }
   .post-list-empty-state {
-    margin-top: 10px; padding: 22px 14px; border: 1px dashed #ced7e5; border-radius: 4px;
-    background: #f8fafd; color: #5f6d84; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+    margin-top: 10px;
+    border: 1px solid #cfd9ea;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #f7fafe 0%, #f2f7fe 100%);
+    color: #4f607b;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .post-list-empty-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .post-list-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid #bfd2f0;
+    background: #eaf2ff;
+    color: #4a6ea8;
+  }
+  .post-list-empty-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #2f4f83;
+    letter-spacing: 0.01em;
+  }
+  .post-list-empty-copy {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6a7b97;
   }
   .session-only-notice {
     display: flex; align-items: center;
@@ -3693,9 +3729,23 @@
   }
 
   html.theme-dark body.app-page .post-list-empty-state {
-    border-color: rgba(57, 69, 93, 0.9);
-    background: rgba(12, 18, 28, 0.82);
-    color: #9eb1d2;
+    border-color: rgba(64, 78, 106, 0.9);
+    background: linear-gradient(180deg, rgba(16, 23, 36, 0.95) 0%, rgba(13, 19, 31, 0.96) 100%);
+    color: #a9b9d2;
+  }
+
+  html.theme-dark body.app-page .post-list-empty-icon {
+    border-color: rgba(86, 114, 165, 0.76);
+    background: rgba(39, 57, 92, 0.9);
+    color: #c8dbff;
+  }
+
+  html.theme-dark body.app-page .post-list-empty-title {
+    color: #e1ebff;
+  }
+
+  html.theme-dark body.app-page .post-list-empty-copy {
+    color: #94a8c9;
   }
 
   html.theme-dark body.app-page .notice {
@@ -4290,6 +4340,22 @@
   }
   #postList {
     overflow-x: hidden; overflow-y: visible; border: 0; background: transparent; padding: 0;
+  }
+  #postList .post-list-empty-state {
+    margin-top: 8px;
+    padding: 12px 11px;
+    border-radius: 7px;
+  }
+  #postList .post-list-empty-icon {
+    width: 27px;
+    height: 27px;
+  }
+  #postList .post-list-empty-title {
+    font-size: 13px;
+  }
+  #postList .post-list-empty-copy {
+    font-size: 11px;
+    line-height: 1.45;
   }
   .top-action-row { @apply w-full justify-end; }
   body.app-page .top-action-row { width: auto; margin-left: auto; }
