@@ -450,6 +450,27 @@ service cloud.firestore {
         && data.enabled is bool;
     }
 
+    function pushTokenFieldsValid(data, uid) {
+      return data.userUid is string
+        && data.userUid == uid
+        && data.token is string
+        && data.token.size() >= 20
+        && data.token.size() <= 4096
+        && data.enabled is bool
+        && (
+          !(data.platform is string)
+          || data.platform.size() <= 32
+        )
+        && (
+          !(data.locale is string)
+          || data.locale.size() <= 40
+        )
+        && (
+          !(data.userAgent is string)
+          || data.userAgent.size() <= 512
+        );
+    }
+
     match /role_definitions/{roleId} {
       allow read: if signedIn();
       allow create, update, delete: if signedIn() && canManageRoleDefinitions();
@@ -572,6 +593,16 @@ service cloud.firestore {
         allow create, update: if signedIn()
           && request.auth.uid == userId
           && notificationPrefFieldsValid(boardId, request.resource.data, userId);
+
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+
+      match /push_tokens/{tokenId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+
+        allow create, update: if signedIn()
+          && request.auth.uid == userId
+          && pushTokenFieldsValid(request.resource.data, userId);
 
         allow delete: if signedIn() && request.auth.uid == userId;
       }

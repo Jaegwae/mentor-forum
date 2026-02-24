@@ -13,7 +13,20 @@ async function clearLegacyCaches() {
   if ('serviceWorker' in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((reg) => reg.unregister()));
+      await Promise.all(
+        regs.map(async (reg) => {
+          const scriptUrl = reg?.active?.scriptURL || reg?.waiting?.scriptURL || reg?.installing?.scriptURL || '';
+          const path = (() => {
+            try {
+              return scriptUrl ? new URL(scriptUrl).pathname : '';
+            } catch (_) {
+              return '';
+            }
+          })();
+          if (path === '/firebase-messaging-sw.js') return false;
+          return reg.unregister();
+        })
+      );
     } catch (_) {
       // Ignore cache cleanup errors in client bootstrap.
     }

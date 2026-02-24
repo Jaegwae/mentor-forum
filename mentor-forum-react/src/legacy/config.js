@@ -6,7 +6,10 @@ export const MENTOR_FORUM_CONFIG = {
     projectId: "guro-mentor-forum",
     storageBucket: "guro-mentor-forum.firebasestorage.app",
     messagingSenderId: "748559493922",
-    appId: "1:748559493922:web:4fb9b26d7f2f41d70ed37b"
+    appId: "1:748559493922:web:4fb9b26d7f2f41d70ed37b",
+    messagingVapidKey: (typeof import.meta !== 'undefined' && import.meta.env)
+      ? (import.meta.env.VITE_FIREBASE_MESSAGING_VAPID_KEY || '')
+      : ''
   },
   app: {
     roleLabels: {
@@ -22,6 +25,9 @@ export const MENTOR_FORUM_CONFIG = {
     signupPage: '/signup',
     appPage: '/app',
     postPage: '/post',
-    adminPage: '/admin'
+    adminPage: '/admin',
+    pushRelayUrl: (typeof import.meta !== 'undefined' && import.meta.env)
+      ? (import.meta.env.VITE_PUSH_RELAY_URL || 'https://script.google.com/macros/s/AKfycbyFoiPgFbVaNHr7wOmXVaDichgheQbzfhiwevt9fHYxqAX-lDAAUQ2Lj5mIuB0TNypq/exec')
+      : ''
   }
 };

@@ -35,6 +35,7 @@ import {
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { buildPermissions, getRoleBadgePalette } from '../legacy/rbac.js';
 import { createRichEditor, renderRichDeltaToHtml, renderRichPayloadToHtml } from '../legacy/rich-editor.js';
+import { pushRelayConfigured, sendPushRelayNotification } from '../legacy/push-relay.js';
 import { RichEditorToolbar } from '../components/editor/RichEditorToolbar.jsx';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
 
@@ -1852,7 +1853,7 @@ export default function PostPage() {
     const userUid = normalizeText(targetUid);
     const safePostId = normalizeText(targetPostId);
     const safeBoardId = normalizeText(boardId);
-    if (!userUid || !safePostId || !safeBoardId) return;
+    if (!userUid || !safePostId || !safeBoardId) return null;
 
     const safeType = normalizeNotificationType(type);
     const safeSubtype = normalizeText(subtype);
@@ -1884,6 +1885,11 @@ export default function PostPage() {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
+
+    return {
+      targetUid: userUid,
+      notificationId
+    };
   }, []);
 
   const submitComment = useCallback(async (event) => {
@@ -2070,9 +2076,9 @@ export default function PostPage() {
         }
       });
 
-      await Promise.all(
+      const createdNotifications = await Promise.all(
         [...dedupedByKey.values()].map(async (eventItem) => {
-          await writeUserNotification({
+          return writeUserNotification({
             targetUid: eventItem.targetUid,
             type: eventItem.type,
             subtype: eventItem.subtype,
@@ -2087,6 +2093,29 @@ export default function PostPage() {
           });
         })
       );
+
+      const relayTargets = createdNotifications.filter((item) => item && item.targetUid && item.notificationId);
+      if (relayTargets.length && pushRelayConfigured() && typeof currentUser?.getIdToken === 'function') {
+        void (async () => {
+          try {
+            const idToken = normalizeText(await currentUser.getIdToken());
+            if (!idToken) return;
+            await Promise.allSettled(
+              relayTargets.map((target) => sendPushRelayNotification({
+                idToken,
+                targetUid: target.targetUid,
+                notificationId: target.notificationId
+              }))
+            );
+          } catch (err) {
+            console.error('[push-relay-dispatch-failed]', {
+              error: err,
+              postId: postIdValue,
+              commentId: createdCommentId
+            });
+          }
+        })();
+      }
     } catch (err) {
       console.error('[comment-notification-write-failed]', {
         error: err,

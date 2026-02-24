@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Smartphone,
   Pin,
   PinOff,
   PencilLine,
@@ -50,6 +51,12 @@ import {
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { buildPermissions, getRoleBadgePalette } from '../legacy/rbac.js';
 import { createRichEditor } from '../legacy/rich-editor.js';
+import {
+  WEB_PUSH_SW_PATH,
+  getWebPushCapability,
+  requestWebPushToken
+} from '../legacy/push-notifications.js';
+import { pushRelayConfigured, sendPushRelayPostCreate } from '../legacy/push-relay.js';
 import { RichEditorToolbar } from '../components/editor/RichEditorToolbar.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.jsx';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
@@ -111,6 +118,10 @@ const NOTIFICATION_SUBTYPE = {
 const NOTIFICATION_PREF_KEY = {
   COMMENT: 'pref_comment',
   MENTION: 'pref_mention'
+};
+const MOBILE_PUSH_PREF_KEY = {
+  GLOBAL: 'pref_mobile_push_global',
+  BOARD_PREFIX: 'pref_mobile_push_board:'
 };
 const LEGACY_NOTIFICATION_PREF_KEY = {
   COMMENT: '__comment__',
@@ -354,6 +365,27 @@ function notificationPrefDocRef(uid, boardId) {
   return doc(db, 'users', normalizeText(uid), 'notification_prefs', normalizeText(boardId));
 }
 
+function pushTokenCollectionRef(uid) {
+  return collection(db, 'users', normalizeText(uid), 'push_tokens');
+}
+
+function pushTokenDocRef(uid, tokenId) {
+  return doc(db, 'users', normalizeText(uid), 'push_tokens', normalizeText(tokenId));
+}
+
+function mobilePushBoardPrefKey(boardId) {
+  const normalized = normalizeText(boardId);
+  if (!normalized) return '';
+  return `${MOBILE_PUSH_PREF_KEY.BOARD_PREFIX}${encodeURIComponent(normalized)}`;
+}
+
+function buildPushTokenDocId(token) {
+  const normalized = normalizeText(token);
+  if (!normalized) return '';
+  const encoded = encodeURIComponent(normalized);
+  return encoded.length > 900 ? encoded.slice(0, 900) : encoded;
+}
+
 function viewedPostCollectionRef(uid) {
   return collection(db, 'users', normalizeText(uid), 'viewed_posts');
 }
@@ -371,6 +403,14 @@ function formatNotificationDate(ms) {
   const hh = String(date.getHours()).padStart(2, '0');
   const mm = String(date.getMinutes()).padStart(2, '0');
   return `${y}.${m}.${d} ${hh}:${mm}`;
+}
+
+function notificationPermissionLabel(permission) {
+  const normalized = normalizeText(permission).toLowerCase();
+  if (normalized === 'granted') return '허용';
+  if (normalized === 'denied') return '차단';
+  if (normalized === 'default') return '확인 전';
+  return '미지원';
 }
 
 function normalizeNotificationType(value) {
@@ -1519,6 +1559,11 @@ export default function AppPage() {
   const [notifications, setNotifications] = useState([]);
   const [notificationPrefs, setNotificationPrefs] = useState({});
   const [notificationFeedFilter, setNotificationFeedFilter] = useState(NOTIFICATION_FEED_FILTER.ALL);
+  const [mobilePushModalOpen, setMobilePushModalOpen] = useState(false);
+  const [mobilePushCapability, setMobilePushCapability] = useState({ supported: false, reason: '확인 중...', reasonCode: 'checking' });
+  const [mobilePushWorking, setMobilePushWorking] = useState(false);
+  const [mobilePushStatus, setMobilePushStatus] = useState({ type: '', text: '' });
+  const [mobilePushTokens, setMobilePushTokens] = useState([]);
   const [viewedPostIdMap, setViewedPostIdMap] = useState({});
   const [recentComments, setRecentComments] = useState([]);
   const [recentCommentsLoading, setRecentCommentsLoading] = useState(false);
@@ -1680,6 +1725,9 @@ export default function AppPage() {
     return notificationPrefs[NOTIFICATION_PREF_KEY.MENTION] !== false
       && notificationPrefs[LEGACY_NOTIFICATION_PREF_KEY.MENTION] !== false;
   }, [notificationPrefs]);
+  const isMobilePushEnabled = useMemo(() => {
+    return notificationPrefs[MOBILE_PUSH_PREF_KEY.GLOBAL] !== false;
+  }, [notificationPrefs]);
   const effectiveNotifications = useMemo(() => {
     return notifications.filter((item) => {
       if (isForcedNotification(item)) return true;
@@ -1713,6 +1761,13 @@ export default function AppPage() {
       return !!board && !isDividerItem(board) && normalizeText(board.id);
     });
   }, [boardList]);
+  const hasActivePushToken = useMemo(() => {
+    return mobilePushTokens.some((item) => item.enabled !== false);
+  }, [mobilePushTokens]);
+  const notificationPermission = typeof window !== 'undefined' && typeof window.Notification !== 'undefined'
+    ? window.Notification.permission
+    : 'unsupported';
+  const notificationPermissionText = notificationPermissionLabel(notificationPermission);
 
   const showAppliedPopup = useCallback((text = '반영되었습니다.') => {
     if (appliedPopupTimerRef.current) {
@@ -3266,6 +3321,27 @@ export default function AppPage() {
       return;
     }
 
+    if (createdPostId && pushRelayConfigured() && typeof currentUser?.getIdToken === 'function') {
+      void (async () => {
+        try {
+          const idToken = normalizeText(await currentUser.getIdToken());
+          if (!idToken) return;
+          await sendPushRelayPostCreate({
+            idToken,
+            postId: createdPostId,
+            boardId: normalizeText(currentBoard?.id),
+            createdAtMs: Date.now()
+          });
+        } catch (relayErr) {
+          console.error('[post-create-push-relay-dispatch-failed]', {
+            error: relayErr,
+            postId: createdPostId,
+            boardId: normalizeText(currentBoard?.id)
+          });
+        }
+      })();
+    }
+
     resetComposer(currentBoard);
     closeComposer();
 
@@ -3336,6 +3412,24 @@ export default function AppPage() {
   }, [notificationPrefs]);
 
   useEffect(() => {
+    let active = true;
+    getWebPushCapability().then((result) => {
+      if (!active) return;
+      setMobilePushCapability(result);
+    }).catch((err) => {
+      if (!active) return;
+      setMobilePushCapability({
+        supported: false,
+        reason: err?.message || '모바일 알림 지원 여부를 확인하지 못했습니다.',
+        reasonCode: 'check-failed'
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!currentUserUid) {
       setVenueOptions(DEFAULT_COVER_FOR_VENUE_OPTIONS);
       return () => {};
@@ -3400,6 +3494,48 @@ export default function AppPage() {
         uid: currentUserUid
       });
       setViewedPostIdMap({});
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [currentUserUid]);
+
+  useEffect(() => {
+    if (!currentUserUid) {
+      setMobilePushTokens([]);
+      return () => {};
+    }
+
+    const tokensQuery = query(
+      pushTokenCollectionRef(currentUserUid),
+      limit(24)
+    );
+
+    const unsubscribe = onSnapshot(tokensQuery, (snap) => {
+      const rows = snap.docs
+        .map((row) => {
+          const data = row.data() || {};
+          const id = normalizeText(row.id);
+          const token = normalizeText(data.token);
+          if (!id || !token) return null;
+          return {
+            id,
+            token,
+            platform: normalizeText(data.platform || 'web') || 'web',
+            enabled: data.enabled !== false,
+            updatedAtMs: toMillis(data.updatedAt)
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+      setMobilePushTokens(rows);
+    }, (err) => {
+      console.error('[push-token-sync-subscribe-failed]', {
+        error: err,
+        uid: currentUserUid
+      });
+      setMobilePushTokens([]);
     });
 
     return () => {
@@ -3677,6 +3813,181 @@ export default function AppPage() {
       }));
     }
   }, [currentUserUid, isNotificationTypeEnabled]);
+
+  const isMobilePushBoardEnabled = useCallback((boardId) => {
+    const key = mobilePushBoardPrefKey(boardId);
+    if (!key) return false;
+    return notificationPrefs[key] !== false;
+  }, [notificationPrefs]);
+
+  const toggleMobilePushBoardPreference = useCallback(async (boardId) => {
+    const boardKey = normalizeText(boardId);
+    const prefKey = mobilePushBoardPrefKey(boardKey);
+    if (!currentUserUid || !boardKey || !prefKey) return;
+    const nextEnabled = !isMobilePushBoardEnabled(boardKey);
+
+    setNotificationPrefs((prev) => ({
+      ...(prev || {}),
+      [prefKey]: nextEnabled
+    }));
+
+    try {
+      await setDoc(notificationPrefDocRef(currentUserUid, prefKey), {
+        userUid: currentUserUid,
+        boardId: prefKey,
+        enabled: nextEnabled,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error('[mobile-push-pref-board-write-failed]', {
+        error: err,
+        uid: currentUserUid,
+        boardId: boardKey,
+        prefKey
+      });
+      setNotificationPrefs((prev) => ({
+        ...(prev || {}),
+        [prefKey]: !nextEnabled
+      }));
+    }
+  }, [currentUserUid, isMobilePushBoardEnabled]);
+
+  const setMobilePushGlobalPreference = useCallback(async (enabled) => {
+    if (!currentUserUid) return;
+    const nextEnabled = enabled !== false;
+    setNotificationPrefs((prev) => ({
+      ...(prev || {}),
+      [MOBILE_PUSH_PREF_KEY.GLOBAL]: nextEnabled
+    }));
+
+    try {
+      await setDoc(notificationPrefDocRef(currentUserUid, MOBILE_PUSH_PREF_KEY.GLOBAL), {
+        userUid: currentUserUid,
+        boardId: MOBILE_PUSH_PREF_KEY.GLOBAL,
+        enabled: nextEnabled,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error('[mobile-push-pref-global-write-failed]', {
+        error: err,
+        uid: currentUserUid
+      });
+      setNotificationPrefs((prev) => ({
+        ...(prev || {}),
+        [MOBILE_PUSH_PREF_KEY.GLOBAL]: !nextEnabled
+      }));
+      throw err;
+    }
+  }, [currentUserUid]);
+
+  const refreshMobilePushCapability = useCallback(async () => {
+    const capability = await getWebPushCapability();
+    setMobilePushCapability(capability);
+  }, []);
+
+  const enableMobilePush = useCallback(async () => {
+    if (!currentUserUid) return;
+    setMobilePushWorking(true);
+    setMobilePushStatus({ type: '', text: '' });
+
+    try {
+      const capability = await getWebPushCapability();
+      setMobilePushCapability(capability);
+      if (!capability.supported) {
+        setMobilePushStatus({ type: 'error', text: capability.reason || '모바일 알림을 지원하지 않는 환경입니다.' });
+        return;
+      }
+
+      const tokenResult = await requestWebPushToken({ serviceWorkerPath: WEB_PUSH_SW_PATH });
+      if (!tokenResult.ok) {
+        setMobilePushStatus({
+          type: 'error',
+          text: tokenResult.reason || '알림 권한 또는 토큰 발급에 실패했습니다.'
+        });
+        return;
+      }
+
+      const token = normalizeText(tokenResult.token);
+      const tokenId = buildPushTokenDocId(token);
+      if (!tokenId) {
+        setMobilePushStatus({ type: 'error', text: '토큰 정보를 확인할 수 없습니다.' });
+        return;
+      }
+
+      // Keep a single active token per account to prevent duplicate notifications
+      // when legacy tokens remain enabled on the same device.
+      const staleEnabledTokens = mobilePushTokens.filter((tokenInfo) => (
+        tokenInfo?.id
+        && tokenInfo.id !== tokenId
+        && tokenInfo.enabled !== false
+      ));
+      if (staleEnabledTokens.length) {
+        await Promise.all(staleEnabledTokens.map(async (tokenInfo) => {
+          await setDoc(pushTokenDocRef(currentUserUid, tokenInfo.id), {
+            userUid: currentUserUid,
+            token: normalizeText(tokenInfo.token),
+            enabled: false,
+            platform: normalizeText(tokenInfo.platform || 'web') || 'web',
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }));
+      }
+
+      await setDoc(pushTokenDocRef(currentUserUid, tokenId), {
+        userUid: currentUserUid,
+        token,
+        enabled: true,
+        platform: /android/i.test(navigator.userAgent || '') ? 'android' : (/iphone|ipad|ipod/i.test(navigator.userAgent || '') ? 'ios' : 'web'),
+        locale: normalizeText(navigator.language || 'ko-KR').slice(0, 40),
+        userAgent: String(navigator.userAgent || '').slice(0, 480),
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      }, { merge: true });
+
+      await setMobilePushGlobalPreference(true);
+      setMobilePushStatus({ type: 'notice', text: '모바일 알림이 켜졌습니다.' });
+    } catch (err) {
+      console.error('[mobile-push-enable-failed]', {
+        error: err,
+        uid: currentUserUid
+      });
+      setMobilePushStatus({ type: 'error', text: normalizeErrMessage(err, '모바일 알림 설정에 실패했습니다.') });
+    } finally {
+      setMobilePushWorking(false);
+    }
+  }, [currentUserUid, mobilePushTokens, setMobilePushGlobalPreference]);
+
+  const disableMobilePush = useCallback(async () => {
+    if (!currentUserUid) return;
+    setMobilePushWorking(true);
+    setMobilePushStatus({ type: '', text: '' });
+
+    try {
+      await Promise.all(
+        mobilePushTokens.map(async (tokenInfo) => {
+          if (!tokenInfo?.id) return;
+          await setDoc(pushTokenDocRef(currentUserUid, tokenInfo.id), {
+            userUid: currentUserUid,
+            token: normalizeText(tokenInfo.token),
+            enabled: false,
+            platform: normalizeText(tokenInfo.platform || 'web') || 'web',
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        })
+      );
+
+      await setMobilePushGlobalPreference(false);
+      setMobilePushStatus({ type: 'notice', text: '모바일 알림을 껐습니다.' });
+    } catch (err) {
+      console.error('[mobile-push-disable-failed]', {
+        error: err,
+        uid: currentUserUid
+      });
+      setMobilePushStatus({ type: 'error', text: normalizeErrMessage(err, '모바일 알림 해제에 실패했습니다.') });
+    } finally {
+      setMobilePushWorking(false);
+    }
+  }, [currentUserUid, mobilePushTokens, setMobilePushGlobalPreference]);
 
   const handleMovePost = useCallback((postId, postBoardId = '', focusCommentId = '') => {
     const qs = new URLSearchParams();
@@ -4215,6 +4526,17 @@ export default function AppPage() {
                       <Bell size={14} />
                       알림 센터
                       {hasUnreadNotifications ? <span className="board-notification-new">N</span> : null}
+                    </button>
+                    <button
+                      type="button"
+                      className="board-rail-profile-btn"
+                      onClick={() => setMobilePushModalOpen(true)}
+                    >
+                      {isMobilePushEnabled && hasActivePushToken ? <Smartphone size={14} /> : <BellOff size={14} />}
+                      모바일 알림
+                      <span className={isMobilePushEnabled && hasActivePushToken ? 'board-mobile-push-state is-on' : 'board-mobile-push-state is-off'}>
+                        {isMobilePushEnabled && hasActivePushToken ? '켜짐' : '꺼짐'}
+                      </span>
                     </button>
                   </div>
                 </section>
@@ -4824,6 +5146,20 @@ export default function AppPage() {
                       알림 센터
                       {hasUnreadNotifications ? <span className="board-notification-new">N</span> : null}
                     </button>
+                    <button
+                      type="button"
+                      className="board-drawer-profile-btn"
+                      onClick={() => {
+                        setBoardDrawerOpen(false);
+                        setMobilePushModalOpen(true);
+                      }}
+                    >
+                      {isMobilePushEnabled && hasActivePushToken ? <Smartphone size={14} /> : <BellOff size={14} />}
+                      모바일 알림
+                      <span className={isMobilePushEnabled && hasActivePushToken ? 'board-mobile-push-state is-on' : 'board-mobile-push-state is-off'}>
+                        {isMobilePushEnabled && hasActivePushToken ? '켜짐' : '꺼짐'}
+                      </span>
+                    </button>
                   </div>
                 </section>
                 {drawerItems.map((item) => {
@@ -5035,7 +5371,154 @@ export default function AppPage() {
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">7. 막힐 때 빠른 확인</p>
+              <p className="text-sm font-bold text-foreground">7. iPhone(iOS) 알림 받기 - 처음부터 끝까지</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>
+                  iPhone
+                  {' '}
+                  <strong>Safari</strong>
+                  {' '}
+                  에서 포럼 주소를 엽니다.
+                </li>
+                <li>
+                  Safari 하단
+                  {' '}
+                  <strong>공유 버튼</strong>
+                  {' '}
+                  →
+                  {' '}
+                  <strong>홈 화면에 추가</strong>
+                  {' '}
+                  를 눌러 앱 아이콘을 만듭니다.
+                </li>
+                <li>
+                  Safari 탭이 아니라
+                  {' '}
+                  <strong>홈 화면 아이콘으로 포럼을 실행</strong>
+                  {' '}
+                  합니다. (iOS 웹푸시는 이 방식에서만 수신됩니다)
+                </li>
+                <li>
+                  로그인 후 왼쪽
+                  {' '}
+                  <strong>내 정보 → 모바일 알림</strong>
+                  {' '}
+                  버튼을 눌러 설정 창을 엽니다.
+                </li>
+                <li>
+                  <strong>모바일 알림 켜기</strong>
+                  {' '}
+                  버튼을 누르고, iOS 권한 팝업이 뜨면
+                  {' '}
+                  <strong>허용</strong>
+                  {' '}
+                  을 선택합니다.
+                </li>
+                <li>
+                  같은 창에서 아래 3가지를 확인합니다:
+                  {' '}
+                  <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>
+                  .
+                </li>
+                <li>
+                  바로 아래
+                  {' '}
+                  <strong>게시판별 모바일 알림</strong>
+                  {' '}
+                  에서 받고 싶은 게시판만 켭니다.
+                </li>
+                <li>
+                  테스트:
+                  {' '}
+                  다른 계정에서 글/댓글/멘션을 보내고, 잠금 화면 또는 상단 배너로 알림이 오는지 확인합니다.
+                </li>
+              </ol>
+              <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                iOS에서 알림이 안 오면:
+                {' '}
+                <strong>홈 화면 앱 완전 종료 후 재실행</strong>
+                ,
+                {' '}
+                <strong>설정 &gt; 알림에서 포럼 앱 허용</strong>
+                ,
+                {' '}
+                <strong>집중 모드/방해금지 해제</strong>
+                ,
+                {' '}
+                <strong>저전력 모드 해제</strong>
+                {' '}
+                순서로 점검하세요.
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">8. Android 알림 받기 - 처음부터 끝까지</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>
+                  Android
+                  {' '}
+                  <strong>Chrome</strong>
+                  {' '}
+                  에서 포럼 주소를 엽니다.
+                </li>
+                <li>
+                  로그인 후
+                  {' '}
+                  <strong>내 정보 → 모바일 알림</strong>
+                  {' '}
+                  설정 창으로 이동합니다.
+                </li>
+                <li>
+                  <strong>모바일 알림 켜기</strong>
+                  {' '}
+                  를 누르고, 브라우저 알림 권한 요청이 뜨면
+                  {' '}
+                  <strong>허용</strong>
+                  {' '}
+                  을 선택합니다.
+                </li>
+                <li>
+                  상태 영역에서
+                  {' '}
+                  <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>
+                  {' '}
+                  을 확인합니다.
+                </li>
+                <li>
+                  <strong>게시판별 모바일 알림</strong>
+                  {' '}
+                  에서 받고 싶은 게시판만 켭니다.
+                </li>
+                <li>
+                  테스트:
+                  {' '}
+                  다른 계정으로 글/댓글/멘션을 보내서 알림이 도착하는지 확인합니다.
+                </li>
+                <li>
+                  안정성을 높이려면
+                  {' '}
+                  <strong>홈 화면에 추가(PWA)</strong>
+                  {' '}
+                  후 아이콘 실행 방식으로 사용하세요.
+                </li>
+              </ol>
+              <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                Android에서 알림이 안 오면:
+                {' '}
+                <strong>Chrome 사이트 권한(알림 허용)</strong>
+                ,
+                {' '}
+                <strong>OS 앱 알림 허용</strong>
+                ,
+                {' '}
+                <strong>배터리 최적화 예외</strong>
+                {' '}
+                순서로 확인하세요.
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">9. 막힐 때 빠른 확인</p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">게시판이 안 보임 → 권한 게시판일 수 있음</span>
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">알림이 안 옴 → 알림 센터 설정 확인</span>
@@ -5046,6 +5529,124 @@ export default function AppPage() {
 
           <div className="mt-3 flex justify-end">
             <button type="button" className="btn-muted" onClick={() => setGuideModalOpen(false)}>
+              닫기
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mobilePushModalOpen} onOpenChange={setMobilePushModalOpen}>
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-lg font-semibold">모바일 알림 설정</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              내 정보에서 모바일 푸시 알림을 켜고, 받고 싶은 게시판만 따로 선택할 수 있습니다.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-1 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">현재 상태</p>
+              <div className="mobile-push-status-grid">
+                <div className="mobile-push-status-item">
+                  <span className="mobile-push-status-label">기기 지원</span>
+                  <strong className={mobilePushCapability.supported ? 'mobile-push-status-value is-on' : 'mobile-push-status-value is-off'}>
+                    {mobilePushCapability.supported ? '지원됨' : '미지원'}
+                  </strong>
+                </div>
+                <div className="mobile-push-status-item">
+                  <span className="mobile-push-status-label">알림 권한</span>
+                  <strong className={notificationPermission === 'granted' ? 'mobile-push-status-value is-on' : 'mobile-push-status-value is-off'}>
+                    {notificationPermissionText}
+                  </strong>
+                </div>
+                <div className="mobile-push-status-item">
+                  <span className="mobile-push-status-label">활성 기기</span>
+                  <strong className={hasActivePushToken ? 'mobile-push-status-value is-on' : 'mobile-push-status-value is-off'}>
+                    {hasActivePushToken ? `${mobilePushTokens.filter((item) => item.enabled !== false).length}대` : '없음'}
+                  </strong>
+                </div>
+              </div>
+
+              {mobilePushCapability.reason && !mobilePushCapability.supported ? (
+                <p className="meta mobile-push-note" style={{ marginTop: '8px' }}>{mobilePushCapability.reason}</p>
+              ) : null}
+              <p className="meta mobile-push-note" style={{ marginTop: '8px' }}>
+                iPhone은 Safari에서 홈 화면에 추가한 웹앱(PWA)에서만 웹 푸시를 받을 수 있습니다.
+              </p>
+
+              {mobilePushStatus.text ? (
+                <div className={mobilePushStatus.type === 'error' ? 'error' : 'notice'} style={{ marginTop: '10px' }}>
+                  {mobilePushStatus.text}
+                </div>
+              ) : null}
+
+              <div className="row mobile-wrap" style={{ marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={mobilePushWorking || !mobilePushCapability.supported}
+                  onClick={enableMobilePush}
+                >
+                  <Smartphone size={15} />
+                  모바일 알림 켜기
+                </button>
+                <button
+                  type="button"
+                  className="btn-muted"
+                  disabled={mobilePushWorking}
+                  onClick={disableMobilePush}
+                >
+                  <BellOff size={15} />
+                  모바일 알림 끄기
+                </button>
+                <button
+                  type="button"
+                  className="btn-muted"
+                  disabled={mobilePushWorking}
+                  onClick={() => refreshMobilePushCapability().catch((err) => {
+                    setMobilePushStatus({ type: 'error', text: normalizeErrMessage(err, '모바일 알림 상태를 확인하지 못했습니다.') });
+                  })}
+                >
+                  상태 새로고침
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">게시판별 모바일 알림</p>
+              <p className="meta mobile-push-note" style={{ marginTop: '6px' }}>
+                모바일 알림을 켠 뒤, 원하는 게시판만 선택해서 받을 수 있습니다.
+              </p>
+              <div className="mobile-push-board-list">
+                {notificationBoardItems.length ? notificationBoardItems.map((board) => {
+                  const boardId = normalizeText(board?.id);
+                  const boardName = normalizeText(board?.name) || boardId;
+                  const enabled = isMobilePushBoardEnabled(boardId);
+                  return (
+                    <button
+                      key={`mobile-push-board-${boardId}`}
+                      type="button"
+                      className={enabled ? 'notification-pref-item is-on' : 'notification-pref-item is-off'}
+                      disabled={mobilePushWorking || !isMobilePushEnabled || !hasActivePushToken}
+                      onClick={() => toggleMobilePushBoardPreference(boardId)}
+                    >
+                      <span className="notification-pref-main">
+                        <span className="notification-pref-name">{boardName}</span>
+                        <span className="notification-pref-state">{enabled ? '켜짐' : '꺼짐'}</span>
+                      </span>
+                      {enabled ? <Bell size={14} /> : <BellOff size={14} />}
+                    </button>
+                  );
+                }) : (
+                  <p className="muted" style={{ margin: 0 }}>표시할 게시판이 없습니다.</p>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <div className="mt-3 flex justify-end">
+            <button type="button" className="btn-muted" onClick={() => setMobilePushModalOpen(false)}>
               닫기
             </button>
           </div>
