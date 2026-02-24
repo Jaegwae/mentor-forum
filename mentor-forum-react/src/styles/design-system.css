@@ -1493,8 +1493,25 @@
     background: var(--btn-muted-hover-bg); border-color: var(--editor-btn-border); color: var(--editor-btn-text);
   }
   .editor-tool-btn svg { @apply h-4 w-4; }
-  .editor-font-size { @apply inline-flex min-w-[62px] items-center justify-center gap-1 px-2; }
+  .editor-font-size {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 68px; height: 32px; padding: 0 10px; border-radius: 6px;
+    border: 1px solid var(--editor-btn-border); background: var(--editor-btn-bg); color: var(--editor-btn-text);
+    font-size: 12px; font-weight: 700; line-height: 1;
+  }
   .editor-font-size svg { @apply h-3.5 w-3.5; }
+  .editor-font-size-trigger {
+    border: 0; padding: 0; background: transparent; color: inherit; cursor: text;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; line-height: 1.2; letter-spacing: 0;
+  }
+  .editor-font-size-input {
+    width: 38px; height: 22px; border-radius: 5px; border: 1px solid var(--editor-btn-border); background: var(--editor-btn-bg);
+    color: var(--editor-btn-text); font-size: 11px; font-weight: 700; line-height: 1; text-align: center; padding: 0 4px;
+  }
+  .editor-font-size-input:focus {
+    outline: none; border-color: rgba(59, 130, 246, 0.45); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
+  }
   .editor-color-picker {
     @apply inline-flex h-8 items-center gap-1 rounded-md px-2; min-width: 48px;
     border: 1px solid var(--editor-btn-border); background: var(--editor-btn-bg); color: var(--editor-btn-text);
@@ -1605,13 +1622,13 @@
   .ql-editor .ql-mention-chip.is-delete-armed {
     border-color: var(--ql-chip-armed-border); background: var(--ql-chip-armed-bg); color: var(--ql-chip-armed-text); box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15);
   }
-  .post-body { @apply whitespace-pre-wrap break-words text-sm leading-7 text-foreground; }
-  .comment-body { @apply whitespace-pre-wrap break-words text-sm leading-6 text-foreground; }
+  .post-body { @apply whitespace-pre-wrap break-words leading-7 text-foreground; font-size: 16px; }
+  .comment-body { @apply whitespace-pre-wrap break-words leading-6 text-foreground; font-size: 16px; }
   .post-body .ql-editor {
-    padding: 0; white-space: normal; line-height: 1.75;
+    padding: 0; white-space: normal; line-height: 1.75; font-size: 16px;
   }
   .comment-body .ql-editor {
-    padding: 0; white-space: normal; line-height: 1.55;
+    padding: 0; white-space: normal; line-height: 1.55; font-size: 16px;
   }
   .post-body .ql-editor p { margin: 0 0 0.45rem; }
   .comment-body .ql-editor p { margin: 0 0 0.24rem; }

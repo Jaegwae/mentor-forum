@@ -25,6 +25,8 @@ import {
 
 const DEFAULT_EDITOR_COLOR = '#0f172a';
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const FONT_SIZE_MIN = 10;
+const FONT_SIZE_MAX = 48;
 const EDITOR_COLOR_PRESETS = [
   '#0f172a',
   '#475569',
@@ -61,7 +63,45 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
   const [colorPaletteOpen, setColorPaletteOpen] = React.useState(false);
   const [customPickerOpen, setCustomPickerOpen] = React.useState(false);
   const [customColorValue, setCustomColorValue] = React.useState(DEFAULT_EDITOR_COLOR);
+  const [fontSizeEditing, setFontSizeEditing] = React.useState(false);
+  const [fontSizeDraft, setFontSizeDraft] = React.useState('16');
   const colorPopoverRef = React.useRef(null);
+  const fontSizeInputRef = React.useRef(null);
+
+  const readCurrentFontSize = React.useCallback(() => {
+    const apiSize = Number(editorRef.current?.getSelectionFontSize?.());
+    if (Number.isFinite(apiSize) && apiSize > 0) return Math.round(apiSize);
+    const labelText = String(fontSizeLabelRef.current?.textContent || '').trim();
+    const parsed = Number(labelText.replace(/[^\d.-]/g, ''));
+    if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
+    return 16;
+  }, [editorRef, fontSizeLabelRef]);
+
+  const clampFontSize = React.useCallback((value) => {
+    const safe = Number(value);
+    if (!Number.isFinite(safe)) return null;
+    return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, Math.round(safe)));
+  }, []);
+
+  const openFontSizeEdit = React.useCallback(() => {
+    const current = readCurrentFontSize();
+    setFontSizeDraft(String(current));
+    setFontSizeEditing(true);
+  }, [readCurrentFontSize]);
+
+  const commitFontSizeEdit = React.useCallback((options = {}) => {
+    const { close = true } = options;
+    const next = clampFontSize(fontSizeDraft);
+    if (next == null) {
+      setFontSizeDraft(String(readCurrentFontSize()));
+      if (close) setFontSizeEditing(false);
+      return;
+    }
+    const applied = Number(editorRef.current?.setFontSize?.(next));
+    const safeApplied = Number.isFinite(applied) ? applied : next;
+    setFontSizeDraft(String(safeApplied));
+    if (close) setFontSizeEditing(false);
+  }, [clampFontSize, editorRef, fontSizeDraft, readCurrentFontSize]);
 
   const applyColor = React.useCallback((nextColor, options = {}) => {
     const { closePalette = true } = options;
@@ -108,6 +148,15 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [colorPaletteOpen]);
+
+  React.useEffect(() => {
+    if (!fontSizeEditing) return;
+    const id = window.requestAnimationFrame(() => {
+      fontSizeInputRef.current?.focus();
+      fontSizeInputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [fontSizeEditing]);
 
   return (
     <div className="editor-toolbar" role="toolbar" aria-label="리치 에디터 도구모음">
@@ -162,7 +211,46 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
       <div className="editor-toolbar-group" role="group" aria-label="글자 크기와 색상">
         <span className="badge editor-font-size">
           <Type size={12} />
-          <span id={ids.fontSizeLabelId} ref={fontSizeLabelRef}>16px</span>
+          <button
+            type="button"
+            className={fontSizeEditing ? 'editor-font-size-trigger hidden' : 'editor-font-size-trigger'}
+            title="글자 크기 직접 입력"
+            aria-label="글자 크기 직접 입력"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={openFontSizeEdit}
+          >
+            <span id={ids.fontSizeLabelId} ref={fontSizeLabelRef}>16px</span>
+          </button>
+          <input
+            ref={fontSizeInputRef}
+            type="text"
+            inputMode="numeric"
+            className={fontSizeEditing ? 'editor-font-size-input' : 'editor-font-size-input hidden'}
+            value={fontSizeDraft}
+            maxLength={2}
+            aria-label="글자 크기(px)"
+            onMouseDown={(event) => event.preventDefault()}
+            onChange={(event) => {
+              const raw = String(event.target.value || '');
+              const digitsOnly = raw.replace(/[^\d]/g, '').slice(0, 2);
+              setFontSizeDraft(digitsOnly);
+            }}
+            onBlur={() => {
+              commitFontSizeEdit({ close: true });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commitFontSizeEdit({ close: true });
+                return;
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setFontSizeDraft(String(readCurrentFontSize()));
+                setFontSizeEditing(false);
+              }
+            }}
+          />
         </span>
         <ToolButton label="글자 작게" id={ids.fontDownId} onClick={() => editorRef.current?.stepFont(-1)}>
           <Minus size={14} />

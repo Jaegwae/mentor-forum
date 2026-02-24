@@ -235,7 +235,7 @@ export function renderRichPayloadToHtml(payload) {
   if (!text) return '';
   const runs = Array.isArray(payload.runs) ? payload.runs : [];
   if (!runs.length) {
-    return `<span>${escapeHtml(text).replace(/\n/g, '<br>')}</span>`;
+    return `<span style="color:${DEFAULT_COLOR};font-size:${DEFAULT_FONT_SIZE}px;">${escapeHtml(text).replace(/\n/g, '<br>')}</span>`;
   }
 
   const parts = [];
@@ -561,12 +561,14 @@ export function createRichEditor(options) {
     return {
       exec: () => {},
       setColor: () => {},
+      setFontSize: () => DEFAULT_FONT_SIZE,
       stepFont: () => {},
       setLink: () => {},
       removeLink: () => {},
       getPayload: () => ({ text: '', runs: [] }),
       getDelta: () => ({ ops: [{ insert: '\n' }] }),
       getText: () => '',
+      getSelectionFontSize: () => DEFAULT_FONT_SIZE,
       setPayload: () => {},
       setDelta: () => {},
       getHtml: () => '',
@@ -726,17 +728,17 @@ export function createRichEditor(options) {
     refreshLabel();
   }
 
-  function stepFont(delta) {
-    const range = quill.getSelection(true);
-    if (!range || range.length <= 0) {
-      refreshLabel();
-      return;
-    }
-
-    const current = getSelectionFontSize();
-    const next = clampSize(current + (delta > 0 ? step : -step));
-    quill.format('size', `${next}px`, 'user');
+  function setFontSize(value) {
+    const nextSize = clampSize(quillSizeToPx(value, getSelectionFontSize()));
+    quill.focus();
+    quill.format('size', `${nextSize}px`, 'user');
     refreshLabel();
+    return nextSize;
+  }
+
+  function stepFont(delta) {
+    const current = getSelectionFontSize();
+    setFontSize(current + (delta > 0 ? step : -step));
   }
 
   function setLink(url) {
@@ -934,6 +936,7 @@ export function createRichEditor(options) {
   return {
     exec,
     setColor,
+    setFontSize,
     stepFont,
     setLink,
     removeLink,
@@ -945,6 +948,7 @@ export function createRichEditor(options) {
     setDelta,
     clear,
     refreshLabel,
+    getSelectionFontSize,
     focus: () => quill.focus(),
     getSelection,
     getRawText,
