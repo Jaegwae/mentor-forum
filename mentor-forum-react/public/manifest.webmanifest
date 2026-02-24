@@ -1,0 +1,20 @@
+{
+  "name": "멘토포럼",
+  "short_name": "멘토포럼",
+  "description": "멘토스끼리 자유롭게 소통 가능한 커뮤니티",
+  "id": "/app",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "1280x1280",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

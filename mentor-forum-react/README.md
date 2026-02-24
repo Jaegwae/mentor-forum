@@ -187,6 +187,19 @@ VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
 ./node_modules/.bin/firebase deploy --only hosting,firestore:rules --project guro-mentor-forum
 ```
 
+### 9.3 홈 화면 아이콘(iOS/Android)
+
+- 아이콘 원본 파일: `public/favicon.png` (현재 1280x1280)
+- Android 홈화면 추가 아이콘: `public/manifest.webmanifest`의 `icons` 기준
+- iOS 홈화면 추가 아이콘: `index.html`의 `apple-touch-icon` 기준
+
+아이콘 변경 절차:
+
+1. `public/favicon.png` 교체
+2. 필요 시 `public/manifest.webmanifest`의 `icons.sizes`를 실제 해상도로 맞춤
+3. 배포
+4. 기기에서 기존 홈화면 아이콘 삭제 후 다시 `홈 화면에 추가` (캐시 방지)
+
 ## 10. 모바일 푸시 아키텍처 (GAS 릴레이)
 
 Blaze 기반 Functions 없이 푸시를 보내기 위해, GAS를 릴레이로 사용합니다.

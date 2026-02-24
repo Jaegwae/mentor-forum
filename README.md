@@ -365,6 +365,13 @@ VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
 - Android(Chrome/PWA) 알림 수신 여부
 - 게시판별 모바일 알림 on/off 반영 여부
 
+홈 화면 아이콘 점검:
+
+- 원본 아이콘 파일: `mentor-forum-react/public/favicon.png`
+- Android 기준 아이콘 선언: `mentor-forum-react/public/manifest.webmanifest`
+- iOS 기준 아이콘 선언: `mentor-forum-react/index.html`의 `apple-touch-icon`
+- 아이콘 교체 후에는 기기에서 기존 홈화면 바로가기를 삭제하고 다시 추가
+
 ## 11. GitHub 반영 절차
 
 현재 git 루트는 상위 폴더 `멘토용`입니다.
