@@ -1,5 +1,6 @@
 // Toolbar UI for rich-editor formatting actions.
 import React from 'react';
+import { HexColorInput, HexColorPicker } from 'react-colorful';
 import {
   Bold,
   Italic,
@@ -22,19 +23,21 @@ import {
   Unlink2
 } from 'lucide-react';
 
+const DEFAULT_EDITOR_COLOR = '#0f172a';
+const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const EDITOR_COLOR_PRESETS = [
   '#0f172a',
-  '#334155',
   '#475569',
   '#1d4ed8',
-  '#2563eb',
+  '#0ea5e9',
   '#0f766e',
-  '#15803d',
-  '#a16207',
-  '#c2410c',
-  '#b91c1c',
-  '#be185d',
-  '#7c3aed'
+  '#16a34a',
+  '#ca8a04',
+  '#ea580c',
+  '#dc2626',
+  '#db2777',
+  '#8b5cf6',
+  '#7c2d12'
 ];
 
 function ToolButton({ label, onClick, children, id }) {
@@ -54,20 +57,38 @@ function ToolButton({ label, onClick, children, id }) {
 }
 
 export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
-  const [colorValue, setColorValue] = React.useState('#0f172a');
+  const [colorValue, setColorValue] = React.useState(DEFAULT_EDITOR_COLOR);
   const [colorPaletteOpen, setColorPaletteOpen] = React.useState(false);
+  const [customPickerOpen, setCustomPickerOpen] = React.useState(false);
+  const [customColorValue, setCustomColorValue] = React.useState(DEFAULT_EDITOR_COLOR);
   const colorPopoverRef = React.useRef(null);
 
-  const applyColor = React.useCallback((nextColor) => {
+  const applyColor = React.useCallback((nextColor, options = {}) => {
+    const { closePalette = true } = options;
     const safeColor = String(nextColor || '').trim();
     if (!safeColor) return;
     setColorValue(safeColor);
     editorRef.current?.setColor(safeColor);
-    setColorPaletteOpen(false);
+    if (closePalette) {
+      setColorPaletteOpen(false);
+      setCustomPickerOpen(false);
+    }
+  }, [editorRef]);
+
+  const applyCustomColor = React.useCallback((nextColor) => {
+    const safeColor = String(nextColor || '').trim();
+    setCustomColorValue(safeColor);
+    if (!HEX_COLOR_PATTERN.test(safeColor)) return;
+    setColorValue(safeColor);
+    editorRef.current?.setColor(safeColor);
   }, [editorRef]);
 
   React.useEffect(() => {
-    if (!colorPaletteOpen) return () => {};
+    if (!colorPaletteOpen) {
+      setCustomPickerOpen(false);
+      setCustomColorValue(colorValue);
+      return () => {};
+    }
 
     const onPointerDown = (event) => {
       if (!colorPopoverRef.current) return;
@@ -157,13 +178,23 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
             title="글자색"
             aria-label="글자색"
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => setColorPaletteOpen((prev) => !prev)}
+            onClick={() => {
+              setColorPaletteOpen((prev) => {
+                const next = !prev;
+                if (next) setCustomColorValue(colorValue);
+                return next;
+              });
+            }}
           >
             <Palette size={14} />
             <span className="editor-color-swatch" style={{ backgroundColor: colorValue }} aria-hidden="true" />
           </button>
           {colorPaletteOpen ? (
-            <div className="editor-color-popover" role="listbox" aria-label="글자색 선택">
+            <div
+              className={customPickerOpen ? 'editor-color-popover is-custom-open' : 'editor-color-popover'}
+              role="dialog"
+              aria-label="글자색 선택"
+            >
               {EDITOR_COLOR_PRESETS.map((color) => (
                 <button
                   key={`editor-color-${color}`}
@@ -175,13 +206,42 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
                   onClick={() => applyColor(color)}
                 />
               ))}
-              <button
-                type="button"
-                className="editor-color-reset"
-                onClick={() => applyColor('#0f172a')}
-              >
-                기본색
-              </button>
+              <div className="editor-color-actions">
+                <button
+                  type="button"
+                  className="editor-color-reset"
+                  onClick={() => applyColor(DEFAULT_EDITOR_COLOR)}
+                >
+                  기본색
+                </button>
+                <button
+                  type="button"
+                  className="editor-color-custom"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setCustomPickerOpen((prev) => !prev);
+                    setCustomColorValue(colorValue);
+                  }}
+                  aria-expanded={customPickerOpen ? 'true' : 'false'}
+                >
+                  직접 선택
+                </button>
+              </div>
+              {customPickerOpen ? (
+                <div className="editor-color-custom-panel">
+                  <HexColorPicker color={customColorValue} onChange={applyCustomColor} />
+                  <div className="editor-color-custom-row">
+                    <span className="editor-color-custom-label">HEX</span>
+                    <HexColorInput
+                      className="editor-color-hex-input"
+                      color={customColorValue}
+                      onChange={applyCustomColor}
+                      prefixed
+                      aria-label="HEX 색상값"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

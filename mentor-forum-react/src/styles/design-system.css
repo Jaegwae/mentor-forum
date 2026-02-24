@@ -1473,23 +1473,58 @@
   .editor-color-swatch {
     width: 14px; height: 14px; border-radius: 999px; border: 1px solid rgba(156, 163, 175, 0.5); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
   }
-  .editor-color-native {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; opacity: 0; pointer-events: none;
-  }
   .editor-color-popover {
-    position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 188px;
-    padding: 10px; border-radius: 8px; border: 1px solid var(--editor-popover-border); background: var(--editor-popover-bg); box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.12);
-    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px;
+    position: absolute; top: auto; right: 0; bottom: calc(100% + 6px); z-index: 260;
+    width: min(182px, calc(100vw - 24px));
+    max-height: min(70vh, 276px); overflow: auto;
+    padding: 8px; border-radius: 8px; border: 1px solid var(--editor-popover-border); background: var(--editor-popover-bg); box-shadow: 0 8px 16px -8px rgba(0, 0, 0, 0.12);
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;
+  }
+  .editor-color-popover.is-custom-open {
+    width: min(182px, calc(100vw - 24px));
   }
   .editor-color-option {
-    width: 24px; height: 24px; border-radius: 6px; border: 1px solid rgba(156, 163, 175, 0.4); cursor: pointer;
+    width: 100%; min-width: 0; aspect-ratio: 1 / 1; border-radius: 6px; border: 1px solid rgba(156, 163, 175, 0.4); cursor: pointer;
   }
   .editor-color-option.is-active { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(59, 130, 246, 0.5); }
-  .editor-color-reset {
-    grid-column: 1 / -1; height: 30px; min-height: 30px; border-radius: 6px;
+  .editor-color-actions {
+    grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 2px;
+  }
+  .editor-color-reset,
+  .editor-color-custom {
+    height: 28px; min-height: 28px; border-radius: 6px;
     border: 1px solid var(--editor-btn-border); background: var(--editor-btn-bg); color: var(--editor-btn-text);
-    font-size: 12px; font-weight: 600;
+    font-size: 11px; font-weight: 600;
+  }
+  .editor-color-reset:hover,
+  .editor-color-custom:hover {
+    background: var(--btn-muted-hover-bg); border-color: var(--editor-btn-border); color: var(--editor-btn-text);
+  }
+  .editor-color-custom-panel {
+    grid-column: 1 / -1; display: grid; gap: 6px; margin-top: 1px; padding-top: 6px;
+    border-top: 1px solid var(--editor-group-border);
+  }
+  .editor-color-custom-panel .react-colorful {
+    width: 100%; height: 96px;
+  }
+  .editor-color-custom-panel .react-colorful__saturation {
+    border-radius: 5px 5px 0 0;
+  }
+  .editor-color-custom-panel .react-colorful__hue {
+    height: 10px; border-radius: 999px; margin-top: 4px;
+  }
+  .editor-color-custom-row {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .editor-color-custom-label {
+    @apply text-[10px] font-semibold; color: var(--text-muted-custom);
+  }
+  .editor-color-hex-input {
+    @apply min-w-0 flex-1 rounded-md px-2 text-xs font-semibold;
+    height: 26px; border: 1px solid var(--editor-btn-border); background: var(--editor-btn-bg); color: var(--editor-btn-text);
+  }
+  .editor-color-hex-input:focus {
+    outline: none; border-color: rgba(59, 130, 246, 0.45); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
   }
   @media (max-width: 800px) {
     .editor-toolbar {
@@ -1504,8 +1539,13 @@
       position: static; display: inline-flex; align-items: center; gap: 0.35rem;
     }
     .editor-color-popover {
-      position: static; top: auto; right: auto; width: 174px; padding: 8px;
+      position: absolute; top: auto; right: 0; bottom: calc(100% + 8px);
+      width: min(176px, calc(100vw - 20px)); padding: 8px;
+      max-height: min(62vh, 250px); overflow: auto;
       grid-template-columns: repeat(6, minmax(0, 1fr)); box-shadow: none;
+    }
+    .editor-color-custom-panel .react-colorful {
+      height: 88px;
     }
     .editor-content .ql-editor { min-height: 160px; }
     .post-edit-content .ql-editor { min-height: 220px; }
