@@ -17,6 +17,7 @@
   - 멘토 커뮤니티 게시판 운영
   - 역할(Role) 기반 게시판 접근 제어
   - 알림/멘션/내 활동 추적
+  - 모바일 푸시 알림(iOS/Android) 지원
   - 데스크톱/모바일 공통 사용성 보장
 
 ## 2. V2 핵심 변경 사항
@@ -59,6 +60,13 @@ V2는 V1 대비 "레이아웃 정돈 + 다크모드 완성도 + 게시글 맥락
 
 - 관리자/개발자 권한으로 게시글 상단 고정/고정해제 지원
 - 일반 사용자에게는 관리 버튼 대신 `고정` 상태만 시각적으로 노출
+
+### 2.6 모바일 푸시 (GAS 릴레이)
+
+- Firebase Functions(Blaze) 대신 Google Apps Script 릴레이 방식 사용
+- 게시판별 모바일 알림 on/off 지원
+- iOS(Safari PWA)/Android(Chrome) 수신 흐름 분리 지원
+- 중복 알림/빈 본문 알림 이슈 보정 완료
 
 ## 3. 저장소 구조
 
@@ -248,6 +256,7 @@ V2는 V1 대비 "레이아웃 정돈 + 다크모드 완성도 + 게시글 맥락
 - `posts/{postId}/comments`
 - `users/{uid}/notifications`
 - `users/{uid}/notification_prefs`
+- `users/{uid}/push_tokens`
 - `users/{uid}/viewed_posts`
 
 ### 7.1 posts 주요 필드(예시)
@@ -285,6 +294,11 @@ V2는 V1 대비 "레이아웃 정돈 + 다크모드 완성도 + 게시글 맥락
 - Firebase Authentication
 - Cloud Firestore
 - Firebase Hosting
+- Firebase Cloud Messaging(모바일 웹푸시)
+
+푸시 릴레이:
+
+- Google Apps Script Web App (`mentor-forum-react/scripts/gas-push-relay/Code.gs`)
 
 ## 9. 로컬 개발
 
@@ -333,10 +347,23 @@ Rules 포함:
 ./node_modules/.bin/firebase deploy --only hosting,firestore:rules --project guro-mentor-forum
 ```
 
+모바일 푸시 연동 시 환경변수:
+
+```bash
+VITE_PUSH_RELAY_URL=https://script.google.com/macros/s/xxxxxxxxxxxxxxxx/exec
+VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
+```
+
 배포 후 확인:
 
 - `https://guro-mentor-forum.web.app/app`
 - 로그인/게시판 이동/상세/알림센터 빠른 스모크 테스트
+
+모바일 푸시 점검:
+
+- iOS(PWA) 알림 수신 여부
+- Android(Chrome/PWA) 알림 수신 여부
+- 게시판별 모바일 알림 on/off 반영 여부
 
 ## 11. GitHub 반영 절차
 
@@ -408,6 +435,36 @@ npm run dev
 - 내부 sticky 중복 제거
 - 오버플로우/스크롤 컨테이너 재정렬
 
+### 12.5 iOS에서 모바일 알림이 오지 않음
+
+원인 후보:
+
+- Safari 탭에서 실행(홈 화면 앱 아님)
+- 알림 권한 미허용
+- iOS 알림/집중모드/저전력 설정 영향
+
+대응:
+
+1. Safari 공유 -> 홈 화면에 추가 후 홈 아이콘으로 실행
+2. 내 정보 -> 모바일 알림 -> `모바일 알림 켜기` 재실행
+3. 상태에서 `기기 지원/알림 권한/활성 기기` 확인
+4. iOS 설정에서 해당 앱 알림 허용 확인
+
+### 12.6 Android에서 모바일 알림이 오지 않음
+
+원인 후보:
+
+- Chrome 사이트 알림 차단
+- OS 단 앱 알림 비활성
+- 배터리 최적화 제한
+
+대응:
+
+1. Chrome 사이트 권한에서 알림 허용
+2. 앱 알림 허용
+3. 배터리 최적화 예외 설정
+4. 내 정보 -> 모바일 알림에서 재등록
+
 ## 13. V2 릴리즈 노트
 
 ### V2.0
@@ -428,9 +485,17 @@ npm run dev
 - 알림센터 사용성 개선
 - 사용 설명서 문서화 강화
 
+### V2.3
+
+- GAS 릴레이 기반 모바일 푸시(iOS/Android) 반영
+- 게시판별 모바일 푸시 설정 추가
+- push 토큰 관리 및 알림 fanout 로직 보강
+- GAS `relay_debug` DB 저장 코드 제거
+
 ## 14. 참고 문서
 
 - React 앱 상세 문서: `mentor-forum-react/README.md`
+- GAS 푸시 릴레이 문서: `mentor-forum-react/scripts/gas-push-relay/README.md`
 - 라우터 구성: `mentor-forum-react/src/App.jsx`
 - 권한 정책: `mentor-forum-react/firestore.rules`
 - 메인 게시판 페이지: `mentor-forum-react/src/pages/AppPage.jsx`
