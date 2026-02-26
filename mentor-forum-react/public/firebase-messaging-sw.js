@@ -67,7 +67,7 @@ messaging.onBackgroundMessage((payload) => {
   }
 
   const data = payload?.data || {};
-  const title = String(data.mf_title || data.title || payload?.notification?.title || '멘토포럼 알림').trim();
+  const title = String(data.mf_title || data.title || payload?.notification?.title || '멘토스 알림').trim();
   const body = String(data.mf_body || data.body || payload?.notification?.body || fallbackBodyFromData(data)).trim();
   const clickUrl = resolveClickUrl(payload);
   const notificationId = String(data.notificationId || '').trim();

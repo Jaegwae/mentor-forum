@@ -1,4 +1,4 @@
-# 멘토포럼 Workspace
+# 멘토스 Workspace
 
 레포지토리: [Jaegwae/mentor-forum](https://github.com/Jaegwae/mentor-forum)
 
@@ -6,8 +6,8 @@
 
 | 영역 | 경로 | 역할 | 현재 운영 기준 |
 |---|---|---|---|
-| React 웹앱(멘토포럼) | `mentor-forum-react/` | 멘토포럼 커뮤니티 서비스(게시판/댓글/관리자/테마) | ✅ 운영 중 |
-| GAS 이슈관리 시스템(스프레드시트 기반) | 루트 (`Code.gs`, `index.html` 등) | 교구/이슈 접수·조회 운영 화면 + 멘토포럼 진입 버튼 제공 | ✅ 운영 중 |
+| React 웹앱(멘토스) | `mentor-forum-react/` | 멘토스 커뮤니티 서비스(게시판/댓글/관리자/테마) | ✅ 운영 중 |
+| GAS 이슈관리 시스템(스프레드시트 기반) | 루트 (`Code.gs`, `index.html` 등) | 교구/이슈 접수·조회 운영 화면 + 멘토스 진입 버튼 제공 | ✅ 운영 중 |
 
 ## 운영 URL
 - 서비스: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
@@ -15,7 +15,7 @@
 
 ## 운영 흐름
 - GAS 이슈관리 시스템에서 이슈 등록/조회/관리 업무를 수행합니다.
-- GAS 화면의 `멘토포럼` 버튼을 누르면 별도 운영 중인 React 멘토포럼으로 이동합니다.
+- GAS 화면의 `멘토스` 버튼을 누르면 별도 운영 중인 React 멘토스으로 이동합니다.
   - 코드 기준: `JavaScriptCore.html`의 `openMentorForum()` → `https://guro-mentor-forum.web.app/app`
 
 ---
@@ -90,7 +90,7 @@ mentor-forum/
   - 이슈 데이터 저장, 이미지 업로드, 조회/가공 로직
 - `index.html`, `style.html`, `Docs.html`, `JavaScriptCore.html`, `JavaScriptData.html`
   - 이슈관리 UI(탭/폼/조회/상세/문서)와 클라이언트 동작
-  - `openMentorForum()`을 통해 멘토포럼(React) 이동 제공
+  - `openMentorForum()`을 통해 멘토스(React) 이동 제공
 - `appsscript.json`, `.clasp.json`
   - GAS 프로젝트 메타데이터
 

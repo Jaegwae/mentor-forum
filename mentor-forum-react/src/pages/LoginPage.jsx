@@ -87,7 +87,7 @@ function normalizeErrMessage(err, fallback) {
 }
 
 export default function LoginPage() {
-  usePageMeta('멘토포럼 로그인', 'auth-page');
+  usePageMeta('멘토스 로그인', 'auth-page');
 
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -281,7 +281,7 @@ export default function LoginPage() {
               <p className="hero-kicker"><ShieldCheck size={15} /> Mentor Forum</p>
               <ThemeToggle className="theme-toggle-auth" />
             </div>
-            <CardTitle className="text-balance">멘토포럼 로그인</CardTitle>
+            <CardTitle className="text-balance">멘토스 로그인</CardTitle>
             <CardDescription className="text-sm">
               회원 전용 커뮤니티입니다. 로그인 후 포럼을 이용할 수 있습니다.
             </CardDescription>

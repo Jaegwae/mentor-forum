@@ -74,7 +74,7 @@ async function isNicknameAvailable(nicknameValue) {
 }
 
 export default function SignupPage() {
-  usePageMeta('멘토포럼 회원가입', 'auth-page');
+  usePageMeta('멘토스 회원가입', 'auth-page');
 
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();

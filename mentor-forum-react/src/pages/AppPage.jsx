@@ -1497,7 +1497,7 @@ function AuthorWithRole({ name, role, roleDefMap }) {
 }
 
 export default function AppPage() {
-  usePageMeta('멘토포럼', 'app-page');
+  usePageMeta('멘토스', 'app-page');
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -4612,9 +4612,9 @@ export default function AppPage() {
                 onClick={handleMoveHome}
                 onKeyDown={handleBrandTitleKeyDown}
               >
-                멘토포럼
+                멘토스
               </h1>
-              <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
+              <p className="hero-copy">멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
             </div>
 
             <div className="row top-action-row">
@@ -5387,7 +5387,7 @@ export default function AppPage() {
       <Dialog open={guideModalOpen} onOpenChange={setGuideModalOpen}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
           <DialogHeader className="space-y-2">
-            <DialogTitle className="text-balance text-lg font-semibold">멘토포럼 사용 설명서</DialogTitle>
+            <DialogTitle className="text-balance text-lg font-semibold">멘토스 사용 설명서</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
               처음 방문한 분도 바로 사용할 수 있도록, 실제 사용 순서와 실제 버튼 모양 기준으로 정리했습니다.
             </DialogDescription>

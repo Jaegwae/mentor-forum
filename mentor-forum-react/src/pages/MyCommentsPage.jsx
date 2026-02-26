@@ -562,9 +562,9 @@ export default function MyCommentsPage() {
               onClick={handleMoveHome}
               onKeyDown={handleBrandTitleKeyDown}
             >
-              멘토포럼
+              멘토스
             </h1>
-            <p className="hero-copy">멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
+            <p className="hero-copy">멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!</p>
           </div>
 
           <div className="row top-action-row">

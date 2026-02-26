@@ -1,6 +1,6 @@
 # Mentor Forum React
 
-멘토포럼의 **실서비스용 React + Firebase 앱**입니다.
+멘토스의 **실서비스용 React + Firebase 앱**입니다.
 
 - 운영 URL: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
 - Firebase 프로젝트: `guro-mentor-forum`

@@ -161,8 +161,8 @@ function createBaseRows(rowCount, colCount) {
 }
 
 function applyHero(rows, rowCount, colCount, input = {}) {
-  const title = toText(input.title) || '멘토포럼';
-  const subtitle = toText(input.subtitle) || '멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!';
+  const title = toText(input.title) || '멘토스';
+  const subtitle = toText(input.subtitle) || '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!';
   const showGuide = input.showGuide !== false;
   const showTheme = input.showTheme !== false;
 
@@ -270,8 +270,8 @@ export function buildMyPostsExcelSheetModel(input = {}) {
   const rows = createBaseRows(rowCount, colCount);
 
   applyHero(rows, rowCount, colCount, {
-    title: '멘토포럼',
-    subtitle: '멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!'
+    title: '멘토스',
+    subtitle: '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!'
   });
 
   applyProfile(rows, rowCount, colCount, {
@@ -361,8 +361,8 @@ export function buildMyCommentsExcelSheetModel(input = {}) {
   const rows = createBaseRows(rowCount, colCount);
 
   applyHero(rows, rowCount, colCount, {
-    title: '멘토포럼',
-    subtitle: '멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!'
+    title: '멘토스',
+    subtitle: '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!'
   });
 
   applyProfile(rows, rowCount, colCount, {
@@ -482,8 +482,8 @@ export function buildPostDetailExcelSheetModel(input = {}) {
   applyOutlineRange(rows, rowCount, colCount, 13, 6, lastContentRow, 19);
 
   applyHero(rows, rowCount, colCount, {
-    title: '멘토포럼',
-    subtitle: '멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!'
+    title: '멘토스',
+    subtitle: '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!'
   });
 
   applyProfile(rows, rowCount, colCount, {

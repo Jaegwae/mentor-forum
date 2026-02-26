@@ -214,13 +214,13 @@ export function buildAppExcelSheetModel(input = {}) {
   applyOutlineRange(rows, rowCount, colCount, 8, 6, 32, 19);
   applyOutlineRange(rows, rowCount, colCount, 13, 6, 30, 19);
 
-  setActionCell(rows, rowCount, colCount, 1, 1, '멘토포럼', 'moveHome', null, {
+  setActionCell(rows, rowCount, colCount, 1, 1, '멘토스', 'moveHome', null, {
     kind: 'brand',
     surface: 'hero',
     trigger: 'single',
     mergeAcross: 6
   });
-  setStaticCell(rows, rowCount, colCount, 2, 1, '멘토스끼리 자유롭게 소통 가능한 커뮤니티입니다!', {
+  setStaticCell(rows, rowCount, colCount, 2, 1, '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!', {
     kind: 'subtitle',
     surface: 'hero',
     mergeAcross: 9

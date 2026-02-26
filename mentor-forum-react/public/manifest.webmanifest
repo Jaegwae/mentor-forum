@@ -1,6 +1,6 @@
 {
-  "name": "멘토포럼",
-  "short_name": "멘토포럼",
+  "name": "멘토스",
+  "short_name": "멘토스",
   "description": "멘토스끼리 자유롭게 소통 가능한 커뮤니티",
   "id": "/app",
   "start_url": "/app",
@@ -11,7 +11,7 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/favicon-20260227.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"

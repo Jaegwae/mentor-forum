@@ -544,7 +544,7 @@ function AdminModal({ modalId, open, onClose, panelClassName = 'admin-modal-pane
 }
 
 export default function AdminPage() {
-  usePageMeta('멘토포럼 관리자 사이트', 'admin-page');
+  usePageMeta('멘토스 관리자 사이트', 'admin-page');
 
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
