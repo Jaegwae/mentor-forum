@@ -5,6 +5,14 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, Users2 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
+import { ExcelChrome } from '../components/ui/excel-chrome.jsx';
+import { AppExcelWorkbook } from '../components/excel/AppExcelWorkbook.jsx';
+import {
+  EXCEL_STANDARD_COL_COUNT,
+  EXCEL_STANDARD_ROW_COUNT,
+  buildMyPostsExcelSheetModel
+} from '../components/excel/secondary-excel-sheet-models.js';
+import { useTheme } from '../hooks/useTheme.js';
 import {
   auth,
   db,
@@ -18,12 +26,16 @@ import {
   collection,
   query,
   where,
+  orderBy,
+  limit,
+  startAfter,
   getDocs
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { getRoleBadgePalette } from '../legacy/rbac.js';
 
 const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
+const MY_POSTS_PAGE_SIZE = 30;
 const FALLBACK_ROLE_DEFINITIONS = [
   { role: 'Newbie', labelKo: '새싹', badgeBgColor: '#ffffff', badgeTextColor: '#334155' },
   { role: 'Mentor', labelKo: '멘토', badgeBgColor: '#dcfce7', badgeTextColor: '#166534' },
@@ -59,6 +71,17 @@ function formatDate(value) {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${y}. ${m}. ${day}. ${hh}:${mm}`;
+}
+
+function detectCompactListMode() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const hoverFine = window.matchMedia('(hover: hover)').matches;
+  const pointerFine = window.matchMedia('(pointer: fine)').matches;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+
+  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  return !desktopLike;
 }
 
 function createRoleDefMap(roleDefinitions) {
@@ -124,6 +147,8 @@ export default function MyPostsPage() {
   usePageMeta('내가 쓴 글', 'app-page');
 
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const isExcel = theme === 'excel';
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
@@ -131,34 +156,65 @@ export default function MyPostsPage() {
   const [boardNameMap, setBoardNameMap] = useState({});
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [roleDefinitions, setRoleDefinitions] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [postsCursor, setPostsCursor] = useState(null);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
 
   const roleDefMap = useMemo(() => createRoleDefMap(roleDefinitions), [roleDefinitions]);
+  const userRoleLabel = useMemo(() => {
+    const roleKey = normalizeText(currentUserProfile?.role);
+    if (!roleKey) return '-';
+    return roleDefMap.get(roleKey)?.labelKo || roleKey;
+  }, [currentUserProfile?.role, roleDefMap]);
   const userDisplayName = currentUserProfile
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
+  const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
-  const loadMyPosts = useCallback(async (uid) => {
-    setLoading(true);
-    setMessage({ type: '', text: '' });
+  const loadBoardNameMap = useCallback(async () => {
+    const boardSnap = await getDocs(collection(db, 'boards'));
+    const nextBoardNameMap = {};
+    boardSnap.docs.forEach((row) => {
+      const data = row.data() || {};
+      if (data.isDivider === true) return;
+      nextBoardNameMap[row.id] = data.name || row.id;
+    });
+    setBoardNameMap(nextBoardNameMap);
+  }, []);
+
+  const loadMyPosts = useCallback(async (uid, options = {}) => {
+    const append = options.append === true;
+    const cursor = options.cursor || null;
+
+    if (append) {
+      setLoadingMorePosts(true);
+    } else {
+      setLoading(true);
+    }
+    if (!append) setMessage({ type: '', text: '' });
+
     try {
-      // Load boards + authored posts in parallel, then hydrate board labels client-side.
-      const [boardSnap, postSnap] = await Promise.all([
-        getDocs(collection(db, 'boards')),
-        getDocs(query(collection(db, 'posts'), where('authorUid', '==', uid)))
-      ]);
+      const constraints = [
+        where('authorUid', '==', uid),
+        orderBy('createdAt', 'desc'),
+        limit(MY_POSTS_PAGE_SIZE)
+      ];
+      if (cursor) constraints.push(startAfter(cursor));
 
-      const nextBoardNameMap = {};
-      boardSnap.docs.forEach((row) => {
-        const data = row.data() || {};
-        if (data.isDivider === true) return;
-        nextBoardNameMap[row.id] = data.name || row.id;
-      });
-      setBoardNameMap(nextBoardNameMap);
-
+      const postSnap = await getDocs(query(collection(db, 'posts'), ...constraints));
       const items = postSnap.docs
         .map((row) => ({ id: row.id, ...row.data(), views: numberOrZero(row.data()?.views) }))
-        .filter((post) => post.deleted !== true)
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+        .filter((post) => post.deleted !== true);
+
+      const lastDoc = postSnap.docs.length ? postSnap.docs[postSnap.docs.length - 1] : null;
+      setPostsCursor(lastDoc);
+      setHasMorePosts(postSnap.docs.length === MY_POSTS_PAGE_SIZE);
+
+      if (append) {
+        setPosts((prev) => [...prev, ...items]);
+        return;
+      }
 
       setPosts(items);
       if (!items.length) {
@@ -166,9 +222,17 @@ export default function MyPostsPage() {
       }
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || '내 게시글 목록을 불러오지 못했습니다.' });
-      setPosts([]);
+      if (!append) {
+        setPosts([]);
+        setPostsCursor(null);
+        setHasMorePosts(false);
+      }
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMorePosts(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -222,6 +286,8 @@ export default function MyPostsPage() {
 
         setRoleDefinitions(loadedRoleDefinitions);
         setCurrentUserProfile(profile);
+        setCurrentUserId(user.uid);
+        await loadBoardNameMap();
         await loadMyPosts(user.uid);
       } catch (err) {
         if (!active) return;
@@ -235,7 +301,41 @@ export default function MyPostsPage() {
       active = false;
       unsubscribe();
     };
-  }, [loadMyPosts, navigate]);
+  }, [loadBoardNameMap, loadMyPosts, navigate]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+    const wideMedia = window.matchMedia('(min-width: 901px)');
+    const hoverMedia = window.matchMedia('(hover: hover)');
+    const pointerMedia = window.matchMedia('(pointer: fine)');
+
+    const syncMode = () => setCompactListMode(detectCompactListMode());
+    syncMode();
+
+    if (
+      typeof wideMedia.addEventListener === 'function'
+      && typeof hoverMedia.addEventListener === 'function'
+      && typeof pointerMedia.addEventListener === 'function'
+    ) {
+      wideMedia.addEventListener('change', syncMode);
+      hoverMedia.addEventListener('change', syncMode);
+      pointerMedia.addEventListener('change', syncMode);
+      return () => {
+        wideMedia.removeEventListener('change', syncMode);
+        hoverMedia.removeEventListener('change', syncMode);
+        pointerMedia.removeEventListener('change', syncMode);
+      };
+    }
+
+    wideMedia.addListener(syncMode);
+    hoverMedia.addListener(syncMode);
+    pointerMedia.addListener(syncMode);
+    return () => {
+      wideMedia.removeListener(syncMode);
+      hoverMedia.removeListener(syncMode);
+      pointerMedia.removeListener(syncMode);
+    };
+  }, []);
 
   const handleLogout = useCallback(async () => {
     clearTemporaryLoginExpiry();
@@ -247,6 +347,11 @@ export default function MyPostsPage() {
     const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
     navigate(`${appPage}?guide=1`);
   }, [navigate]);
+
+  const handleLoadMorePosts = useCallback(async () => {
+    if (!currentUserId || !postsCursor || !hasMorePosts || loading || loadingMorePosts) return;
+    await loadMyPosts(currentUserId, { append: true, cursor: postsCursor });
+  }, [currentUserId, hasMorePosts, loadMyPosts, loading, loadingMorePosts, postsCursor]);
 
   const movePostDetail = useCallback((post) => {
     const postPage = MENTOR_FORUM_CONFIG.app.postPage || '/post';
@@ -278,13 +383,89 @@ export default function MyPostsPage() {
     handleMoveHome();
   }, [handleMoveHome]);
 
+  const excelPosts = useMemo(() => {
+    return posts.map((post, idx) => ({
+      postId: post.id,
+      boardId: post.boardId || '',
+      no: posts.length - idx,
+      title: post.title || '(제목 없음)',
+      boardLabel: boardNameMap[post.boardId] || post.boardId || '-',
+      dateText: formatDate(post.createdAt),
+      views: numberOrZero(post.views)
+    }));
+  }, [boardNameMap, posts]);
+
+  const excelPostsById = useMemo(() => {
+    return new Map(posts.map((post) => [String(post.id), post]));
+  }, [posts]);
+
+  const excelSheetModel = useMemo(() => {
+    return buildMyPostsExcelSheetModel({
+      userDisplayName,
+      userRoleLabel,
+      posts: excelPosts,
+      safeCurrentPage: 1,
+      totalPageCount: 1,
+      paginationPages: [1],
+      emptyMessage: loading ? '불러오는 중...' : (message.text || '작성한 게시글이 없습니다.')
+    });
+  }, [excelPosts, loading, message.text, userDisplayName, userRoleLabel]);
+
+  const isExcelDesktopMode = isExcel && !compactListMode;
+  const [excelActiveCellLabel, setExcelActiveCellLabel] = useState('');
+  const [excelFormulaText, setExcelFormulaText] = useState('=');
+  const handleExcelSelectCell = useCallback((payload) => {
+    const label = normalizeText(payload?.label);
+    const text = String(payload?.text ?? '').trim();
+    setExcelActiveCellLabel(label || '');
+    setExcelFormulaText(text || '=');
+  }, []);
+
+  const handleExcelOpenPost = useCallback((postId) => {
+    if (!postId) return;
+    const post = excelPostsById.get(String(postId));
+    if (!post) return;
+    movePostDetail(post);
+  }, [excelPostsById, movePostDetail]);
+
   return (
-    <motion.main
-      className="page stack my-activity-shell"
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: 'easeOut' }}
-    >
+    <>
+      {isExcel ? (
+        <ExcelChrome
+          title="통합 문서1"
+          activeTab="홈"
+          sheetName="Sheet1"
+          countLabel={`${posts.length}건`}
+          activeCellLabel={isExcelDesktopMode ? excelActiveCellLabel : ''}
+          formulaText={isExcelDesktopMode ? excelFormulaText : '='}
+          showHeaders
+          rowCount={EXCEL_STANDARD_ROW_COUNT}
+          colCount={EXCEL_STANDARD_COL_COUNT}
+          compact={compactListMode}
+        />
+      ) : null}
+      <motion.main
+        className={isExcel ? 'page stack my-activity-shell excel-chrome-offset' : 'page stack my-activity-shell'}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+      >
+      {isExcelDesktopMode ? (
+        <AppExcelWorkbook
+          sheetRows={excelSheetModel.rowData}
+          rowCount={excelSheetModel.rowCount}
+          colCount={excelSheetModel.colCount}
+          onSelectCell={handleExcelSelectCell}
+          onOpenPost={handleExcelOpenPost}
+          onNavigateMyPosts={() => navigate(MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts')}
+          onNavigateMyComments={() => navigate(myCommentsPage)}
+          onOpenGuide={handleOpenGuide}
+          onToggleTheme={toggleTheme}
+          onLogout={() => handleLogout().catch(() => {})}
+          onMoveHome={handleMoveHome}
+        />
+      ) : null}
+      <div className={isExcelDesktopMode ? 'hidden' : ''}>
       <section className="card hero-card my-activity-hero">
         <div className="row space-between mobile-col">
           <div>
@@ -409,6 +590,19 @@ export default function MyPostsPage() {
             </table>
           </div>
 
+          {ready && !loading ? (
+            <div className="row" style={{ marginTop: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn-muted"
+                onClick={() => handleLoadMorePosts().catch(() => {})}
+                disabled={!hasMorePosts || loadingMorePosts}
+              >
+                {loadingMorePosts ? '불러오는 중...' : (hasMorePosts ? '더보기' : '마지막 페이지')}
+              </button>
+            </div>
+          ) : null}
+
           <div className="my-activity-mobile-list">
             {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
             {ready && !loading && !posts.length ? <p className="muted">아직 작성한 게시글이 없습니다.</p> : null}
@@ -431,9 +625,23 @@ export default function MyPostsPage() {
                 </button>
               );
             }) : null}
+            {ready && !loading ? (
+              <div className="row" style={{ marginTop: '10px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  className="btn-muted"
+                  onClick={() => handleLoadMorePosts().catch(() => {})}
+                  disabled={!hasMorePosts || loadingMorePosts}
+                >
+                  {loadingMorePosts ? '불러오는 중...' : (hasMorePosts ? '더보기' : '마지막 페이지')}
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       </section>
-    </motion.main>
+      </div>
+      </motion.main>
+    </>
   );
 }

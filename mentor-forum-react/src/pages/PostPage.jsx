@@ -37,7 +37,16 @@ import { buildPermissions, getRoleBadgePalette } from '../legacy/rbac.js';
 import { createRichEditor, renderRichDeltaToHtml, renderRichPayloadToHtml } from '../legacy/rich-editor.js';
 import { pushRelayConfigured, sendPushRelayNotification } from '../legacy/push-relay.js';
 import { RichEditorToolbar } from '../components/editor/RichEditorToolbar.jsx';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog.jsx';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
+import { ExcelChrome } from '../components/ui/excel-chrome.jsx';
+import { AppExcelWorkbook } from '../components/excel/AppExcelWorkbook.jsx';
+import {
+  EXCEL_STANDARD_COL_COUNT,
+  EXCEL_STANDARD_ROW_COUNT,
+  buildPostDetailExcelSheetModel
+} from '../components/excel/secondary-excel-sheet-models.js';
+import { useTheme } from '../hooks/useTheme.js';
 
 const NOTICE_BOARD_ID = MENTOR_FORUM_CONFIG.app.noticeBoardId || 'Notice';
 const ALL_BOARD_ID = '__all__';
@@ -110,6 +119,29 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
+function detectCompactListMode() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const hoverFine = window.matchMedia('(hover: hover)').matches;
+  const pointerFine = window.matchMedia('(pointer: fine)').matches;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+
+  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  return !desktopLike;
+}
+
+function stripHtmlToText(value) {
+  const text = String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  return text;
+}
+
 function isTruthyLegacyValue(value) {
   if (value === true || value === 1) return true;
   const text = normalizeText(value).toLowerCase();
@@ -131,6 +163,20 @@ function normalizeErrMessage(err, fallback) {
 function isPermissionDeniedError(err) {
   const code = err && err.code ? String(err.code) : '';
   return code.includes('permission-denied');
+}
+
+function shouldLogDebugPayload() {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === 'undefined') return false;
+  return window.__MENTOR_DEBUG__ === true;
+}
+
+function logErrorWithOptionalDebug(tag, error, debugPayload) {
+  if (shouldLogDebugPayload() && debugPayload) {
+    console.error(tag, debugPayload);
+    return;
+  }
+  console.error(tag, error);
 }
 
 function debugValueList(values) {
@@ -798,6 +844,8 @@ export default function PostPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
+  const isExcel = theme === 'excel';
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const routeState = (location && typeof location.state === 'object' && location.state) ? location.state : {};
@@ -810,6 +858,11 @@ export default function PostPage() {
 
   const editorRef = useRef(null);
   const editorElRef = useRef(null);
+  const [editorElMounted, setEditorElMounted] = useState(0);
+  const editorElCallbackRef = useCallback((node) => {
+    editorElRef.current = node;
+    if (node) setEditorElMounted((c) => c + 1);
+  }, []);
   const fontSizeLabelRef = useRef(null);
   const editEditorRef = useRef(null);
   const editEditorElRef = useRef(null);
@@ -843,12 +896,14 @@ export default function PostPage() {
   const [editMentionCandidates, setEditMentionCandidates] = useState([]);
   const [editMentionActiveIndex, setEditMentionActiveIndex] = useState(0);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [excelCommentModalOpen, setExcelCommentModalOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
   const [sessionRemainingMs, setSessionRemainingMs] = useState(null);
+  const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
   const [boardLabel, setBoardLabel] = useState(boardIdFromQuery || '-');
   const [currentBoardAccessDebug, setCurrentBoardAccessDebug] = useState(null);
@@ -1269,7 +1324,7 @@ export default function PostPage() {
       closeMentionMenu('comment');
       editorRef.current = null;
     };
-  }, [closeMentionMenu, commentComposerMountKey, syncMentionMenu]);
+  }, [closeMentionMenu, commentComposerMountKey, editorElMounted, syncMentionMenu]);
 
   useEffect(() => {
     if (!editModalOpen || !editEditorElRef.current || !editFontSizeLabelRef.current) {
@@ -1418,7 +1473,7 @@ export default function PostPage() {
       setComments(ordered);
       setCommentsLoading(false);
     }, (err) => {
-      console.error('[comment-realtime-subscribe-failed]', {
+      logErrorWithOptionalDebug('[comment-realtime-subscribe-failed]', err, {
         error: err,
         postId: currentPost.id
       });
@@ -1631,8 +1686,7 @@ export default function PostPage() {
     setBoardLabel(boardAccess.boardName || loadedPost.boardId || '-');
 
     if (!boardAccess.allowed) {
-      const debugText = boardAccessDebugText(boardAccess, currentUserProfile);
-      setMessage({ type: 'error', text: `이 게시판을 읽을 권한이 없습니다. (${debugText})` });
+      setMessage({ type: 'error', text: '이 게시판을 읽을 권한이 없습니다.' });
       return;
     }
 
@@ -1781,7 +1835,7 @@ export default function PostPage() {
       viewedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true }).catch((err) => {
-      console.error('[post-view-mark-failed]', {
+      logErrorWithOptionalDebug('[post-view-mark-failed]', err, {
         error: err,
         uid,
         postId: currentPostId
@@ -1897,13 +1951,7 @@ export default function PostPage() {
 
     if (!currentPost || !currentUser || !currentUserProfile) return;
     if (!canAttemptCommentWrite) {
-      const debugText = joinDebugParts([
-        'action=comment-create',
-        boardAccessDebugText(currentBoardAccessDebug, currentUserProfile),
-        `currentPostCanWrite=${currentPostCanWrite ? 'Y' : 'N'}`,
-        `hasPotentialWriteRole=${hasPotentialWriteRole ? 'Y' : 'N'}`
-      ]);
-      setMessage({ type: 'error', text: `댓글 작성 권한이 없습니다. (${debugText})` });
+      setMessage({ type: 'error', text: '댓글 작성 권한이 없습니다.' });
       return;
     }
 
@@ -1953,7 +2001,7 @@ export default function PostPage() {
           `createdCommentId=${createdCommentId || '-'}`,
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
-        console.error('[comment-create-permission-debug]', {
+        logErrorWithOptionalDebug('[comment-create-permission-debug]', err, {
           error: err,
           postId: currentPost?.id || '',
           postBoardId: currentPost?.boardId || '',
@@ -1964,9 +2012,10 @@ export default function PostPage() {
           userUid: currentUser?.uid || '',
           parentId,
           depth,
-          createdCommentId
+          createdCommentId,
+          debugText
         });
-        setMessage({ type: 'error', text: `${normalizeErrMessage(err, '댓글 등록 실패')} (${debugText})` });
+        setMessage({ type: 'error', text: normalizeErrMessage(err, '댓글 등록 실패') });
         setCommentSubmitting(false);
         return;
       }
@@ -2108,7 +2157,7 @@ export default function PostPage() {
               }))
             );
           } catch (err) {
-            console.error('[push-relay-dispatch-failed]', {
+            logErrorWithOptionalDebug('[push-relay-dispatch-failed]', err, {
               error: err,
               postId: postIdValue,
               commentId: createdCommentId
@@ -2117,7 +2166,7 @@ export default function PostPage() {
         })();
       }
     } catch (err) {
-      console.error('[comment-notification-write-failed]', {
+      logErrorWithOptionalDebug('[comment-notification-write-failed]', err, {
         error: err,
         postId: currentPost?.id || '',
         commentId: createdCommentId
@@ -2125,6 +2174,7 @@ export default function PostPage() {
     }
 
     setReplyTarget(null);
+    setExcelCommentModalOpen(false);
     commentDraftPayloadRef.current = { text: '', runs: [] };
     editorRef.current?.setPayload({ text: '', runs: [] });
     closeMentionMenu();
@@ -2240,7 +2290,7 @@ export default function PostPage() {
           `canModerate=${permissions?.canModerate ? 'Y' : 'N'}`,
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
-        console.error('[post-update-permission-debug]', {
+        logErrorWithOptionalDebug('[post-update-permission-debug]', err, {
           error: err,
           runtimeProjectId: normalizeText(db?.app?.options?.projectId),
           postId: currentPost?.id || '',
@@ -2262,9 +2312,10 @@ export default function PostPage() {
           canModerate: !!permissions?.canModerate,
           boardAccess: currentBoardAccessDebug,
           userRole: currentUserProfile?.role || '',
-          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || ''
+          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || '',
+          debugText
         });
-        setEditMessage({ type: 'error', text: `${normalizeErrMessage(err, '게시글 수정 실패')} (${debugText})` });
+        setEditMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 수정 실패') });
         return;
       }
       setEditMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 수정 실패') });
@@ -2309,7 +2360,7 @@ export default function PostPage() {
           `canModerate=${permissions?.canModerate ? 'Y' : 'N'}`,
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
-        console.error('[post-delete-permission-debug]', {
+        logErrorWithOptionalDebug('[post-delete-permission-debug]', err, {
           error: err,
           postId: currentPost?.id || '',
           postAuthorUid: currentPost?.authorUid || '',
@@ -2323,9 +2374,10 @@ export default function PostPage() {
           canModerate: !!permissions?.canModerate,
           boardAccess: currentBoardAccessDebug,
           userRole: currentUserProfile?.role || '',
-          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || ''
+          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || '',
+          debugText
         });
-        setMessage({ type: 'error', text: `${normalizeErrMessage(err, '게시글 삭제 실패')} (${debugText})` });
+        setMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 삭제 실패') });
         return;
       }
       setMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 삭제 실패') });
@@ -2453,7 +2505,7 @@ export default function PostPage() {
           `nextStatus=${nextStatus}`,
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
-        console.error('[cover-status-update-permission-debug]', {
+        logErrorWithOptionalDebug('[cover-status-update-permission-debug]', err, {
           error: err,
           runtimeProjectId: normalizeText(db?.app?.options?.projectId),
           postId: currentPost?.id || '',
@@ -2480,9 +2532,10 @@ export default function PostPage() {
           nextStatus,
           boardAccess: currentBoardAccessDebug,
           userRole: currentUserProfile?.role || '',
-          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || ''
+          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || '',
+          debugText
         });
-        setMessage({ type: 'error', text: `${normalizeErrMessage(err, '상태 변경 실패')} (${debugText})` });
+        setMessage({ type: 'error', text: normalizeErrMessage(err, '상태 변경 실패') });
         return;
       }
       setMessage({ type: 'error', text: normalizeErrMessage(err, '상태 변경 실패') });
@@ -2545,7 +2598,7 @@ export default function PostPage() {
           <div
             id="commentEditor"
             className="editor-content"
-            ref={editorElRef}
+            ref={editorElCallbackRef}
           />
           <div
             className={commentMentionMenu.open ? 'mention-menu mention-menu-anchor' : 'mention-menu mention-menu-anchor hidden'}
@@ -2581,6 +2634,40 @@ export default function PostPage() {
   const forumPage = MENTOR_FORUM_CONFIG.app.appPage;
   const myPostsPage = MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts';
   const myCommentsPage = MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments';
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+    const wideMedia = window.matchMedia('(min-width: 901px)');
+    const hoverMedia = window.matchMedia('(hover: hover)');
+    const pointerMedia = window.matchMedia('(pointer: fine)');
+
+    const syncMode = () => setCompactListMode(detectCompactListMode());
+    syncMode();
+
+    if (
+      typeof wideMedia.addEventListener === 'function'
+      && typeof hoverMedia.addEventListener === 'function'
+      && typeof pointerMedia.addEventListener === 'function'
+    ) {
+      wideMedia.addEventListener('change', syncMode);
+      hoverMedia.addEventListener('change', syncMode);
+      pointerMedia.addEventListener('change', syncMode);
+      return () => {
+        wideMedia.removeEventListener('change', syncMode);
+        hoverMedia.removeEventListener('change', syncMode);
+        pointerMedia.removeEventListener('change', syncMode);
+      };
+    }
+
+    wideMedia.addListener(syncMode);
+    hoverMedia.addListener(syncMode);
+    pointerMedia.addListener(syncMode);
+    return () => {
+      wideMedia.removeListener(syncMode);
+      hoverMedia.removeListener(syncMode);
+      pointerMedia.removeListener(syncMode);
+    };
+  }, []);
+
   const handleMoveHome = useCallback(() => {
     navigate(forumPage);
   }, [forumPage, navigate]);
@@ -2590,14 +2677,210 @@ export default function PostPage() {
     handleMoveHome();
   }, [handleMoveHome]);
 
+  const userRoleLabel = useMemo(() => {
+    const roleKey = normalizeText(currentUserProfile?.role);
+    if (!roleKey) return '-';
+    return roleDefMap.get(roleKey)?.labelKo || roleKey;
+  }, [currentUserProfile?.role, roleDefMap]);
+
+  const excelCommentRows = useMemo(() => {
+    return comments.map((comment) => ({
+      commentId: comment.id,
+      author: commentAuthorName(comment),
+      dateText: toDateText(comment.createdAt),
+      contentText: stripHtmlToText(renderStoredContentHtml(comment)),
+      depth: Number(comment._threadDepth) || 0,
+      canDelete: !!(permissions?.canModerate || (currentUser && comment.authorUid === currentUser.uid)),
+      canReply: canAttemptCommentWrite
+    }));
+  }, [comments, commentAuthorName, permissions, currentUser, canAttemptCommentWrite]);
+
+  const postMetaLine = useMemo(() => {
+    if (!currentPost) return '-';
+    return `${currentPost.authorName || currentPost.authorUid || '-'} · ${toDateText(currentPost.createdAt)} · 조회 ${numberOrZero(currentPost.views)}`;
+  }, [currentPost]);
+
+  const excelSheetModel = useMemo(() => {
+    return buildPostDetailExcelSheetModel({
+      userDisplayName,
+      userRoleLabel,
+      canAccessAdminSite,
+      boardLabel,
+      title: currentPost?.title || '(제목 없음)',
+      metaLine: postMetaLine,
+      bodyText: stripHtmlToText(renderedPostBody),
+      commentCount: comments.length,
+      comments: excelCommentRows,
+      canModerate: canModerateCurrentPost,
+      canWriteComment: canAttemptCommentWrite,
+      isCoverForPost,
+      canChangeCoverStatus,
+      canResetCoverToSeeking,
+      coverDateEntries: currentPostCoverDateEntries.map((entry) => ({
+        dateKey: entry.dateKey,
+        startTime: normalizeTimeInput(entry.startTimeValue) || COVER_FOR_DEFAULT_START_TIME,
+        endTime: normalizeTimeInput(entry.endTimeValue) || COVER_FOR_DEFAULT_END_TIME,
+        venue: normalizeCoverForVenue(entry.venue) || COVER_FOR_DEFAULT_VENUE,
+        status: normalizeCoverForStatus(entry.status),
+        statusLabel: coverForStatusLabel(normalizeCoverForStatus(entry.status))
+      }))
+    });
+  }, [
+    boardLabel,
+    canAccessAdminSite,
+    canAttemptCommentWrite,
+    canChangeCoverStatus,
+    canModerateCurrentPost,
+    canResetCoverToSeeking,
+    comments.length,
+    currentPostCoverDateEntries,
+    currentPost?.title,
+    excelCommentRows,
+    isCoverForPost,
+    postMetaLine,
+    renderedPostBody,
+    userDisplayName,
+    userRoleLabel
+  ]);
+
+  const isExcelDesktopMode = isExcel && !compactListMode;
+  const [excelActiveCellLabel, setExcelActiveCellLabel] = useState('');
+  const [excelFormulaText, setExcelFormulaText] = useState('=');
+  const handleExcelSelectCell = useCallback((payload) => {
+    const label = normalizeText(payload?.label);
+    const text = String(payload?.text ?? '').trim();
+    setExcelActiveCellLabel(label || '');
+    setExcelFormulaText(text || '=');
+  }, []);
+
+  const handleExcelAction = useCallback((actionType, payload) => {
+    if (actionType === 'backToList') {
+      handleBackToList();
+      return;
+    }
+    if (actionType === 'openEdit') {
+      openEditModal();
+      return;
+    }
+    if (actionType === 'deletePost') {
+      deletePost().catch(() => {});
+      return;
+    }
+    if (actionType === 'focusComment') {
+      const targetId = normalizeText(payload?.commentId);
+      if (!targetId) return;
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.set('commentId', targetId);
+      navigate(`${MENTOR_FORUM_CONFIG.app.postPage || '/post'}?${nextParams.toString()}`, {
+        state: location.state
+      });
+      return;
+    }
+    if (actionType === 'replyToComment') {
+      const targetCommentId = normalizeText(payload?.commentId);
+      const targetAuthorName = String(payload?.authorName || '');
+      const targetDepth = Number(payload?.depth) || 0;
+      if (!targetCommentId) return;
+      setReplyTarget({
+        id: targetCommentId,
+        authorName: targetAuthorName,
+        authorUid: '',
+        depth: targetDepth
+      });
+      closeMentionMenu('comment');
+      setExcelCommentModalOpen(true);
+      return;
+    }
+    if (actionType === 'deleteComment') {
+      const targetCommentId = normalizeText(payload?.commentId);
+      if (!targetCommentId || !currentPost) return;
+      if (!window.confirm('댓글을 삭제할까요?')) return;
+      deleteDoc(doc(db, 'posts', currentPost.id, 'comments', targetCommentId))
+        .then(() => {
+          if (replyTarget && replyTarget.id === targetCommentId) {
+            setReplyTarget(null);
+          }
+        })
+        .catch((err) => {
+          setMessage({ type: 'error', text: normalizeErrMessage(err, '댓글 삭제 실패') });
+        });
+      return;
+    }
+    if (actionType === 'updateCoverStatus') {
+      const targetIndex = payload?.index;
+      const nextStatus = payload?.nextStatus;
+      if (targetIndex == null || !nextStatus) return;
+      updateCoverForDateStatus(targetIndex, nextStatus).catch(() => {});
+      return;
+    }
+    if (actionType === 'openCommentComposer') {
+      setReplyTarget(null);
+      closeMentionMenu('comment');
+      setExcelCommentModalOpen(true);
+    }
+  }, [
+    currentPost,
+    deletePost,
+    handleBackToList,
+    location.search,
+    location.state,
+    navigate,
+    openEditModal,
+    replyTarget,
+    updateCoverForDateStatus
+  ]);
+
   return (
     <>
+      {isExcel ? (
+        <ExcelChrome
+          title="통합 문서1"
+          activeTab="홈"
+          sheetName="Sheet1"
+          countLabel={`${comments.length}건`}
+          activeCellLabel={isExcelDesktopMode ? excelActiveCellLabel : ''}
+          formulaText={isExcelDesktopMode ? excelFormulaText : '='}
+          showHeaders
+          rowCount={EXCEL_STANDARD_ROW_COUNT}
+          colCount={EXCEL_STANDARD_COL_COUNT}
+          compact={compactListMode}
+        />
+      ) : null}
       <motion.main
-        className="page stack post-detail-shell"
+        className={isExcel ? 'page stack post-detail-shell excel-chrome-offset' : 'page stack post-detail-shell'}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
+        {isExcelDesktopMode ? (
+          <AppExcelWorkbook
+            sheetRows={excelSheetModel.rowData}
+            rowCount={excelSheetModel.rowCount}
+            colCount={excelSheetModel.colCount}
+            onSelectCell={handleExcelSelectCell}
+            onNavigateMyPosts={() => navigate(myPostsPage)}
+            onNavigateMyComments={() => navigate(myCommentsPage)}
+            onNavigateAdmin={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}
+            onOpenGuide={handleOpenGuide}
+            onToggleTheme={toggleTheme}
+            onLogout={() => handleLogout().catch(() => {})}
+            onMoveHome={handleMoveHome}
+            onAction={handleExcelAction}
+          />
+        ) : null}
+        {isExcelDesktopMode && excelCommentModalOpen ? (
+          <Dialog open={excelCommentModalOpen} onOpenChange={setExcelCommentModalOpen}>
+            <DialogContent className="max-w-[560px]">
+              <DialogHeader>
+                <DialogTitle>댓글 작성</DialogTitle>
+              </DialogHeader>
+              <div className="mt-2">
+                {renderCommentComposer()}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+        <div className={isExcelDesktopMode ? 'hidden' : ''}>
         <section className="card hero-card">
         <div className="row space-between mobile-col">
           <div>
@@ -2961,16 +3244,17 @@ export default function PostPage() {
                   </div>
                 </div>
 
-                {isReplyComposerOpen ? renderCommentComposer(true) : null}
+                {!isExcelDesktopMode && isReplyComposerOpen ? renderCommentComposer(true) : null}
               </React.Fragment>
             );
           })}
         </div>
 
-        {!replyTarget ? renderCommentComposer(false) : null}
+        {!isExcelDesktopMode && !replyTarget ? renderCommentComposer(false) : null}
             </section>
           </div>
         </section>
+        </div>
       </motion.main>
 
       <AnimatePresence>

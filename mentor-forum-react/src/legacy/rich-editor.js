@@ -1,5 +1,5 @@
 // Quill-based rich editor creation, sanitization, and rendering helpers.
-import { Quill } from 'react-quill';
+import Quill from 'quill';
 
 const DEFAULT_MIN = 10;
 const DEFAULT_MAX = 48;

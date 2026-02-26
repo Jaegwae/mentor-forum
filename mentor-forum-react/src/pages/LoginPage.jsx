@@ -22,6 +22,7 @@ import {
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { usePageMeta } from '../hooks/usePageMeta.js';
+import { useTheme } from '../hooks/useTheme.js';
 import { cn } from '../lib/utils.js';
 import { Button } from '../components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card.jsx';
@@ -36,7 +37,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '../components/ui/dialog.jsx';
-
 const autoLogoutMessage = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다. 다시 로그인해주세요.';
 const resetPasswordNotice = '비밀번호 재설정 요청이 접수되었습니다. 가입된 이메일이면 재설정 메일이 발송되며, 받은편지함과 스팸함을 확인해주세요.';
 
@@ -47,6 +47,7 @@ function normalizeEmail(value) {
 function isEmailValid(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 }
+
 
 async function syncEmailVerifiedProfile(user) {
   if (!user || !user.emailVerified) return;
@@ -89,6 +90,13 @@ export default function LoginPage() {
   usePageMeta('멘토포럼 로그인', 'auth-page');
 
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+
+  // Auth pages only support light/dark. Force-downgrade excel to light.
+  useEffect(() => {
+    if (theme === 'excel') setTheme('light');
+  }, [theme, setTheme]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberLogin, setRememberLogin] = useState(false);
@@ -178,6 +186,7 @@ export default function LoginPage() {
     };
   }, [navigate]);
 
+
   const onSubmit = async (event) => {
     event.preventDefault();
     setMessage({ type: '', text: '' });
@@ -258,7 +267,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="page auth-page-wrap flex min-h-[calc(100vh-2rem)] items-center">
+    <>
+      <main className="page auth-page-wrap flex min-h-[calc(100vh-2rem)] items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -431,6 +441,7 @@ export default function LoginPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </main>
+      </main>
+    </>
   );
 }

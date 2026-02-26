@@ -29,8 +29,11 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
+  documentId,
   getDocs,
   deleteDoc,
+  writeBatch,
   runTransaction,
   onSnapshot
 } from 'firebase/firestore';
@@ -94,8 +97,11 @@ export {
   where,
   orderBy,
   limit,
+  startAfter,
+  documentId,
   getDocs,
   deleteDoc,
+  writeBatch,
   runTransaction,
   onSnapshot,
   httpsCallable

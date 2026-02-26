@@ -5,6 +5,14 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, Users2 } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
+import { ExcelChrome } from '../components/ui/excel-chrome.jsx';
+import { AppExcelWorkbook } from '../components/excel/AppExcelWorkbook.jsx';
+import {
+  EXCEL_STANDARD_COL_COUNT,
+  EXCEL_STANDARD_ROW_COUNT,
+  buildMyCommentsExcelSheetModel
+} from '../components/excel/secondary-excel-sheet-models.js';
+import { useTheme } from '../hooks/useTheme.js';
 import {
   auth,
   db,
@@ -19,12 +27,18 @@ import {
   collectionGroup,
   query,
   where,
+  orderBy,
+  limit,
+  startAfter,
+  documentId,
   getDocs
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { getRoleBadgePalette } from '../legacy/rbac.js';
 
 const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
+const MY_COMMENTS_PAGE_SIZE = 30;
+const POST_IN_QUERY_CHUNK = 10;
 const FALLBACK_ROLE_DEFINITIONS = [
   { role: 'Newbie', labelKo: '새싹', badgeBgColor: '#ffffff', badgeTextColor: '#334155' },
   { role: 'Mentor', labelKo: '멘토', badgeBgColor: '#dcfce7', badgeTextColor: '#166534' },
@@ -72,6 +86,17 @@ function snippetText(value) {
   if (!clean) return '(내용 없음)';
   if (clean.length <= 120) return clean;
   return `${clean.slice(0, 120)}...`;
+}
+
+function detectCompactListMode() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const hoverFine = window.matchMedia('(hover: hover)').matches;
+  const pointerFine = window.matchMedia('(pointer: fine)').matches;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+
+  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  return !desktopLike;
 }
 
 function postIdFromCommentPath(path) {
@@ -133,34 +158,105 @@ export default function MyCommentsPage() {
   usePageMeta('내가 쓴 댓글', 'app-page');
 
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const isExcel = theme === 'excel';
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
   const [comments, setComments] = useState([]);
+  const [boardNameMap, setBoardNameMap] = useState({});
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [roleDefinitions, setRoleDefinitions] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [commentsCursor, setCommentsCursor] = useState(null);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
 
   const roleDefMap = useMemo(() => createRoleDefMap(roleDefinitions), [roleDefinitions]);
+  const userRoleLabel = useMemo(() => {
+    const roleKey = normalizeText(currentUserProfile?.role);
+    if (!roleKey) return '-';
+    return roleDefMap.get(roleKey)?.labelKo || roleKey;
+  }, [currentUserProfile?.role, roleDefMap]);
   const userDisplayName = currentUserProfile
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
+  const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
-  const loadMyComments = useCallback(async (uid) => {
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-    try {
-      // Cross-post comment lookup uses collectionGroup; board metadata is loaded together for label rendering.
-      const [boardSnap, commentSnap] = await Promise.all([
-        getDocs(collection(db, 'boards')),
-        getDocs(query(collectionGroup(db, 'comments'), where('authorUid', '==', uid)))
-      ]);
+  const loadBoardNameMap = useCallback(async () => {
+    const boardSnap = await getDocs(collection(db, 'boards'));
+    const nextBoardNameMap = {};
+    boardSnap.docs.forEach((row) => {
+      const data = row.data() || {};
+      if (data.isDivider === true) return;
+      nextBoardNameMap[row.id] = data.name || row.id;
+    });
+    setBoardNameMap(nextBoardNameMap);
+    return nextBoardNameMap;
+  }, []);
 
-      const boardNameMap = {};
-      boardSnap.docs.forEach((row) => {
-        const data = row.data() || {};
-        if (data.isDivider === true) return;
-        boardNameMap[row.id] = data.name || row.id;
+  const hydrateCommentRows = useCallback(async (commentRows, boardMap) => {
+    const postIdSet = new Set(commentRows.map((row) => row.postId).filter(Boolean));
+    const postIds = [...postIdSet];
+    const postMap = new Map();
+    const fetchTasks = [];
+
+    for (let idx = 0; idx < postIds.length; idx += POST_IN_QUERY_CHUNK) {
+      const chunk = postIds.slice(idx, idx + POST_IN_QUERY_CHUNK);
+      if (!chunk.length) continue;
+      fetchTasks.push(
+        getDocs(query(collection(db, 'posts'), where(documentId(), 'in', chunk)))
+      );
+    }
+
+    const postSnaps = await Promise.all(fetchTasks);
+    postSnaps.forEach((snap) => {
+      snap.docs.forEach((row) => {
+        postMap.set(row.id, { id: row.id, ...row.data() });
       });
+    });
+
+    return commentRows
+      .map((row) => {
+        const post = postMap.get(row.postId);
+        const boardId = normalizeText(post?.boardId);
+        return {
+          ...row,
+          postId: row.postId,
+          boardId,
+          boardName: boardMap[boardId] || boardId || '-',
+          postTitle: normalizeText(post?.title) || '(게시글 정보 없음)',
+          postExists: !!post,
+          postDeleted: !!post?.deleted
+        };
+      })
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+  }, []);
+
+  const loadMyComments = useCallback(async (uid, options = {}) => {
+    const append = options.append === true;
+    const cursor = options.cursor || null;
+
+    if (append) {
+      setLoadingMoreComments(true);
+    } else {
+      setLoading(true);
+    }
+    if (!append) setMessage({ type: '', text: '' });
+
+    try {
+      const activeBoardNameMap = Object.keys(boardNameMap).length
+        ? boardNameMap
+        : await loadBoardNameMap();
+
+      const constraints = [
+        where('authorUid', '==', uid),
+        orderBy('createdAt', 'desc'),
+        limit(MY_COMMENTS_PAGE_SIZE)
+      ];
+      if (cursor) constraints.push(startAfter(cursor));
+
+      const commentSnap = await getDocs(query(collectionGroup(db, 'comments'), ...constraints));
 
       const commentRows = commentSnap.docs.map((row) => {
         const data = row.data() || {};
@@ -172,35 +268,15 @@ export default function MyCommentsPage() {
         };
       });
 
-      const postIdSet = new Set(commentRows.map((row) => row.postId).filter(Boolean));
-      const postEntries = await Promise.all(
-        Array.from(postIdSet).map(async (postId) => {
-          try {
-            const snap = await getDoc(doc(db, 'posts', postId));
-            if (!snap.exists()) return [postId, null];
-            return [postId, { id: snap.id, ...snap.data() }];
-          } catch (_) {
-            return [postId, null];
-          }
-        })
-      );
-      const postMap = new Map(postEntries);
+      const merged = await hydrateCommentRows(commentRows, activeBoardNameMap);
+      const lastDoc = commentSnap.docs.length ? commentSnap.docs[commentSnap.docs.length - 1] : null;
+      setCommentsCursor(lastDoc);
+      setHasMoreComments(commentSnap.docs.length === MY_COMMENTS_PAGE_SIZE);
 
-      const merged = commentRows
-        .map((row) => {
-          const post = postMap.get(row.postId);
-          const boardId = normalizeText(post?.boardId);
-          return {
-            ...row,
-            postId: row.postId,
-            boardId,
-            boardName: boardNameMap[boardId] || boardId || '-',
-            postTitle: normalizeText(post?.title) || '(게시글 정보 없음)',
-            postExists: !!post,
-            postDeleted: !!post?.deleted
-          };
-        })
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+      if (append) {
+        setComments((prev) => [...prev, ...merged]);
+        return;
+      }
 
       setComments(merged);
       if (!merged.length) {
@@ -208,11 +284,19 @@ export default function MyCommentsPage() {
       }
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || '내 댓글 목록을 불러오지 못했습니다.' });
-      setComments([]);
+      if (!append) {
+        setComments([]);
+        setCommentsCursor(null);
+        setHasMoreComments(false);
+      }
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMoreComments(false);
+      } else {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [boardNameMap, hydrateCommentRows, loadBoardNameMap]);
 
   useEffect(() => {
     let active = true;
@@ -264,6 +348,8 @@ export default function MyCommentsPage() {
 
         setRoleDefinitions(loadedRoleDefinitions);
         setCurrentUserProfile(profile);
+        setCurrentUserId(user.uid);
+        await loadBoardNameMap();
         await loadMyComments(user.uid);
       } catch (err) {
         if (!active) return;
@@ -277,7 +363,41 @@ export default function MyCommentsPage() {
       active = false;
       unsubscribe();
     };
-  }, [loadMyComments, navigate]);
+  }, [loadBoardNameMap, loadMyComments, navigate]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+    const wideMedia = window.matchMedia('(min-width: 901px)');
+    const hoverMedia = window.matchMedia('(hover: hover)');
+    const pointerMedia = window.matchMedia('(pointer: fine)');
+
+    const syncMode = () => setCompactListMode(detectCompactListMode());
+    syncMode();
+
+    if (
+      typeof wideMedia.addEventListener === 'function'
+      && typeof hoverMedia.addEventListener === 'function'
+      && typeof pointerMedia.addEventListener === 'function'
+    ) {
+      wideMedia.addEventListener('change', syncMode);
+      hoverMedia.addEventListener('change', syncMode);
+      pointerMedia.addEventListener('change', syncMode);
+      return () => {
+        wideMedia.removeEventListener('change', syncMode);
+        hoverMedia.removeEventListener('change', syncMode);
+        pointerMedia.removeEventListener('change', syncMode);
+      };
+    }
+
+    wideMedia.addListener(syncMode);
+    hoverMedia.addListener(syncMode);
+    pointerMedia.addListener(syncMode);
+    return () => {
+      wideMedia.removeListener(syncMode);
+      hoverMedia.removeListener(syncMode);
+      pointerMedia.removeListener(syncMode);
+    };
+  }, []);
 
   const handleLogout = useCallback(async () => {
     clearTemporaryLoginExpiry();
@@ -289,6 +409,18 @@ export default function MyCommentsPage() {
     const appPage = MENTOR_FORUM_CONFIG.app.appPage || '/app';
     navigate(`${appPage}?guide=1`);
   }, [navigate]);
+
+  const handleLoadMoreComments = useCallback(async () => {
+    if (!currentUserId || !commentsCursor || !hasMoreComments || loading || loadingMoreComments) return;
+    await loadMyComments(currentUserId, { append: true, cursor: commentsCursor });
+  }, [
+    commentsCursor,
+    currentUserId,
+    hasMoreComments,
+    loadMyComments,
+    loading,
+    loadingMoreComments
+  ]);
 
   const moveCommentPost = useCallback((comment) => {
     if (!comment?.postExists || !comment?.postId) {
@@ -325,13 +457,100 @@ export default function MyCommentsPage() {
     handleMoveHome();
   }, [handleMoveHome]);
 
+  const excelComments = useMemo(() => {
+    return comments.map((comment, idx) => ({
+      commentId: comment.id || '',
+      postId: comment.postId || '',
+      boardId: comment.boardId || '',
+      no: comments.length - idx,
+      commentText: snippetText(comment.contentText),
+      postTitle: comment.postTitle || '-',
+      boardName: comment.boardName || '-',
+      dateText: formatDate(comment.createdAt)
+    }));
+  }, [comments]);
+
+  const excelCommentsById = useMemo(() => {
+    return new Map(comments.map((comment) => [String(comment.id), comment]));
+  }, [comments]);
+
+  const excelSheetModel = useMemo(() => {
+    return buildMyCommentsExcelSheetModel({
+      userDisplayName,
+      userRoleLabel,
+      comments: excelComments,
+      safeCurrentPage: 1,
+      totalPageCount: 1,
+      paginationPages: [1],
+      emptyMessage: loading ? '불러오는 중...' : (message.text || '작성한 댓글이 없습니다.')
+    });
+  }, [excelComments, loading, message.text, userDisplayName, userRoleLabel]);
+
+  const isExcelDesktopMode = isExcel && !compactListMode;
+  const [excelActiveCellLabel, setExcelActiveCellLabel] = useState('');
+  const [excelFormulaText, setExcelFormulaText] = useState('=');
+  const handleExcelSelectCell = useCallback((payload) => {
+    const label = normalizeText(payload?.label);
+    const text = String(payload?.text ?? '').trim();
+    setExcelActiveCellLabel(label || '');
+    setExcelFormulaText(text || '=');
+  }, []);
+
+  const handleExcelAction = useCallback((actionType, payload) => {
+    if (actionType !== 'openCommentPost') return;
+    const commentId = normalizeText(payload?.commentId);
+    if (commentId) {
+      const row = excelCommentsById.get(commentId);
+      if (row) {
+        moveCommentPost(row);
+        return;
+      }
+    }
+    moveCommentPost({
+      id: commentId,
+      postId: normalizeText(payload?.postId),
+      boardId: normalizeText(payload?.boardId)
+    });
+  }, [excelCommentsById, moveCommentPost]);
+
   return (
-    <motion.main
-      className="page stack my-activity-shell"
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: 'easeOut' }}
-    >
+    <>
+      {isExcel ? (
+        <ExcelChrome
+          title="통합 문서1"
+          activeTab="홈"
+          sheetName="Sheet1"
+          countLabel={`${comments.length}건`}
+          activeCellLabel={isExcelDesktopMode ? excelActiveCellLabel : ''}
+          formulaText={isExcelDesktopMode ? excelFormulaText : '='}
+          showHeaders
+          rowCount={EXCEL_STANDARD_ROW_COUNT}
+          colCount={EXCEL_STANDARD_COL_COUNT}
+          compact={compactListMode}
+        />
+      ) : null}
+      <motion.main
+        className={isExcel ? 'page stack my-activity-shell excel-chrome-offset' : 'page stack my-activity-shell'}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+      >
+      {isExcelDesktopMode ? (
+        <AppExcelWorkbook
+          sheetRows={excelSheetModel.rowData}
+          rowCount={excelSheetModel.rowCount}
+          colCount={excelSheetModel.colCount}
+          onSelectCell={handleExcelSelectCell}
+          onNavigateMyPosts={() => navigate(myPostsPage)}
+          onNavigateMyComments={() => navigate(MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments')}
+          onOpenGuide={handleOpenGuide}
+          onToggleTheme={toggleTheme}
+          onLogout={() => handleLogout().catch(() => {})}
+          onMoveHome={handleMoveHome}
+          onAction={handleExcelAction}
+        />
+      ) : null}
+      <div className={isExcelDesktopMode ? 'hidden' : ''}>
       <section className="card hero-card my-activity-hero">
         <div className="row space-between mobile-col">
           <div>
@@ -455,6 +674,19 @@ export default function MyCommentsPage() {
             </table>
           </div>
 
+          {ready && !loading ? (
+            <div className="row" style={{ marginTop: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn-muted"
+                onClick={() => handleLoadMoreComments().catch(() => {})}
+                disabled={!hasMoreComments || loadingMoreComments}
+              >
+                {loadingMoreComments ? '불러오는 중...' : (hasMoreComments ? '더보기' : '마지막 페이지')}
+              </button>
+            </div>
+          ) : null}
+
           <div className="my-activity-mobile-list">
             {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
             {ready && !loading && !comments.length ? <p className="muted">아직 작성한 댓글이 없습니다.</p> : null}
@@ -477,9 +709,23 @@ export default function MyCommentsPage() {
                 </button>
               );
             }) : null}
+            {ready && !loading ? (
+              <div className="row" style={{ marginTop: '10px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  className="btn-muted"
+                  onClick={() => handleLoadMoreComments().catch(() => {})}
+                  disabled={!hasMoreComments || loadingMoreComments}
+                >
+                  {loadingMoreComments ? '불러오는 중...' : (hasMoreComments ? '더보기' : '마지막 페이지')}
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       </section>
-    </motion.main>
+      </div>
+      </motion.main>
+    </>
   );
 }

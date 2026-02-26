@@ -430,6 +430,221 @@
     --board-pill-text: #93c5fd;
   }
 
+  html.theme-excel {
+    color-scheme: light;
+    --background: 120 11% 95%;
+    --foreground: 147 18% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 147 18% 17%;
+    --primary: 146 55% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 10% 92%;
+    --secondary-foreground: 147 18% 21%;
+    --muted: 150 10% 93%;
+    --muted-foreground: 145 8% 42%;
+    --accent: 147 18% 90%;
+    --accent-foreground: 147 18% 21%;
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 145 10% 83%;
+    --input: 145 10% 79%;
+    --ring: 146 55% 35%;
+
+    --surface-panel: rgba(252, 253, 252, 0.97);
+    --surface-elevated: rgba(255, 255, 255, 0.99);
+    --surface-inset: rgba(244, 247, 244, 0.94);
+    --surface-overlay: rgba(255, 255, 255, 0.98);
+    --surface-deep: rgba(242, 246, 243, 0.96);
+    --panel-bg: rgba(252, 253, 252, 0.97);
+    --panel-border: rgba(188, 198, 190, 0.95);
+    --hero-card-bg: rgba(252, 255, 253, 0.98);
+    --hero-card-border: rgba(33, 115, 70, 0.26);
+    --current-board-bg: rgba(232, 242, 235, 0.82);
+    --current-board-border: rgba(33, 115, 70, 0.3);
+    --btn-muted-bg: #ffffff;
+    --btn-muted-border: rgba(176, 190, 180, 0.95);
+    --btn-muted-text: #1f3227;
+    --btn-muted-hover-bg: rgba(240, 245, 241, 0.95);
+    --btn-muted-hover-border: rgba(128, 149, 135, 0.95);
+    --toggle-btn-bg: #ffffff;
+    --toggle-btn-border: rgba(173, 188, 176, 0.95);
+    --toggle-btn-text: #1f3227;
+    --toggle-icon-bg: rgba(241, 246, 242, 0.98);
+    --toggle-icon-border: rgba(185, 198, 188, 0.9);
+    --toggle-icon-text: #2f4a3a;
+    --text-title: #14281d;
+    --text-body: #2d4636;
+    --text-muted-custom: #5a6d61;
+    --text-soft: #7f9086;
+    --text-on-dark: #e6f2ea;
+    --table-head-bg: rgba(233, 241, 236, 0.95);
+    --table-head-text: #496053;
+    --table-row-even: rgba(244, 248, 245, 0.92);
+    --table-row-hover: rgba(33, 115, 70, 0.08);
+    --table-border: rgba(194, 205, 197, 0.9);
+    --closed-bg: rgba(212, 220, 214, 0.68);
+    --closed-bg-hover: rgba(203, 212, 205, 0.78);
+    --closed-text: #49584f;
+    --closed-line-color: rgba(73, 88, 79, 0.65);
+    --editor-bg: #ffffff;
+    --editor-toolbar-bg: rgba(237, 243, 239, 0.96);
+    --editor-toolbar-border: rgba(197, 208, 200, 0.92);
+    --editor-group-border: rgba(176, 191, 180, 0.65);
+    --editor-btn-bg: #ffffff;
+    --editor-btn-border: rgba(193, 206, 196, 0.88);
+    --editor-btn-text: #254033;
+    --editor-text: #122419;
+    --editor-placeholder: #73857a;
+    --editor-popover-bg: rgba(255, 255, 255, 0.99);
+    --editor-popover-border: rgba(176, 191, 180, 0.95);
+    --mention-bg: #ffffff;
+    --mention-border: rgba(189, 203, 192, 0.95);
+    --mention-text: #1f3227;
+    --mention-hover-bg: rgba(33, 115, 70, 0.1);
+    --mention-hover-border: rgba(33, 115, 70, 0.34);
+    --mention-hover-text: #1d623c;
+    --ql-chip-bg: rgba(33, 115, 70, 0.14);
+    --ql-chip-border: rgba(33, 115, 70, 0.36);
+    --ql-chip-text: #1f6a41;
+    --ql-chip-armed-bg: rgba(33, 115, 70, 0.2);
+    --ql-chip-armed-border: rgba(33, 115, 70, 0.58);
+    --ql-chip-armed-text: #174f32;
+    --comment-bg: rgba(241, 246, 242, 0.9);
+    --comment-reply-border: rgba(67, 144, 96, 0.5);
+    --reply-bar-bg: rgba(33, 115, 70, 0.07);
+    --reply-bar-border: rgba(67, 144, 96, 0.24);
+    --reply-branch-color: #217346;
+    --reply-inline-bg: rgba(33, 115, 70, 0.07);
+    --reply-inline-border: rgba(146, 181, 158, 0.45);
+    --post-title-bg: rgba(230, 242, 234, 0.86);
+    --post-title-border: rgba(122, 167, 139, 0.58);
+    --post-title-label: #1f6a41;
+    --post-author-bg: rgba(242, 246, 243, 0.95);
+    --post-author-border: rgba(191, 203, 194, 0.9);
+    --post-author-label: #2d4636;
+    --post-content-bg: rgba(245, 249, 246, 0.95);
+    --post-content-border: rgba(194, 205, 197, 0.9);
+    --post-content-label: #14281d;
+    --post-body-link: #1f6a41;
+    --post-body-inline-color: inherit;
+    --drawer-bg: rgba(249, 252, 250, 0.98);
+    --drawer-border: rgba(188, 200, 190, 0.88);
+    --profile-bg: rgba(33, 115, 70, 0.08);
+    --profile-border: rgba(33, 115, 70, 0.26);
+    --profile-kicker: #1f6a41;
+    --profile-btn-bg: #ffffff;
+    --profile-btn-border: rgba(176, 190, 180, 0.95);
+    --profile-btn-text: #2d4636;
+    --profile-btn-hover-border: rgba(33, 115, 70, 0.42);
+    --profile-btn-hover-bg: rgba(33, 115, 70, 0.08);
+    --profile-btn-logout-bg: rgba(255, 240, 242, 0.95);
+    --profile-btn-logout-border: rgba(242, 197, 205, 0.95);
+    --profile-btn-logout-text: #b4233c;
+    --profile-btn-logout-hover-bg: rgba(255, 229, 233, 0.98);
+    --profile-btn-logout-hover-border: rgba(235, 155, 170, 0.95);
+    --notif-panel-bg: rgba(242, 246, 243, 0.88);
+    --notif-panel-border: rgba(191, 202, 194, 0.92);
+    --notif-item-bg: #ffffff;
+    --notif-item-border: rgba(192, 204, 195, 0.95);
+    --notif-filter-bg: #ffffff;
+    --notif-filter-border: rgba(174, 189, 177, 0.95);
+    --notif-filter-text: #455a4d;
+    --notif-title-text: #14281d;
+    --notif-desc-text: #5a6d61;
+    --input-bg: #ffffff;
+    --input-border: rgba(170, 185, 173, 0.95);
+    --input-text: #14281d;
+    --input-placeholder: #6b7f72;
+    --divider-color: rgba(196, 207, 199, 1);
+    --dp-wrap-bg: rgba(241, 246, 242, 0.88);
+    --dp-wrap-border: rgba(176, 191, 180, 0.68);
+    --dp-btn-bg: #ffffff;
+    --dp-btn-border: #b9c9bc;
+    --dp-btn-text: #2d4636;
+    --dp-btn-hover-border: rgba(33, 115, 70, 0.46);
+    --dp-btn-hover-bg: rgba(33, 115, 70, 0.08);
+    --dp-btn-hover-text: #1f6a41;
+    --dp-weekday-text: #5a6d61;
+    --dp-weekday-sun: #be123c;
+    --dp-weekday-sat: #1d623c;
+    --dp-day-bg: #ffffff;
+    --dp-day-border: #b9c9bc;
+    --dp-day-text: #2d4636;
+    --dp-outside-bg: #f4f8f5;
+    --dp-outside-border: #d5dfd7;
+    --dp-outside-text: #85958b;
+    --dp-today-bg: rgba(33, 115, 70, 0.1);
+    --dp-today-border: rgba(33, 115, 70, 0.42);
+    --dp-today-text: #1f6a41;
+    --dp-selected-bg: #217346;
+    --dp-selected-border: #217346;
+    --dp-selected-text: #eef8f1;
+    --dp-select-bg: #ffffff;
+    --dp-select-border: #b9c9bc;
+    --dp-select-text: #2d4636;
+    --dp-select-highlight-bg: rgba(33, 115, 70, 0.1);
+    --dp-select-highlight-text: #1d623c;
+    --dp-select-checked-text: #174f32;
+    --dp-caption-text: #2d4636;
+    --cal-day-bg: #ffffff;
+    --cal-day-border: rgba(191, 203, 194, 0.95);
+    --cal-day-text: #14281d;
+    --cal-day-num-text: #2d4636;
+    --cal-day-events-bg: rgba(230, 241, 233, 0.72);
+    --cal-day-events-border: rgba(117, 162, 134, 0.34);
+    --cal-day-hover-bg: rgba(33, 115, 70, 0.06);
+    --cal-day-hover-border: rgba(33, 115, 70, 0.26);
+    --cal-event-count-bg: rgba(231, 243, 235, 1);
+    --cal-event-count-border: rgba(156, 186, 169, 1);
+    --cal-event-count-text: #1b5c39;
+    --mobile-no-bg: rgba(236, 242, 237, 1);
+    --mobile-no-text: #455a4d;
+    --popup-bg: rgba(231, 245, 236, 1);
+    --popup-border: rgba(166, 209, 180, 1);
+    --popup-text: #1b5c39;
+    --notice-bg: rgba(231, 245, 236, 0.95);
+    --notice-border: rgba(166, 209, 180, 0.92);
+    --notice-text: #1b5c39;
+    --error-bg: rgba(255, 241, 243, 0.95);
+    --error-border: rgba(242, 197, 205, 0.95);
+    --error-text: #b4233c;
+    --venue-chip-bg: rgba(232, 242, 235, 1);
+    --venue-chip-border: rgba(152, 182, 165, 1);
+    --venue-chip-text: #1f6a41;
+    --brand-title-color: #14281d;
+    --brand-underline: rgba(33, 115, 70, 0.76);
+    --section-title-color: #14281d;
+    --focus-highlight-border: rgba(33, 115, 70, 0.52);
+    --readonly-input-bg: rgba(238, 243, 239, 1);
+    --readonly-input-text: #455a4d;
+    --ui-radius-panel: 6px;
+    --ui-radius-control: 4px;
+    --ui-radius-chip: 3px;
+    --date-action-complete-bg: rgba(231, 245, 236, 1);
+    --date-action-complete-border: rgba(152, 182, 165, 0.95);
+    --date-action-complete-text: #1f6a41;
+    --date-action-complete-hover-bg: rgba(214, 236, 221, 1);
+    --date-action-complete-hover-border: rgba(117, 162, 134, 0.95);
+    --date-action-complete-hover-text: #174f32;
+    --date-action-cancelled-bg: #fff1f2;
+    --date-action-cancelled-border: #f8c7d1;
+    --date-action-cancelled-text: #be123c;
+    --date-action-cancelled-hover-bg: #ffe4e6;
+    --date-action-cancelled-hover-border: #f2a8b7;
+    --date-action-cancelled-hover-text: #9f1239;
+    --date-action-seeking-bg: #f5f9f2;
+    --date-action-seeking-border: #c7dbc4;
+    --date-action-seeking-text: #335f2d;
+    --date-action-seeking-hover-bg: #ebf3e8;
+    --date-action-seeking-hover-border: #a9c5a4;
+    --date-action-seeking-hover-text: #264720;
+    --select-chevron-color: %235a6d61;
+    --btn-danger-bg: #fff1f2;
+    --btn-danger-text: #b4233c;
+    --board-pill-bg: #e8f4eb;
+    --board-pill-text: #1f6a41;
+  }
+
   * {
     @apply border-border;
   }
@@ -620,6 +835,19 @@
   }
   html.theme-dark .session-extend-btn:hover {
     border-color: rgba(132, 163, 214, 0.9); background: linear-gradient(180deg, #486cab, #38578f);
+  }
+  html.theme-excel .session-only-notice {
+    border-color: rgba(117, 162, 134, 0.56); background: rgba(231, 245, 236, 0.94); color: #1d623c;
+  }
+  html.theme-excel .session-ttl-label {
+    border-color: rgba(117, 162, 134, 0.62); background: rgba(218, 236, 224, 0.96); color: #1f6a41;
+  }
+  html.theme-excel .session-ttl-time { color: #174f32; }
+  html.theme-excel .session-extend-btn {
+    border-color: rgba(68, 134, 91, 0.86); background: linear-gradient(180deg, #2f8553, #217346); color: #f3faf6;
+  }
+  html.theme-excel .session-extend-btn:hover {
+    border-color: rgba(52, 114, 74, 0.9); background: linear-gradient(180deg, #338f5b, #246f47);
   }
   .dc-list-wrap,
   .table-wrap {
@@ -1030,7 +1258,7 @@
     background: var(--table-row-hover);
     color: var(--mention-hover-text);
   }
-  .composer-date-picker-modal { z-index: 115; }
+  .composer-date-picker-modal { z-index: 220; }
   .composer-date-picker-panel { width: min(420px, 96vw); }
   .composer-day-picker-wrap {
     margin-top: 12px; border: 1px solid var(--editor-group-border); border-radius: 10px; background: rgba(249, 250, 251, 0.8); padding: 10px;
@@ -1046,7 +1274,7 @@
     border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   .composer-day-picker-select-content {
-    z-index: 180; border-radius: 8px; border-color: #d1d5db; background: var(--surface-overlay); color: var(--text-body);
+    z-index: 230; border-radius: 8px; border-color: #d1d5db; background: var(--surface-overlay); color: var(--text-body);
   }
   .composer-day-picker-select-item {
     color: var(--text-body); font-size: 0.82rem; font-weight: 600;
@@ -1203,8 +1431,8 @@
   .cover-calendar-selected-item.is-closed .cover-calendar-selected-item-title {
     text-decoration: line-through; color: var(--text-muted-custom);
   }
-  .cover-calendar-modal { @apply fixed inset-0 z-[70] flex items-center justify-center p-4; }
-  .notification-center-modal { @apply fixed inset-0 z-[72] flex items-center justify-center p-4; }
+  .cover-calendar-modal { @apply fixed inset-0 z-[200] flex items-center justify-center p-4; }
+  .notification-center-modal { @apply fixed inset-0 z-[200] flex items-center justify-center p-4; }
   .notification-center-backdrop { @apply absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]; }
   .notification-center-panel { @apply relative z-10 w-[min(980px,96vw)] max-h-[88vh] overflow-hidden rounded-xl border border-border/80 bg-white p-4 shadow-soft-xl; }
   .notification-center-layout {
@@ -1387,9 +1615,9 @@
   .post-feed-stats { @apply mt-2 flex items-center gap-2; }
   .user-role-select { @apply min-w-[170px] rounded-lg border border-border/80 bg-white text-sm font-medium text-gray-700 shadow-sm; }
   .user-role-select:focus-visible { @apply border-primary/40 ring-2 ring-primary/15; }
-  .drawer-backdrop { @apply fixed inset-0 z-30 bg-gray-900/35 backdrop-blur-[1px]; }
+  .drawer-backdrop { @apply fixed inset-0 z-[130] bg-gray-900/35 backdrop-blur-[1px]; }
   .board-drawer {
-    @apply fixed right-0 top-0 z-40 h-full w-[min(380px,92vw)] border-l border-border/75 bg-card p-4 shadow-lg; background: rgba(255, 255, 255, 0.98);
+    @apply fixed right-0 top-0 z-[140] h-full w-[min(380px,92vw)] border-l border-border/75 bg-card p-4 shadow-lg; background: rgba(255, 255, 255, 0.98);
   }
   .board-drawer-list { @apply flex max-h-[calc(100vh-120px)] flex-col gap-2 overflow-y-auto pr-1; }
   .board-drawer-head { @apply mb-1 px-1; }
@@ -1491,7 +1719,7 @@
   }
   .role-color-chip.is-active { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(59, 130, 246, 0.55); }
   .composer-modal,
-  .admin-modal { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }
+  .admin-modal { @apply fixed inset-0 z-[200] flex items-center justify-center p-4; }
   .composer-backdrop,
   .admin-modal-backdrop { @apply absolute inset-0 bg-gray-900/35 backdrop-blur-[2px]; }
   .composer-panel,
@@ -1717,7 +1945,7 @@
   }
   .mention-menu { @apply rounded-lg p-2; border: 1px solid var(--mention-border); background: var(--mention-bg); }
   .mention-menu.mention-menu-anchor {
-    @apply absolute z-30 min-w-[180px] max-w-[280px] rounded-lg p-1.5 shadow-soft-lg; width: min(280px, calc(100% - 16px));
+    @apply absolute z-[150] min-w-[180px] max-w-[280px] rounded-lg p-1.5 shadow-soft-lg; width: min(280px, calc(100% - 16px));
   }
   .mention-menu-item {
     @apply flex w-full items-center justify-between rounded-md border border-transparent px-2 py-1.5 text-left transition-colors; color: var(--btn-muted-text);
@@ -1813,7 +2041,7 @@
   .my-activity-mobile-meta { @apply mt-2 text-[11px] font-medium text-gray-500; }
   .reply-to-chip { @apply ml-1 rounded-md bg-primary/5 px-2 py-0.5 text-xs font-medium text-primary; }
   .applied-popup {
-    @apply fixed left-1/2 top-5 z-[120] -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-bold text-emerald-700 shadow-soft-xl; bottom: auto; width: fit-content; min-width: 180px; max-width: min(92vw, 420px);
+    @apply fixed left-1/2 top-5 z-[130] -translate-x-1/2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-sm font-bold text-emerald-700 shadow-soft-xl; bottom: auto; width: fit-content; min-width: 180px; max-width: min(92vw, 420px);
     white-space: normal; overflow-wrap: anywhere;
   }
   .applied-popup.is-notice {
@@ -2183,6 +2411,107 @@
 
   html.theme-dark body.auth-page .auth-reset-header h2 { color: #e7eeff; }
   html.theme-dark body.auth-page .auth-reset-header p { color: #95a6c5; }
+
+  html.theme-excel body.auth-page {
+    background: radial-gradient(circle at 9% 8%, rgba(90, 151, 112, 0.16) 0%, rgba(90, 151, 112, 0) 36%), linear-gradient(180deg, #f2f7f3 0%, #edf4ef 100%);
+  }
+
+  html.theme-excel body.auth-page .auth-card {
+    border-color: #bfcdbf;
+    background: linear-gradient(180deg, #fbfdfb, #f3f8f4);
+    box-shadow: 0 18px 34px -30px rgba(36, 64, 47, 0.38);
+  }
+
+  html.theme-excel body.auth-page .auth-card .hero-kicker {
+    border-color: rgba(88, 142, 108, 0.5); background: #e8f3ea; color: #1f6a41;
+  }
+
+  html.theme-excel body.auth-page .auth-card h2,
+  html.theme-excel body.auth-page .auth-card .text-balance { color: #1a2f23; }
+
+  html.theme-excel body.auth-page .auth-card .text-muted-foreground { color: #5f7466; }
+
+  html.theme-excel body.auth-page .auth-label { color: #395746; }
+
+  html.theme-excel body.auth-page .auth-input {
+    border-color: #b6c8b9; background: #ffffff; color: #1e3126;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+
+  html.theme-excel body.auth-page .auth-input::placeholder { color: #7a8f81; }
+
+  html.theme-excel body.auth-page .auth-input:focus-visible {
+    border-color: rgba(58, 123, 82, 0.78); box-shadow: 0 0 0 2px rgba(58, 123, 82, 0.18);
+  }
+
+  html.theme-excel body.auth-page .auth-input-toggle {
+    border: 0; background: transparent; color: #5b7464;
+  }
+
+  html.theme-excel body.auth-page .auth-input-toggle:hover {
+    background: transparent; color: #1f6a41;
+  }
+
+  html.theme-excel body.auth-page .auth-inline-message.is-notice {
+    border-color: #a8cfb4; background: #ecf7ef; color: #1d623c;
+  }
+
+  html.theme-excel body.auth-page .auth-inline-message.is-error {
+    border-color: #efc8cf; background: #fff1f4; color: #b4233c;
+  }
+
+  html.theme-excel body.auth-page .auth-submit-btn {
+    border-color: rgba(58, 123, 82, 0.8); background: linear-gradient(180deg, #318653, #217346); color: #f3faf6;
+  }
+
+  html.theme-excel body.auth-page .auth-submit-btn:hover {
+    border-color: rgba(43, 95, 63, 0.88); background: linear-gradient(180deg, #37935c, #266f46); color: #ffffff;
+  }
+
+  html.theme-excel body.auth-page .auth-secondary-btn {
+    border-color: #b6c8b9; background: #f8fbf8; color: #2b4535;
+  }
+
+  html.theme-excel body.auth-page .auth-secondary-btn:hover {
+    border-color: #93b5a0; background: #eef5ef; color: #1f6a41;
+  }
+
+  html.theme-excel body.auth-page .auth-footer { border-top-color: #c6d3c6; }
+
+  html.theme-excel body.auth-page .login-remember-box {
+    border-color: #bfd0c1; background: rgba(238, 245, 239, 0.96);
+  }
+
+  html.theme-excel body.auth-page .login-remember-check {
+    border-color: #9db7a4; background: #ffffff;
+  }
+
+  html.theme-excel body.auth-page .theme-toggle-btn {
+    border-color: #b6c8b9; background: #f7fbf8; color: #2d4636;
+  }
+
+  html.theme-excel body.auth-page .theme-toggle-btn:hover {
+    border-color: #93b5a0; background: #edf4ee; color: #1d623c;
+  }
+
+  html.theme-excel body.auth-page .theme-toggle-icon {
+    border-color: #bfd0c1; background: #eef5ef; color: #3f5b4a;
+  }
+
+  html.theme-excel body.auth-page .auth-reset-dialog {
+    border-color: #bfd0c1; background: linear-gradient(180deg, #fbfdfb 0%, #f1f7f3 100%);
+  }
+
+  html.theme-excel body.auth-page .auth-reset-dialog > button {
+    border-color: #bfd0c1; background: #edf4ee; color: #567060;
+  }
+
+  html.theme-excel body.auth-page .auth-reset-dialog > button:hover {
+    border-color: #93b5a0; background: #e6f0e7; color: #2d4636;
+  }
+
+  html.theme-excel body.auth-page .auth-reset-header h2 { color: #1a2f23; }
+  html.theme-excel body.auth-page .auth-reset-header p { color: #5f7466; }
 
   .board-pill { padding: 7px 12px; font-size: 13px; background: var(--board-pill-bg, #eff6ff); color: var(--board-pill-text, #1e40af); border-radius: var(--ui-radius-chip); }
   .meta-role-line { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -3976,6 +4305,322 @@
     color: #9eb1d2;
   }
 
+  html.theme-excel body:is(.app-page, .admin-page) {
+    --ui-radius-panel: 3px;
+    --ui-radius-control: 3px;
+    --ui-radius-chip: 2px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card,
+  html.theme-excel body:is(.app-page, .admin-page) .board-notification-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item,
+  html.theme-excel body:is(.app-page, .admin-page) .pagination-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-item,
+  html.theme-excel body:is(.app-page, .admin-page) input,
+  html.theme-excel body:is(.app-page, .admin-page) select,
+  html.theme-excel body:is(.app-page, .admin-page) textarea,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-date-select-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-venue-select,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-time-select,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-venue-custom-input,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-add-date-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-date-remove-btn {
+    border-radius: 3px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card {
+    border-color: rgba(112, 150, 126, 0.55);
+    background: linear-gradient(180deg, #f8fcf8, #eff6f1);
+    box-shadow: 0 12px 24px -24px rgba(30, 66, 45, 0.42);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-kicker {
+    border-color: rgba(104, 148, 121, 0.62);
+    background: #e8f3ea;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-brand-title,
+  html.theme-excel body:is(.app-page, .admin-page) .hero-copy {
+    color: #1a2f23;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .guide-help-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-hamburger-btn {
+    border-color: #b6c8b9;
+    background: #f8fbf8;
+    color: #2d4636;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .guide-help-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-hamburger-btn:hover {
+    border-color: #93b5a0;
+    background: #edf4ee;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer {
+    border-color: #c4d2c4;
+    background: #f7faf8;
+    box-shadow: 0 10px 22px -22px rgba(31, 69, 47, 0.38);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile {
+    border-bottom-color: #c4d2c4;
+    background: linear-gradient(148deg, #eaf4ec, #f6faf7) !important;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-kicker,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-kicker {
+    color: #1f6a41 !important;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail .author-name,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer .author-name {
+    color: #1f3227;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-notification-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .pagination-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .btn-muted,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-top-actions .btn-muted,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .btn-muted {
+    border-color: #b6c8b9;
+    background: #f9fcf9;
+    color: #2d4636;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-notification-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .pagination-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .btn-muted:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-top-actions .btn-muted:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .btn-muted:hover {
+    border-color: #93b5a0;
+    background: #edf4ee;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-notification-btn.is-logout,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn.is-logout,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn.is-logout {
+    border-color: #efc8cf;
+    background: #fff1f4;
+    color: #b4233c;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-notification-btn.is-logout:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn.is-logout:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn.is-logout:hover {
+    border-color: #e7a8b4;
+    background: #ffe8ee;
+    color: #9f1239;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn.has-unread,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn.has-unread {
+    border-color: #efc8cf;
+    background: #fff1f4;
+    color: #9f1239;
+    box-shadow: inset 3px 0 0 #dc2626, inset 0 0 0 1px rgba(180, 35, 60, 0.08);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item {
+    color: #4c6354;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item:hover {
+    border-color: #bdd0c2;
+    background: #eaf3ed;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item.active {
+    border-color: #8cb49a;
+    background: #ddeee4;
+    color: #1d623c;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card {
+    border-color: #c4d2c4;
+    background: #f8fcf9;
+    box-shadow: 0 10px 24px -24px rgba(31, 69, 47, 0.34);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card {
+    border-color: #b9cdbd;
+    background: #edf5f0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-label { color: #1f6a41; }
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-title-row h2 { color: #1a2f23; }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-count {
+    border-color: #b9cdbd;
+    background: #f7fbf8;
+    color: #355345;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-bar {
+    border-bottom-color: #c9d6cb;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-pill {
+    border-color: #c0d0c3;
+    background: #ffffff;
+    color: #557060;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab {
+    color: #5e7567;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab:hover {
+    border-bottom-color: #a8c2b0;
+    color: #2d4636;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab.active {
+    border-bottom-color: #217346;
+    color: #1d623c;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap {
+    border-color: #c3d1c3;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th {
+    border-bottom-color: #c6d4c7;
+    background: #edf4ef;
+    color: #5a6f62;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody td,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody td {
+    border-bottom-color: #dde6de;
+    color: #1f3227;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-item,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-item {
+    background: #fbfdfb;
+    border-color: #cbd8cc;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr:nth-child(even),
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:nth-child(even) {
+    background: #f3f8f4;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-row:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-row:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-item:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-item:hover {
+    background: #eef5ef;
+    border-color: #b7cbb9;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-title,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-title-text,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-title {
+    color: #14281d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .author-name,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-author,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-meta-row,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-post,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-meta {
+    color: #5a6d61;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary {
+    border-color: rgba(58, 123, 82, 0.8);
+    background: linear-gradient(180deg, #318653, #217346);
+    color: #f3faf6;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary:hover {
+    border-color: rgba(43, 95, 63, 0.88);
+    background: linear-gradient(180deg, #37935c, #266f46);
+    color: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel {
+    border-color: #c4d2c4;
+    background: linear-gradient(180deg, #f8fcf9, #f1f7f3);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel h2 { color: #1a2f23; }
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .meta { color: #5f7466; }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-shell {
+    border-color: #c3d2c4;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-toolbar {
+    border-bottom-color: #c8d5ca;
+    background: #edf4ef;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-toolbar-group {
+    border-right-color: #d6e0d8;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-tool-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-color-picker {
+    border-color: #b6c8b9;
+    background: #ffffff;
+    color: #2d4636;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-tool-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel .editor-color-picker:hover {
+    border-color: #93b5a0;
+    background: #edf4ee;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-account {
+    border-color: #b2cdb8;
+    background: #ecf7ef;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-list .muted {
+    border-color: #c5d3c6;
+    background: #f8fbf8;
+    color: #5f7466;
+  }
+
   body.admin-page {
     --ui-radius-panel: 4px;
     --ui-radius-control: 4px;
@@ -4279,6 +4924,1849 @@
     color: #cbd5e1;
   }
 
+  html.theme-excel body.admin-page {
+    --ui-radius-panel: 3px;
+    --ui-radius-control: 3px;
+    --ui-radius-chip: 2px;
+  }
+
+  html.theme-excel body.admin-page .admin-hero {
+    border-color: #b8cbbd;
+    background: linear-gradient(180deg, #f8fcf8, #eff6f1);
+  }
+
+  html.theme-excel body.admin-page .admin-side-rail {
+    border-color: #c4d2c4;
+    background: #f7faf8;
+    box-shadow: 0 10px 22px -22px rgba(31, 69, 47, 0.38);
+  }
+
+  html.theme-excel body.admin-page .admin-side-profile {
+    border-bottom-color: #c4d2c4;
+    background: linear-gradient(148deg, #eaf4ec, #f6faf7);
+  }
+
+  html.theme-excel body.admin-page .admin-side-kicker {
+    color: #1f6a41;
+  }
+
+  html.theme-excel body.admin-page .admin-side-role,
+  html.theme-excel body.admin-page .admin-side-user .author-name {
+    color: #355345;
+  }
+
+  html.theme-excel body.admin-page .user-name-cell strong,
+  html.theme-excel body.admin-page .section-title {
+    color: #1a2f23;
+  }
+
+  html.theme-excel body.admin-page .muted,
+  html.theme-excel body.admin-page .meta {
+    color: #5f7466;
+  }
+
+  html.theme-excel body.admin-page .notice {
+    border-color: #a8cfb4;
+    background: #ecf7ef;
+    color: #1d623c;
+  }
+
+  html.theme-excel body.admin-page .error {
+    border-color: #efc8cf;
+    background: #fff1f4;
+    color: #b4233c;
+  }
+
+  html.theme-excel body.admin-page .btn-muted,
+  html.theme-excel body.admin-page .theme-toggle-btn,
+  html.theme-excel body.admin-page .board-rail-profile-btn,
+  html.theme-excel body.admin-page .panel-close-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .panel-close-btn {
+    border-color: #b6c8b9;
+    background: #f9fcf9;
+    color: #2d4636;
+  }
+
+  html.theme-excel body.admin-page .btn-muted:hover,
+  html.theme-excel body.admin-page .theme-toggle-btn:hover,
+  html.theme-excel body.admin-page .board-rail-profile-btn:hover,
+  html.theme-excel body.admin-page .panel-close-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .panel-close-btn:hover {
+    border-color: #93b5a0;
+    background: #edf4ee;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body.admin-page .board-rail-profile-btn.is-logout {
+    border-color: #efc8cf;
+    background: #fff1f4;
+    color: #b4233c;
+  }
+
+  html.theme-excel body.admin-page .board-rail-profile-btn.is-logout:hover {
+    border-color: #e7a8b4;
+    background: #ffe8ee;
+    color: #9f1239;
+  }
+
+  html.theme-excel body.admin-page .admin-panel {
+    border-color: #c4d2c4;
+    background: #f8fcf9;
+  }
+
+  html.theme-excel body.admin-page .admin-modal-panel {
+    border-color: #c3d2c4;
+    background: #f9fcf9;
+  }
+
+  html.theme-excel body.admin-page .board-edit-list {
+    border: 1px solid #c8d5c9;
+    background: #f4f9f5;
+    border-radius: 3px;
+    padding: 6px;
+  }
+
+  html.theme-excel body.admin-page .board-edit-item {
+    border-color: #bed0c1;
+    background: #ffffff;
+    color: #2d4636;
+  }
+
+  html.theme-excel body.admin-page .board-edit-item:hover {
+    border-color: #98b7a3;
+    background: #edf5ef;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body.admin-page .board-edit-item.active {
+    border-color: #78a78c;
+    background: #deefe4;
+    color: #1d623c;
+  }
+
+  html.theme-excel body.admin-page .board-edit-select .meta,
+  html.theme-excel body.admin-page .board-divider-tag {
+    color: #607467;
+  }
+
+  html.theme-excel body.admin-page .board-divider-line {
+    background: #c4d2c4;
+  }
+
+  html.theme-excel body.admin-page .board-divider-delete {
+    background: #fff1f4;
+    color: #b4233c;
+  }
+
+  html.theme-excel body.admin-page .board-role-box,
+  html.theme-excel body.admin-page .role-badge-preview-wrap {
+    border-color: #c7d5c8;
+    background: #f4f9f5;
+  }
+
+  html.theme-excel body.admin-page .board-role-option,
+  html.theme-excel body.admin-page .role-flag-item {
+    border-color: #bed0c1;
+    background: #ffffff;
+    color: #2d4636;
+  }
+
+  html.theme-excel body.admin-page .board-role-option:hover {
+    border-color: #98b7a3;
+    background: #edf5ef;
+  }
+
+  html.theme-excel body.admin-page .board-role-option.is-selected {
+    border-color: #78a78c;
+    background: #deefe4;
+    color: #1d623c;
+    box-shadow: inset 0 0 0 1px rgba(40, 106, 66, 0.15);
+  }
+
+  html.theme-excel body.admin-page .table-wrap {
+    border-color: #c3d1c3;
+    background: #ffffff;
+  }
+
+  html.theme-excel body.admin-page .table thead th {
+    border-bottom-color: #c6d4c7;
+    background: #edf4ef;
+    color: #5a6f62;
+  }
+
+  html.theme-excel body.admin-page .table tbody td {
+    border-bottom-color: #dde6de;
+    color: #1f3227;
+  }
+
+  html.theme-excel body.admin-page .table tbody tr:nth-child(even) {
+    background: #f3f8f4;
+  }
+
+  html.theme-excel body.admin-page .table tbody tr:hover {
+    background: #edf5ef;
+  }
+
+  html.theme-excel body.admin-page input,
+  html.theme-excel body.admin-page select,
+  html.theme-excel body.admin-page textarea,
+  html.theme-excel body.admin-page .user-role-select {
+    border-color: #b6c8b9;
+    background: #ffffff;
+    color: #1f3227;
+    border-radius: 3px;
+  }
+
+  html.theme-excel body.admin-page .user-state-ok {
+    border-color: #a8cfb4;
+    background: #ecf7ef;
+    color: #1d623c;
+  }
+
+  html.theme-excel body.admin-page .user-state-warn {
+    border-color: #e7d5b7;
+    background: #fef7ea;
+    color: #a16207;
+  }
+
+  html.theme-excel body.admin-page .user-state-lock {
+    border-color: #c5d1c8;
+    background: #f3f7f4;
+    color: #4f6256;
+  }
+
+  /* Excel realism pass: reinforce ribbon/chrome + worksheet grid look. */
+  html.theme-excel body {
+    font-family: 'Segoe UI', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page),
+  html.theme-excel body.admin-page,
+  html.theme-excel body.auth-page {
+    background-color: #f3f3f3;
+    background-image:
+      linear-gradient(to right, rgba(207, 207, 207, 0.58) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(207, 207, 207, 0.58) 1px, transparent 1px);
+    background-size: 88px 24px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #b6b6b6;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, #107c41 0 45px, #f3f3f3 45px 86px, #ffffff 86px 100%);
+    box-shadow: none;
+    padding-top: 98px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::before,
+  html.theme-excel body.admin-page .admin-hero::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 45px;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-kicker,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-kicker,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .hero-kicker,
+  html.theme-excel body.admin-page .admin-hero .hero-kicker {
+    margin-top: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    border-radius: 2px;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    font-size: 11px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-brand-title,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .forum-brand-title,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .forum-brand-title,
+  html.theme-excel body.admin-page .admin-hero h1,
+  html.theme-excel body.admin-page .admin-hero .hero-copy {
+    color: #133324;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-brand-title::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .forum-brand-title::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .forum-brand-title::after {
+    background: #217346;
+    height: 2px;
+    width: 100%;
+    border-radius: 0;
+    margin-top: 6px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .hero-copy {
+    color: #4b4b4b;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .top-action-row,
+  html.theme-excel body.admin-page .top-action-row {
+    gap: 6px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) button,
+  html.theme-excel body:is(.app-page, .admin-page) .btn-muted,
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary,
+  html.theme-excel body:is(.app-page, .admin-page) .btn-danger,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn,
+  html.theme-excel body:is(.app-page, .admin-page) input,
+  html.theme-excel body:is(.app-page, .admin-page) select,
+  html.theme-excel body:is(.app-page, .admin-page) textarea,
+  html.theme-excel body.admin-page button,
+  html.theme-excel body.admin-page .btn-muted,
+  html.theme-excel body.admin-page .btn-primary,
+  html.theme-excel body.admin-page .btn-danger,
+  html.theme-excel body.admin-page .theme-toggle-btn,
+  html.theme-excel body.admin-page input,
+  html.theme-excel body.admin-page select,
+  html.theme-excel body.admin-page textarea,
+  html.theme-excel body.auth-page button,
+  html.theme-excel body.auth-page .btn-muted,
+  html.theme-excel body.auth-page .btn-primary,
+  html.theme-excel body.auth-page .btn-danger,
+  html.theme-excel body.auth-page .theme-toggle-btn,
+  html.theme-excel body.auth-page input,
+  html.theme-excel body.auth-page select,
+  html.theme-excel body.auth-page textarea {
+    border-radius: 2px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary,
+  html.theme-excel body.admin-page .btn-primary,
+  html.theme-excel body.auth-page .auth-submit-btn {
+    border-color: #1f6b40;
+    background: linear-gradient(180deg, #2f8a56 0%, #217346 100%);
+    color: #ffffff;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-primary:hover,
+  html.theme-excel body.admin-page .btn-primary:hover,
+  html.theme-excel body.auth-page .auth-submit-btn:hover {
+    border-color: #175a34;
+    background: linear-gradient(180deg, #379a60 0%, #1f6b40 100%);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-muted,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn,
+  html.theme-excel body.admin-page .btn-muted,
+  html.theme-excel body.admin-page .theme-toggle-btn,
+  html.theme-excel body.auth-page .auth-secondary-btn,
+  html.theme-excel body.auth-page .theme-toggle-btn {
+    border-color: #b7b7b7;
+    background: linear-gradient(180deg, #ffffff 0%, #f4f4f4 100%);
+    color: #2f2f2f;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .btn-muted:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn:hover,
+  html.theme-excel body.admin-page .btn-muted:hover,
+  html.theme-excel body.admin-page .theme-toggle-btn:hover,
+  html.theme-excel body.auth-page .auth-secondary-btn:hover,
+  html.theme-excel body.auth-page .theme-toggle-btn:hover {
+    border-color: #8ea88f;
+    background: linear-gradient(180deg, #f7fbf8 0%, #e9f3ec 100%);
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-icon,
+  html.theme-excel body.admin-page .theme-toggle-icon,
+  html.theme-excel body.auth-page .theme-toggle-icon {
+    border: 1px solid #c4c4c4;
+    background: #f5f5f5;
+    color: #2f4a3a;
+    border-radius: 2px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-detached,
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .composer-panel,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card,
+  html.theme-excel body.admin-page .admin-panel,
+  html.theme-excel body.admin-page .admin-side-rail,
+  html.theme-excel body.auth-page .auth-card {
+    border: 1px solid #bfbfbf;
+    border-radius: 0;
+    box-shadow: none;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card,
+  html.theme-excel body.admin-page .admin-panel {
+    background-image:
+      linear-gradient(to right, rgba(224, 224, 224, 0.45) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(224, 224, 224, 0.45) 1px, transparent 1px);
+    background-size: 72px 24px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-head,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-head,
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card,
+  html.theme-excel body.admin-page .admin-side-profile {
+    border-color: #c9c9c9;
+    background: #f3f3f3;
+    border-radius: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-profile {
+    border-bottom: 1px solid #c7c7c7;
+    border-radius: 0;
+    background: #f8f8f8 !important;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn,
+  html.theme-excel body.admin-page .board-rail-profile-btn,
+  html.theme-excel body.admin-page .board-edit-item,
+  html.theme-excel body.admin-page .board-role-option {
+    border: 1px solid #d0d0d0;
+    border-radius: 0;
+    background: #ffffff;
+    color: #2f2f2f;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item.active,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn.is-current,
+  html.theme-excel body.admin-page .board-role-option.is-selected,
+  html.theme-excel body.admin-page .board-edit-item.active {
+    border-color: #217346;
+    background: #eaf3ee;
+    color: #1d623c;
+    box-shadow: inset 3px 0 0 #217346;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-wrap,
+  html.theme-excel body:is(.app-page, .admin-page) .table-wrap,
+  html.theme-excel body.admin-page .table-wrap {
+    border: 1px solid #bfbfbf;
+    border-radius: 0;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    border-bottom: 1px solid #bdbdbd;
+    border-right: 1px solid #d5d5d5;
+    background: #f3f3f3;
+    color: #4a4a4a;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 10px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table thead th:last-child,
+  html.theme-excel body:is(.app-page, .admin-page) .table thead th:last-child,
+  html.theme-excel body.admin-page .table thead th:last-child {
+    border-right: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody td,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody td,
+  html.theme-excel body.admin-page .table tbody td {
+    border-bottom: 1px solid #dddddd;
+    border-right: 1px solid #ececec;
+    color: #222222;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody td:last-child,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody td:last-child,
+  html.theme-excel body.admin-page .table tbody td:last-child {
+    border-right: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody tr:nth-child(even),
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody tr:nth-child(even),
+  html.theme-excel body.admin-page .table tbody tr:nth-child(even) {
+    background: #fcfcfc;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-row:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody tr:hover,
+  html.theme-excel body.admin-page .table tbody tr:hover {
+    background: #edf6f0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-title,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-title,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card h2,
+  html.theme-excel body.admin-page .section-title {
+    color: #1b1b1b;
+    font-weight: 700;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card {
+    position: relative;
+    border: 1px solid #c2c2c2;
+    padding-left: 44px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card::before {
+    content: 'fx';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 20px;
+    border: 1px solid #bfbfbf;
+    background: #ffffff;
+    color: #6a6a6a;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: italic;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-label {
+    color: #5a5a5a;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-title-row h2 {
+    font-size: 1.18rem;
+  }
+
+  html.theme-excel body.auth-page .auth-card {
+    background:
+      linear-gradient(180deg, #107c41 0 42px, #f3f3f3 42px 80px, #ffffff 80px 100%);
+    padding-top: 88px;
+  }
+
+  html.theme-excel body.auth-page .auth-card .hero-kicker {
+    margin-top: 0;
+  }
+
+  html.theme-excel body.auth-page .auth-input,
+  html.theme-excel body.auth-page .login-remember-box,
+  html.theme-excel body.auth-page .auth-reset-dialog {
+    border-color: #bfbfbf;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .notice,
+  html.theme-excel body.admin-page .notice,
+  html.theme-excel body.auth-page .auth-inline-message.is-notice {
+    border-color: #8eb89c;
+    background: #edf6f0;
+    color: #1f6a41;
+    border-radius: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .error,
+  html.theme-excel body.admin-page .error,
+  html.theme-excel body.auth-page .auth-inline-message.is-error {
+    border-color: #e6b8c0;
+    background: #fff3f5;
+    color: #af1f3b;
+    border-radius: 0;
+  }
+
+  /* Excel realism pass v2: stronger ribbon/formula/cell language. */
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::after,
+  html.theme-excel body.admin-page .admin-hero::after {
+    content: '홈   삽입   페이지 레이아웃   수식   데이터   검토   보기';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 54px;
+    height: 22px;
+    border-bottom: 1px solid #cfcfcf;
+    color: #4a4a4a;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero,
+  html.theme-excel body.auth-page .auth-card {
+    border-color: #ababab;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .guide-help-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-btn,
+  html.theme-excel body.admin-page .theme-toggle-btn,
+  html.theme-excel body.auth-page .theme-toggle-auth {
+    min-height: 28px;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .guide-help-btn-text,
+  html.theme-excel body:is(.app-page, .admin-page) .theme-toggle-text {
+    font-size: 11px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card,
+  html.theme-excel body.admin-page .admin-panel {
+    position: relative;
+    padding-top: 54px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::before,
+  html.theme-excel body.admin-page .admin-panel::before {
+    content: 'fx';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 34px;
+    border-bottom: 1px solid #c5c5c5;
+    background: linear-gradient(180deg, #f7f7f7 0%, #eeeeee 100%);
+    color: #6a6a6a;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 34px;
+    padding-left: 14px;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::after,
+  html.theme-excel body.admin-page .admin-panel::after {
+    content: '';
+    position: absolute;
+    left: 46px;
+    right: 10px;
+    top: 7px;
+    height: 20px;
+    border: 1px solid #c8c8c8;
+    background: #ffffff;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-head .meta,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-head .meta,
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-label,
+  html.theme-excel body.admin-page .meta {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-list {
+    gap: 2px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-item {
+    min-height: 26px;
+    padding: 3px 7px;
+    font-size: 12px;
+    font-weight: 600;
+    border-color: #dbdbdb;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn,
+  html.theme-excel body.admin-page .board-rail-profile-btn {
+    min-height: 28px;
+    justify-content: flex-start;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab {
+    border: 1px solid #d5d5d5;
+    border-bottom-color: #bdbdbd;
+    border-radius: 0;
+    padding: 2px 8px;
+    min-height: 24px;
+    background: linear-gradient(180deg, #ffffff 0%, #f2f2f2 100%);
+    color: #4d4d4d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab:hover {
+    border-color: #9cbc9f;
+    background: linear-gradient(180deg, #f8fbf8 0%, #ebf3ee 100%);
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab.active {
+    border-color: #217346;
+    background: #eaf3ee;
+    color: #1d623c;
+    box-shadow: inset 0 -2px 0 #217346;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    padding-top: 6px;
+    padding-bottom: 6px;
+    height: 28px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody td,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody td,
+  html.theme-excel body.admin-page .table tbody td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    min-height: 26px;
+    font-size: 12px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-row:hover td,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody tr:hover td,
+  html.theme-excel body.admin-page .table tbody tr:hover td {
+    background: #edf6f0;
+    box-shadow: inset 0 0 0 1px #99c3a8;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-list-row:hover td:first-child,
+  html.theme-excel body:is(.app-page, .admin-page) .table tbody tr:hover td:first-child,
+  html.theme-excel body.admin-page .table tbody tr:hover td:first-child {
+    box-shadow: inset 3px 0 0 #217346, inset 0 0 0 1px #99c3a8;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .cover-calendar-day,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-post-item,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-mobile-item,
+  html.theme-excel body.admin-page .board-edit-item,
+  html.theme-excel body.admin-page .board-role-option {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  html.theme-excel body.auth-page .auth-card {
+    border: 1px solid #ababab;
+    box-shadow: none;
+  }
+
+  html.theme-excel body.auth-page .auth-card::after {
+    content: '홈   삽입   페이지 레이아웃   수식   데이터';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50px;
+    height: 20px;
+    border-bottom: 1px solid #d2d2d2;
+    color: #4e4e4e;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  /* Excel realism pass v3: worksheet chrome/ribbon/column-header emphasis. */
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero {
+    padding-top: 126px;
+    background:
+      linear-gradient(180deg, #107c41 0 44px, #f2f2f2 44px 78px, #efefef 78px 112px, #ffffff 112px 100%);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 82px;
+    height: 22px;
+    border: 1px solid #d2d2d2;
+    background:
+      linear-gradient(180deg, #fafafa 0%, #f1f1f1 100%),
+      repeating-linear-gradient(to right, transparent 0 42px, rgba(198, 198, 198, 0.65) 42px 43px);
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::after,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::after {
+    content: '붙여넣기      글꼴      맞춤      숫자      스타일      셀      편집';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 84px;
+    height: 18px;
+    color: #5a5a5a;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::before,
+  html.theme-excel body.admin-page .admin-panel::before {
+    content: '이름 상자    fx';
+    letter-spacing: 0.02em;
+    padding-left: 10px;
+    color: #5d5d5d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap,
+  html.theme-excel body.admin-page .table-wrap {
+    position: relative;
+    padding-top: 20px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap::before,
+  html.theme-excel body.admin-page .table-wrap::before {
+    content: 'A        B        C        D        E        F        G        H';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 20px;
+    border-bottom: 1px solid #cdcdcd;
+    background: #efefef;
+    color: #5d5d5d;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    top: 20px;
+    z-index: 3;
+    border-top: 1px solid #d7d7d7;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr:hover td,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:hover td,
+  html.theme-excel body.admin-page .table tbody tr:hover td {
+    background: #e8f2eb;
+    outline: 1px solid #98c3a8;
+    outline-offset: -1px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr:hover td:first-child,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:hover td:first-child,
+  html.theme-excel body.admin-page .table tbody tr:hover td:first-child {
+    border-left: 2px solid #217346;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .badge,
+  html.theme-excel body.admin-page .badge {
+    border-radius: 0;
+    border-color: #c4c4c4;
+    background: #f3f3f3;
+    color: #4e4e4e;
+    font-weight: 700;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-count {
+    border-radius: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .dc-comment-count,
+  html.theme-excel body:is(.app-page, .admin-page) .mobile-comment-count {
+    color: #b91c1c;
+    font-weight: 700;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-pin-toolbar {
+    border-color: #d6c69d;
+    border-radius: 0;
+    background: #f9f4e8;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-pin-action-btn {
+    border-radius: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .notice,
+  html.theme-excel body:is(.app-page, .admin-page) .error,
+  html.theme-excel body.admin-page .notice,
+  html.theme-excel body.admin-page .error,
+  html.theme-excel body.auth-page .auth-inline-message {
+    font-weight: 600;
+  }
+
+  html.theme-excel body.auth-page .auth-card {
+    padding-top: 100px;
+  }
+
+  /* Excel realism pass v4: title header + left rail + profile card. */
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::before,
+  html.theme-excel body.admin-page .admin-hero::before {
+    content: '통합 문서1';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col {
+    position: relative;
+    z-index: 2;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-rail {
+    position: relative;
+    padding-top: 28px;
+    border: 1px solid #b5b5b5;
+    background: #f5f5f5;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-rail::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-rail::before {
+    content: '이름 관리자';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 26px;
+    border-bottom: 1px solid #cccccc;
+    background: linear-gradient(180deg, #f6f6f6 0%, #ececec 100%);
+    color: #5a5a5a;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 26px;
+    text-transform: uppercase;
+    padding: 0 10px;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-profile,
+  html.theme-excel body.admin-page .admin-side-profile {
+    margin: 6px;
+    border: 1px solid #c9c9c9;
+    border-radius: 0;
+    background: #ffffff !important;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-profile-head-row,
+  html.theme-excel body.admin-page .admin-side-profile {
+    border-bottom: 1px solid #d8d8d8;
+    background: #f3f3f3;
+    padding: 6px 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-kicker,
+  html.theme-excel body.admin-page .admin-side-kicker {
+    color: #4f4f4f !important;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-user,
+  html.theme-excel body.admin-page .admin-side-user {
+    margin: 0;
+    padding: 8px;
+    border-bottom: 1px solid #e1e1e1;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-user .author-role-wrap,
+  html.theme-excel body.admin-page .admin-side-user {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-actions,
+  html.theme-excel body.admin-page .admin-side-actions {
+    margin: 0;
+    padding: 6px;
+    gap: 4px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn,
+  html.theme-excel body.admin-page .board-rail-profile-btn {
+    min-height: 26px;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 3px 7px;
+    border: 1px solid #d3d3d3;
+    background: #ffffff;
+    color: #2f2f2f;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn:hover,
+  html.theme-excel body:is(.app-page, .admin-page) .board-drawer-profile-btn:hover,
+  html.theme-excel body.admin-page .board-rail-profile-btn:hover {
+    border-color: #9fbcaa;
+    background: #edf6f0;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-list {
+    counter-reset: excelBoardRow;
+    gap: 0;
+    padding: 6px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item {
+    counter-increment: excelBoardRow;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: center;
+    gap: 0;
+    min-height: 25px;
+    padding: 0;
+    border: 1px solid #dbdbdb;
+    border-top: 0;
+    border-radius: 0;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:first-of-type {
+    border-top: 1px solid #dbdbdb;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item::before {
+    content: counter(excelBoardRow);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-right: 1px solid #dbdbdb;
+    background: #f1f1f1;
+    color: #666666;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item .board-rail-item-text {
+    display: block;
+    padding: 0 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:hover {
+    border-color: #a7c0b0;
+    background: #edf6f0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:hover::before {
+    border-right-color: #a7c0b0;
+    background: #e4efe8;
+    color: #2f5b44;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active {
+    border-color: #217346;
+    background: #e8f2eb;
+    box-shadow: inset 3px 0 0 #217346;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active::before {
+    border-right-color: #91b8a0;
+    background: #dfeee5;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-divider {
+    padding: 4px 0 2px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-divider-line {
+    background: #d0d0d0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-divider-text {
+    color: #6a6a6a;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-detached {
+    border: 1px solid #c8c8c8;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-item {
+    border: 1px solid #d8d8d8;
+    border-radius: 0;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-item:hover {
+    border-color: #a7c0b0;
+    background: #edf6f0;
+  }
+
+  /* Excel realism pass v5: bottom sheet tabs + status bar chrome. */
+  html.theme-excel body:is(.app-page, .admin-page),
+  html.theme-excel body.admin-page,
+  html.theme-excel body.auth-page {
+    padding-bottom: 56px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page)::before,
+  html.theme-excel body.admin-page::before,
+  html.theme-excel body.auth-page::before {
+    content: '◂   ▸    +';
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 22px;
+    height: 30px;
+    border-top: 1px solid #bcbcbc;
+    border-bottom: 1px solid #cfcfcf;
+    background:
+      linear-gradient(180deg, #f0f0f0 0%, #e7e7e7 100%);
+    color: #5a5a5a;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 30px;
+    padding-left: 12px;
+    letter-spacing: 0.03em;
+    z-index: 92;
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page)::after,
+  html.theme-excel body.admin-page::after,
+  html.theme-excel body.auth-page::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22px;
+    border-top: 1px solid #bdbdbd;
+    background:
+      linear-gradient(180deg, #e7e7e7 0%, #dddddd 100%);
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+    padding-left: 0;
+    z-index: 93;
+    pointer-events: none;
+    white-space: pre;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .page::before,
+  html.theme-excel body.admin-page .page::before,
+  html.theme-excel body.auth-page .auth-page-wrap::before {
+    content: 'Sheet2      Sheet3      Sheet4';
+    position: fixed;
+    left: 132px;
+    bottom: 22px;
+    height: 24px;
+    color: #606060;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 24px;
+    z-index: 93;
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .page::after,
+  html.theme-excel body.admin-page .page::after,
+  html.theme-excel body.auth-page .auth-page-wrap::after {
+    content: 'Sheet1';
+    position: fixed;
+    left: 54px;
+    bottom: 22px;
+    min-width: 74px;
+    height: 24px;
+    border: 1px solid #b8b8b8;
+    border-bottom-color: #f0f0f0;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+    color: #1f6a41;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 24px;
+    text-align: center;
+    z-index: 94;
+    pointer-events: none;
+  }
+
+  html.theme-excel #root::before {
+    content: '준비      접근성: 계속 진행 가능';
+    position: fixed;
+    left: 12px;
+    bottom: 0;
+    height: 22px;
+    color: #4b4b4b;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: 0.01em;
+    z-index: 95;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  html.theme-excel #root::after {
+    content: '-   ═══●═══   +   100%';
+    position: fixed;
+    right: 12px;
+    bottom: 0;
+    height: 22px;
+    color: #4b4b4b;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 22px;
+    letter-spacing: 0.01em;
+    z-index: 95;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* Excel chrome overlap fixes */
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero {
+    padding-top: 98px;
+    background:
+      linear-gradient(180deg, #107c41 0 44px, #f2f2f2 44px 74px, #ffffff 74px 100%);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::after,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::after {
+    display: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::after,
+  html.theme-excel body.admin-page .admin-hero::after {
+    content: '홈   삽입   페이지 레이아웃   수식   데이터   검토   보기';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 48px;
+    height: 22px;
+    border-bottom: 1px solid #d1d1d1;
+    color: #4f4f4f;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .hero-copy {
+    margin-top: 2px;
+    color: #5d5d5d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::before,
+  html.theme-excel body.admin-page .admin-panel::before {
+    content: '이름 상자';
+    width: 84px;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::after,
+  html.theme-excel body.admin-page .admin-panel::after {
+    left: 92px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap::before,
+  html.theme-excel body.admin-page .table-wrap::before {
+    content: 'A   B   C   D   E   F   G   H';
+    letter-spacing: 0.22em;
+    text-indent: 8px;
+    text-align: left;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    position: static;
+    top: auto;
+    z-index: auto;
+    line-height: 1.25;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  /* Excel realism pass v6: resolve pseudo overlap and header clipping. */
+  html.theme-excel body:is(.app-page, .admin-page) .page::before,
+  html.theme-excel body.admin-page .page::before,
+  html.theme-excel body.auth-page .auth-page-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) .page::after,
+  html.theme-excel body.admin-page .page::after,
+  html.theme-excel body.auth-page .auth-page-wrap::after {
+    content: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::before,
+  html.theme-excel body.admin-page #root > .page::before,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::before {
+    content: 'Sheet2      Sheet3      Sheet4';
+    position: fixed;
+    left: 136px;
+    bottom: 22px;
+    height: 24px;
+    color: #636363;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 24px;
+    letter-spacing: 0.01em;
+    z-index: 93;
+    pointer-events: none;
+    white-space: pre;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::after,
+  html.theme-excel body.admin-page #root > .page::after,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::after {
+    content: 'Sheet1';
+    position: fixed;
+    left: 54px;
+    bottom: 22px;
+    min-width: 78px;
+    height: 24px;
+    border: 1px solid #b8b8b8;
+    border-bottom-color: #ececec;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+    color: #1f6a41;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 24px;
+    text-align: center;
+    z-index: 94;
+    pointer-events: none;
+  }
+
+  html.theme-excel #root::before {
+    content: '준비    접근성: 계속 진행 가능';
+    left: 14px;
+    letter-spacing: 0;
+  }
+
+  html.theme-excel #root::after {
+    content: '-    ═══●═══    +    100%';
+    right: 14px;
+    letter-spacing: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::before,
+  html.theme-excel body.admin-page .admin-panel::before {
+    content: '이름 상자';
+    padding-left: 10px;
+    font-style: normal;
+    letter-spacing: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::after,
+  html.theme-excel body.admin-page .admin-panel::after {
+    left: 112px;
+    right: 10px;
+    top: 6px;
+    height: 22px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap,
+  html.theme-excel body.admin-page .table-wrap {
+    padding-top: 22px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap::before,
+  html.theme-excel body.admin-page .table-wrap::before {
+    content: 'A  B  C  D  E  F  G  H';
+    height: 22px;
+    line-height: 22px;
+    letter-spacing: 0.34em;
+    text-indent: 10px;
+    text-align: left;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    position: static;
+    top: auto;
+    z-index: auto;
+    height: auto;
+    min-height: 32px;
+    line-height: 1.35;
+    vertical-align: middle;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    overflow: visible;
+  }
+
+  /* Excel realism pass v7: dark ribbon + worksheet-like flat layout. */
+  html.theme-excel body:is(.app-page, .admin-page) .page,
+  html.theme-excel body.admin-page .page,
+  html.theme-excel body.auth-page .page {
+    width: min(1840px, calc(100vw - 20px));
+    max-width: none;
+    gap: 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-content-shell,
+  html.theme-excel body.admin-page .admin-content-shell {
+    gap: 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero,
+  html.theme-excel body.auth-page .auth-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #111214;
+    border-radius: 0;
+    box-shadow: none;
+    padding-top: 156px;
+    background:
+      linear-gradient(180deg, #24262b 0 34px, #191b1f 34px 68px, #1f2125 68px 112px, #f8f8f8 112px 100%);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::before,
+  html.theme-excel body.admin-page .admin-hero::before,
+  html.theme-excel body.auth-page .auth-card::before {
+    content: '통합 문서1';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f5f5f5;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border-bottom: 1px solid #0e0f12;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::after,
+  html.theme-excel body.admin-page .admin-hero::after,
+  html.theme-excel body.auth-page .auth-card::after {
+    content: '홈   삽입   페이지 레이아웃   수식   데이터   검토   보기';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 40px;
+    height: 24px;
+    color: #d8dadc;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 24px;
+    border-bottom: 1px solid #0f1013;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col {
+    position: relative;
+    z-index: 3;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: -88px;
+    width: 20px;
+    border-bottom: 3px solid #21a366;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::after,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::after {
+    content: '붙여넣기   글꼴   맞춤   숫자   스타일   셀   편집';
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: -58px;
+    height: 26px;
+    color: #cfd2d5;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 26px;
+    border-bottom: 1px solid #0f1013;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-kicker,
+  html.theme-excel body.admin-page .hero-kicker {
+    background: #e9f4ee;
+    border: 1px solid #98c9ae;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-brand-title,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .forum-brand-title,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .forum-brand-title,
+  html.theme-excel body.admin-page .admin-hero h1,
+  html.theme-excel body.auth-page .auth-card h1 {
+    color: #111111;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-copy,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero .hero-copy,
+  html.theme-excel body.admin-page .admin-hero .hero-copy {
+    color: #2f2f2f;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-detached,
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card,
+  html.theme-excel body.admin-page .admin-side-rail,
+  html.theme-excel body.admin-page .admin-panel,
+  html.theme-excel body.auth-page .auth-card {
+    border: 1px solid #16181b;
+    border-radius: 0;
+    box-shadow: none;
+    background:
+      linear-gradient(to right, rgba(203, 203, 203, 0.56) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(203, 203, 203, 0.56) 1px, transparent 1px),
+      rgba(251, 251, 251, 0.9);
+    background-size: 84px 28px, 84px 28px, auto;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-list-layout {
+    grid-template-columns: minmax(232px, 266px) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-rail,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-rail {
+    padding-top: 26px;
+    background-color: rgba(247, 247, 247, 0.96);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-side-rail::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-side-rail::before {
+    height: 24px;
+    line-height: 24px;
+    border-bottom: 1px solid #16181b;
+    background: #ececec;
+    color: #4b4b4b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-detached,
+  html.theme-excel body.admin-page .admin-side-profile {
+    border: 1px solid #16181b;
+    border-radius: 0;
+    background: #ffffff !important;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-head,
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-head {
+    border-bottom: 1px solid #16181b;
+    background: #f0f0f0;
+    padding: 7px 9px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-list {
+    gap: 0;
+    padding: 6px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item {
+    border: 1px solid #222426;
+    border-top: 0;
+    border-radius: 0;
+    background: #ffffff;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:first-of-type {
+    border-top: 1px solid #222426;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item::before {
+    border-right: 1px solid #222426;
+    background: #efefef;
+    color: #5d5d5d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active {
+    border-color: #111214;
+    background: #e9f4ee;
+    box-shadow: inset 3px 0 0 #21a366;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+  html.theme-excel body.admin-page .board-rail-profile-btn {
+    border: 1px solid #2a2c30;
+    border-radius: 0;
+    background: #ffffff;
+    color: #1d1d1d;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn:hover,
+  html.theme-excel body.admin-page .board-rail-profile-btn:hover {
+    border-color: #1f6a41;
+    background: #edf7f1;
+    color: #1f6a41;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .current-board-card,
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-bar,
+  html.theme-excel body:is(.app-page, .admin-page) #postList,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap,
+  html.theme-excel body.admin-page .table-wrap {
+    border: 1px solid #16181b;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-bar {
+    margin-top: 8px;
+    padding: 6px 6px 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab {
+    border: 1px solid #1f2226;
+    border-radius: 0;
+    background: #f7f7f7;
+    color: #232323;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab.active {
+    border-color: #1f2226;
+    background: #ffffff;
+    color: #145f37;
+    box-shadow: inset 0 -3px 0 #21a366;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table thead th,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th,
+  html.theme-excel body.admin-page .table thead th {
+    border: 1px solid #b6b6b6;
+    background: #f0f0f0;
+    color: #1b1b1b;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    font-weight: 700;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody td,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody td,
+  html.theme-excel body.admin-page .table tbody td {
+    border: 1px solid #d1d1d1;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1d1d1d;
+    font-size: 12px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr:nth-child(even) td,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:nth-child(even) td,
+  html.theme-excel body.admin-page .table tbody tr:nth-child(even) td {
+    background: rgba(250, 250, 250, 0.95);
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #postList .dc-list-table tbody tr:hover td,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:hover td,
+  html.theme-excel body.admin-page .table tbody tr:hover td {
+    background: #eaf4ee;
+    box-shadow: inset 0 0 0 1px #a4cdb4;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page)::before,
+  html.theme-excel body.admin-page::before,
+  html.theme-excel body.auth-page::before {
+    background: linear-gradient(180deg, #2c2f34 0%, #1f2125 100%);
+    border-top: 1px solid #0f1012;
+    border-bottom: 1px solid #303339;
+    color: #e9ecef;
+    font-weight: 600;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page)::after,
+  html.theme-excel body.admin-page::after,
+  html.theme-excel body.auth-page::after {
+    background: linear-gradient(180deg, #1e2024 0%, #141519 100%);
+    border-top: 1px solid #0f1012;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::before,
+  html.theme-excel body.admin-page #root > .page::before,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::before {
+    color: #e5e8eb;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::after,
+  html.theme-excel body.admin-page #root > .page::after,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::after {
+    border-color: #1d1f23;
+    border-bottom-color: #2b2e34;
+    background: linear-gradient(180deg, #ffffff 0%, #f1f1f1 100%);
+    color: #1f6a41;
+  }
+
+  html.theme-excel #root::before,
+  html.theme-excel #root::after {
+    color: #e6e9ec;
+  }
+
   .applied-popup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 }
@@ -4288,6 +6776,68 @@
 }
 
 @media (max-width: 900px) {
+  html.theme-excel body:is(.app-page, .admin-page)::before,
+  html.theme-excel body.admin-page::before,
+  html.theme-excel body.auth-page::before,
+  html.theme-excel body:is(.app-page, .admin-page)::after,
+  html.theme-excel body.admin-page::after,
+  html.theme-excel body.auth-page::after,
+  html.theme-excel body:is(.app-page, .admin-page) .page::before,
+  html.theme-excel body.admin-page .page::before,
+  html.theme-excel body.auth-page .auth-page-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) .page::after,
+  html.theme-excel body.admin-page .page::after,
+  html.theme-excel body.auth-page .auth-page-wrap::after,
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::before,
+  html.theme-excel body.admin-page #root > .page::before,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::before,
+  html.theme-excel body:is(.app-page, .admin-page) #root > .page::after,
+  html.theme-excel body.admin-page #root > .page::after,
+  html.theme-excel body.auth-page #root > .auth-page-wrap::after,
+  html.theme-excel #root::before,
+  html.theme-excel #root::after {
+    display: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page),
+  html.theme-excel body.admin-page,
+  html.theme-excel body.auth-page {
+    padding-bottom: 0;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::after,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::before,
+  html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::after,
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::after,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::after,
+  html.theme-excel body.admin-page .admin-hero::after,
+  html.theme-excel body.auth-page .auth-card::after {
+    display: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::before,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::before,
+  html.theme-excel body.admin-page .admin-hero::before,
+  html.theme-excel body.auth-page .auth-card::before {
+    display: none;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+  html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+  html.theme-excel body.admin-page .admin-hero,
+  html.theme-excel body.auth-page .auth-card {
+    padding-top: 92px;
+    background: linear-gradient(180deg, #24262b 0 34px, #191b1f 34px 68px, #f8f8f8 68px 100%);
+  }
+
   .auth-page-wrap { align-items: flex-start; }
   .auth-card { padding: 20px 16px; }
   .cover-calendar-weekdays,
@@ -4389,7 +6939,7 @@
   .board-rail { @apply hidden; }
   .forum-list-main { @apply rounded-lg p-3; }
   body.app-page .forum-list-main { width: 100%; min-width: 0; }
-  .mobile-hamburger-btn { @apply fixed right-4 top-4 z-[35] inline-flex h-10 w-10 rounded-full border-primary/15 bg-white/95 shadow-soft-xl backdrop-blur; }
+  .mobile-hamburger-btn { @apply fixed right-4 top-4 z-[130] inline-flex h-10 w-10 rounded-full border-primary/15 bg-white/95 shadow-soft-xl backdrop-blur; }
   .forum-list-main .dc-list-table { display: none; }
   .forum-list-main .mobile-post-list { @apply flex w-full flex-col items-stretch gap-2; }
   .forum-list-main .dc-list-wrap { @apply overflow-visible border-0 bg-transparent p-0; }
@@ -4583,6 +7133,1147 @@
 @media (min-width: 769px) and (max-width: 900px) {
   .guide-help-btn-text { display: inline; }
   .theme-toggle-text { display: inline; }
+}
+
+/* Excel mode rebuild: DOM chrome (ribbon/formula/status) + unified worksheet surface. */
+html.theme-excel body:is(.app-page, .admin-page)::before,
+html.theme-excel body.admin-page::before,
+html.theme-excel body.auth-page::before,
+html.theme-excel body:is(.app-page, .admin-page)::after,
+html.theme-excel body.admin-page::after,
+html.theme-excel body.auth-page::after,
+html.theme-excel body:is(.app-page, .admin-page) .page::before,
+html.theme-excel body.admin-page .page::before,
+html.theme-excel body.auth-page .auth-page-wrap::before,
+html.theme-excel body:is(.app-page, .admin-page) .page::after,
+html.theme-excel body.admin-page .page::after,
+html.theme-excel body.auth-page .auth-page-wrap::after,
+html.theme-excel body:is(.app-page, .admin-page) #root::before,
+html.theme-excel body.admin-page #root::before,
+html.theme-excel body.auth-page #root::before,
+html.theme-excel body:is(.app-page, .admin-page) #root::after,
+html.theme-excel body.admin-page #root::after,
+html.theme-excel body.auth-page #root::after,
+html.theme-excel body:is(.app-page, .admin-page) .hero-card::before,
+html.theme-excel body:is(.app-page, .admin-page) .hero-card::after,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::before,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card::after,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::before,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero::after,
+html.theme-excel body.admin-page .admin-hero::before,
+html.theme-excel body.admin-page .admin-hero::after,
+html.theme-excel body.auth-page .auth-card::before,
+html.theme-excel body.auth-page .auth-card::after,
+html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::before,
+html.theme-excel body:is(.app-page, .admin-page) .hero-card > .row.space-between.mobile-col::after,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::before,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card > .row.space-between.mobile-col::after,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::before,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero > .row.space-between.mobile-col::after,
+html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::before,
+html.theme-excel body.admin-page .admin-hero > .row.space-between.mobile-col::after,
+html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::before,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::before,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::before,
+html.theme-excel body.admin-page .admin-panel::before,
+html.theme-excel body:is(.app-page, .admin-page) .forum-list-main::after,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card::after,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-card::after,
+html.theme-excel body.admin-page .admin-panel::after,
+html.theme-excel body:is(.app-page, .admin-page) #postList::before,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap::before,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap::before,
+html.theme-excel body.admin-page .table-wrap::before {
+  content: none !important;
+  display: none !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page),
+html.theme-excel body.admin-page,
+html.theme-excel body.auth-page {
+  background-color: #f3f3f3;
+  background-image:
+    linear-gradient(to right, rgba(203, 203, 203, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 203, 203, 0.6) 1px, transparent 1px);
+  background-size: var(--app-excel-cell-width, 84px) 24px;
+  background-position: 46px 176px;
+}
+
+html.theme-excel .excel-chrome {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 120;
+}
+
+html.theme-excel .excel-ribbon,
+html.theme-excel .excel-formula-bar,
+html.theme-excel .excel-sheet-corner,
+html.theme-excel .excel-column-headers,
+html.theme-excel .excel-row-headers,
+html.theme-excel .excel-sheet-tabs,
+html.theme-excel .excel-status-bar {
+  pointer-events: none;
+}
+
+html.theme-excel .excel-ribbon {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+html.theme-excel .excel-ribbon-titlebar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #217346;
+  border-bottom: 1px solid #165634;
+}
+
+html.theme-excel .excel-ribbon-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+html.theme-excel .excel-ribbon-tabs {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  border-bottom: 1px solid #2f3339;
+  background: #1f2227;
+}
+
+html.theme-excel .excel-ribbon-tab {
+  position: relative;
+  color: #d6d9dd;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding-bottom: 1px;
+}
+
+html.theme-excel .excel-ribbon-tab.is-active {
+  color: #ffffff;
+}
+
+html.theme-excel .excel-ribbon-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  border-bottom: 3px solid #21a366;
+}
+
+html.theme-excel .excel-ribbon-tools {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid #2a2d33;
+  background: #24272c;
+}
+
+html.theme-excel .excel-ribbon-tool {
+  color: #cdd1d6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+html.theme-excel .excel-formula-bar {
+  position: fixed;
+  top: 116px;
+  left: 0;
+  right: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-top: 1px solid #d8d8d8;
+  border-bottom: 1px solid #c9c9c9;
+  background: #efefef;
+}
+
+html.theme-excel .excel-sheet-corner {
+  position: fixed;
+  top: 148px;
+  left: 0;
+  width: 46px;
+  height: 28px;
+  border-right: 1px solid #a7a7a7;
+  border-bottom: 1px solid #a7a7a7;
+  background: #17191d;
+}
+
+html.theme-excel .excel-column-headers {
+  position: fixed;
+  top: 148px;
+  left: 46px;
+  right: 0;
+  height: 28px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--app-excel-cell-width, 84px);
+  overflow: hidden;
+  border-bottom: 1px solid #a7a7a7;
+  background: #17191d;
+}
+
+html.theme-excel .excel-column-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #3f444a;
+  box-sizing: border-box;
+  color: #f2f3f4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+html.theme-excel .excel-row-headers {
+  position: fixed;
+  top: 176px;
+  left: 0;
+  bottom: 52px;
+  width: 46px;
+  display: grid;
+  grid-auto-rows: 24px;
+  overflow: hidden;
+  border-right: 1px solid #a7a7a7;
+  background: #17191d;
+}
+
+html.theme-excel .excel-row-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #3f444a;
+  color: #f2f3f4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+html.theme-excel .excel-name-box,
+html.theme-excel .excel-fx-badge {
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c0c0c0;
+  background: #ffffff;
+  color: #4e4e4e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+html.theme-excel .excel-name-box {
+  min-width: 58px;
+  padding: 0 8px;
+}
+
+html.theme-excel .excel-fx-badge {
+  width: 28px;
+  font-style: italic;
+}
+
+html.theme-excel .excel-formula-input {
+  height: 22px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #bfbfbf;
+  background: #ffffff;
+  color: #6a6a6a;
+  font-size: 12px;
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+html.theme-excel .excel-formula-count {
+  min-width: 44px;
+  height: 22px;
+  border: 1px solid #bfbfbf;
+  background: #ffffff;
+  color: #4e4e4e;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.theme-excel .excel-sheet-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  height: 28px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 10px;
+  border-top: 1px solid #303339;
+  background: #1f2126;
+}
+
+html.theme-excel .excel-sheet-nav {
+  color: #d5d8dc;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 24px;
+  padding: 0 3px;
+}
+
+html.theme-excel .excel-sheet-tab {
+  height: 24px;
+  min-width: 66px;
+  border: 1px solid #40444b;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: #2a2d33;
+  color: #d5d8dc;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+html.theme-excel .excel-sheet-tab.is-active {
+  border-color: #d6d6d6;
+  background: #ffffff;
+  color: #1f6a41;
+  font-weight: 700;
+}
+
+html.theme-excel .excel-status-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-top: 1px solid #2a2d33;
+  background: #16181d;
+}
+
+html.theme-excel .excel-status-left,
+html.theme-excel .excel-status-right {
+  color: #dce0e5;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+html.theme-excel .excel-chrome-offset {
+  padding-top: 176px !important;
+  padding-left: 46px !important;
+  padding-bottom: 52px !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .auth-page-wrap.excel-chrome-offset {
+  /* align-items: center is inherited from Tailwind items-center — do not override to flex-start */
+  padding-top: 168px !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .hero-card,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-shell .hero-card,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-hero,
+html.theme-excel body.admin-page .admin-hero,
+html.theme-excel body.auth-page .auth-card {
+  border: 2px solid #111111;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: rgba(255, 255, 255, 0.28);
+  background-image:
+    linear-gradient(to right, rgba(170, 170, 170, 0.34) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(170, 170, 170, 0.34) 1px, transparent 1px);
+  background-size: 84px 24px;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .forum-list-main,
+html.theme-excel body:is(.app-page, .admin-page) .board-rail,
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-detached,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-card,
+html.theme-excel body:is(.app-page, .admin-page) .post-comment-card,
+html.theme-excel body.admin-page .admin-panel,
+html.theme-excel body.admin-page .admin-side-rail,
+html.theme-excel body.admin-page .admin-side-profile {
+  border: 2px solid #111111;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: rgba(255, 255, 255, 0.26);
+  background-image:
+    linear-gradient(to right, rgba(170, 170, 170, 0.32) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(170, 170, 170, 0.32) 1px, transparent 1px);
+  background-size: 84px 24px;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-head,
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-recent-head {
+  border-bottom: 1px solid #202020;
+  background: rgba(240, 240, 240, 0.78);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-list {
+  gap: 0;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-item {
+  border: 1px solid #7f7f7f;
+  border-top: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-item:first-of-type {
+  border-top: 1px solid #7f7f7f;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-item.active {
+  border-color: #1f6a41;
+  background: #e8f3ed;
+  box-shadow: inset 3px 0 0 #21a366;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn,
+html.theme-excel body.admin-page .board-rail-profile-btn {
+  border: 1px solid #6f6f6f;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.75);
+  color: #1f1f1f;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .board-rail-profile-btn:hover,
+html.theme-excel body.admin-page .board-rail-profile-btn:hover {
+  border-color: #1f6a41;
+  background: #edf7f1;
+  color: #1f6a41;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .forum-category-bar,
+html.theme-excel body:is(.app-page, .admin-page) .current-board-card,
+html.theme-excel body:is(.app-page, .admin-page) #postList,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-list-card .table-wrap,
+html.theme-excel body:is(.app-page, .admin-page) .post-detail-card .table-wrap,
+html.theme-excel body.admin-page .table-wrap {
+  border: 2px solid #111111;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: rgba(255, 255, 255, 0.2);
+  background-image:
+    linear-gradient(to right, rgba(170, 170, 170, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(170, 170, 170, 0.25) 1px, transparent 1px);
+  background-size: 84px 24px;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab {
+  border: 1px solid #a8a8a8;
+  border-radius: 0;
+  background: #f7f7f7;
+  color: #2f2f2f;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .forum-category-tab.active {
+  border-color: #1f6a41;
+  background: #ffffff;
+  color: #1f6a41;
+  box-shadow: inset 0 -3px 0 #21a366;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .dc-list-wrap,
+html.theme-excel body:is(.app-page, .admin-page) .table-wrap,
+html.theme-excel body.admin-page .table-wrap {
+  overflow: auto;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .dc-list-table thead th,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-table thead th,
+html.theme-excel body.admin-page .table thead th {
+  position: static;
+  border: 1px solid #b8b8b8;
+  background: #efefef;
+  color: #1f1f1f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody td,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody td,
+html.theme-excel body.admin-page .table tbody td {
+  border: 1px solid #cdcdcd;
+  background: rgba(255, 255, 255, 0.62);
+  color: #1f1f1f;
+  font-size: 12px;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody tr:nth-child(even) td,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:nth-child(even) td,
+html.theme-excel body.admin-page .table tbody tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .dc-list-table tbody tr:hover td,
+html.theme-excel body:is(.app-page, .admin-page) .my-activity-table tbody tr:hover td,
+html.theme-excel body.admin-page .table tbody tr:hover td {
+  background: #eaf4ee;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-workbook {
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid {
+  width: 100%;
+  height: calc(100vh - 214px);
+  min-height: 760px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root:focus {
+  outline: none;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .jexcel_container {
+  border: 0;
+  display: block;
+  width: 100%;
+  padding-right: 0;
+  background: transparent;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .jexcel_content {
+  display: block;
+  width: 100% !important;
+  height: 100%;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+  box-sizing: border-box;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid table.jexcel {
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 0;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid table.jexcel thead {
+  visibility: collapse;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid table.jexcel td.jexcel_row,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid table.jexcel td.jexcel_selectall {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden;
+  font-size: 0;
+  line-height: 0;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .jexcel_corner {
+  display: none !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid table.jexcel td[data-x][data-y] {
+  min-width: var(--app-excel-cell-width, 84px);
+  max-width: var(--app-excel-cell-width, 84px);
+  width: var(--app-excel-cell-width, 84px);
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid #c6c6c6;
+  box-sizing: border-box;
+  line-height: 1.15;
+  font-size: 12px;
+  color: #111111;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight {
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight-top,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight-right,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight-bottom,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight-left {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.highlight-selected {
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px #217346 !important;
+  background-color: transparent !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selection,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selection-left,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selection-right,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selection-top,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selection-bottom,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root.has-user-selection table.jexcel td.selected {
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root:not(.has-user-selection) table.jexcel td.highlight,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root:not(.has-user-selection) table.jexcel td.highlight-selected,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .app-excel-jss-root:not(.has-user-selection) table.jexcel td.selected {
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid.ag-theme-alpine {
+  --ag-background-color: #f3f3f3;
+  --ag-foreground-color: #222222;
+  --ag-border-color: #b8b8b8;
+  --ag-header-background-color: #17191d;
+  --ag-header-foreground-color: #f2f3f4;
+  --ag-row-hover-color: #eaf4ee;
+  --ag-selected-row-background-color: #eaf4ee;
+  --ag-range-selection-border-color: #217346;
+  --ag-font-size: 12px;
+  --ag-font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-root-wrapper,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-root-wrapper-body,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-root,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-body-viewport,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-center-cols-viewport {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  border-color: #c6c6c6;
+  line-height: 1.15;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell-focus,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell-range-selected {
+  border: 2px solid #217346 !important;
+  box-shadow: inset 0 0 0 1px rgba(33, 115, 70, 0.2);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-sheet {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-hero {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-panel {
+  background-color: rgba(255, 255, 255, 0.42);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-table {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-table-header {
+  background-color: #efefef;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-board-active,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.surface-tab-active {
+  background-color: #e8f3ed;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell .app-excel-cell-content {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-brand .app-excel-cell-content {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f2e1f;
+  letter-spacing: -0.01em;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-subtitle .app-excel-cell-content {
+  font-size: 13px;
+  color: #2f2f2f;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-section-title .app-excel-cell-content {
+  font-weight: 700;
+  color: #101010;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-text-strong .app-excel-cell-content {
+  font-weight: 700;
+  color: #101010;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-muted .app-excel-cell-content {
+  color: #5f5f5f;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-button .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-tab .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-board .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-primary .app-excel-cell-content {
+  border: 1px solid #7d7d7d;
+  background: #f8f8f8;
+  padding: 2px 6px;
+  font-weight: 600;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-danger .app-excel-cell-content {
+  border: 1px solid #cc8f98;
+  background: #fff1f3;
+  color: #b42335;
+  padding: 2px 6px;
+  font-weight: 700;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-primary .app-excel-cell-content {
+  border-color: #1f6a41;
+  background: #e6f2ea;
+  color: #1f6a41;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-post-title .app-excel-cell-content {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-merged .app-excel-cell-content {
+  padding-right: 6px;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-table-header .app-excel-cell-content {
+  font-weight: 700;
+  color: #131313;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-number .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-index .app-excel-cell-content {
+  text-align: center;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.kind-badge .app-excel-cell-content {
+  border: 1px solid #9bbda7;
+  background: #edf7f1;
+  color: #1f6a41;
+  font-weight: 700;
+  text-align: center;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-disabled .app-excel-cell-content {
+  opacity: 0.45;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-action {
+  cursor: pointer;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-disabled {
+  cursor: not-allowed;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-merged-parent {
+  overflow: visible;
+  z-index: 4;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-merged-parent .app-excel-cell-content {
+  width: calc(var(--merge-span, 1) * var(--app-excel-cell-width, 84px) - 10px);
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid .ag-cell.app-excel-cell.is-merged-child {
+  background: transparent;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-sheet {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-hero {
+  background-color: rgba(255, 255, 255, 0.55);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-panel {
+  background-color: rgba(255, 255, 255, 0.42);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-table {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-table-header {
+  background-color: #efefef;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-board-active,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.surface-tab-active {
+  background-color: #e8f3ed;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell .app-excel-cell-content {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-brand .app-excel-cell-content {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f2e1f;
+  letter-spacing: -0.01em;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-subtitle .app-excel-cell-content {
+  font-size: 13px;
+  color: #2f2f2f;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-section-title .app-excel-cell-content {
+  font-weight: 700;
+  color: #101010;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-text-strong .app-excel-cell-content {
+  font-weight: 700;
+  color: #101010;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-muted .app-excel-cell-content {
+  color: #5f5f5f;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-button .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-tab .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-board .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-primary .app-excel-cell-content {
+  border: 1px solid #7d7d7d;
+  background: #f8f8f8;
+  padding: 2px 6px;
+  font-weight: 600;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-danger .app-excel-cell-content {
+  border: 1px solid #cc8f98;
+  background: #fff1f3;
+  color: #b42335;
+  padding: 2px 6px;
+  font-weight: 700;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-primary .app-excel-cell-content {
+  border-color: #90b69f;
+  background: #eef7f1;
+  color: #1f6a41;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-post-title .app-excel-cell-content {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-table-header .app-excel-cell-content {
+  font-weight: 700;
+  color: #131313;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-number .app-excel-cell-content,
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-index .app-excel-cell-content {
+  text-align: center;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.kind-badge .app-excel-cell-content {
+  border: 1px solid #9bbda7;
+  background: #edf7f1;
+  color: #1f6a41;
+  font-weight: 700;
+  text-align: center;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-disabled .app-excel-cell-content {
+  opacity: 0.45;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-action {
+  cursor: pointer;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-disabled {
+  cursor: not-allowed;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-merged-parent {
+  overflow: hidden;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-merged-parent .app-excel-cell-content {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .page.forum-shell.excel-chrome-offset {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .page.forum-shell.excel-chrome-offset .app-excel-workbook {
+  width: 100%;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid td.app-excel-cell.is-merged-child {
+  background: transparent;
+}
+
+html.theme-excel body:is(.app-page, .admin-page) .app-excel-sheet-hint {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #afafaf;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 6px 10px;
+  color: #2f2f2f;
+  font-size: 11px;
+}
+
+html.theme-excel .page.excel-chrome-offset {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box;
+}
+
+html.theme-excel .excel-sheet-backdrop-host {
+  position: relative;
+  overflow: hidden;
+}
+
+html.theme-excel .excel-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+html.theme-excel .excel-sheet-backdrop-content {
+  position: relative;
+  z-index: 1;
+}
+
+html.theme-excel .excel-sheet-backdrop-grid,
+html.theme-excel .excel-sheet-backdrop-root,
+html.theme-excel .excel-sheet-backdrop .jexcel_container,
+html.theme-excel .excel-sheet-backdrop .jexcel_content {
+  width: 100%;
+  height: 100%;
+}
+
+html.theme-excel .excel-sheet-backdrop .jexcel_content {
+  overflow: hidden;
+}
+
+html.theme-excel .excel-sheet-backdrop table.jexcel {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #1a1a1a;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html.theme-excel .excel-sheet-backdrop table.jexcel thead {
+  display: none;
+}
+
+html.theme-excel .excel-sheet-backdrop table.jexcel td.jexcel_row,
+html.theme-excel .excel-sheet-backdrop table.jexcel td.jexcel_selectall {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+html.theme-excel .excel-sheet-backdrop .jexcel_corner {
+  display: none;
+}
+
+html.theme-excel .excel-sheet-backdrop table.jexcel td[data-x][data-y] {
+  min-width: var(--app-excel-cell-width, 84px);
+  max-width: var(--app-excel-cell-width, 84px);
+  width: var(--app-excel-cell-width, 84px);
+  height: 24px;
+  border: 1px solid rgba(168, 168, 168, 0.64);
+  background: rgba(255, 255, 255, 0.22);
+  color: transparent;
+  cursor: default;
+}
+
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root:not(.has-user-selection) table.jexcel td.highlight,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root:not(.has-user-selection) table.jexcel td.highlight-selected,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root:not(.has-user-selection) table.jexcel td.selected {
+  border-color: rgba(168, 168, 168, 0.64) !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight {
+  background: rgba(33, 115, 70, 0.12) !important;
+}
+
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight-top,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight-right,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight-bottom,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight-left {
+  border-color: #217346 !important;
+}
+
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.highlight-selected {
+  background: rgba(33, 115, 70, 0.2) !important;
+}
+
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selection,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selection-left,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selection-right,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selection-top,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selection-bottom,
+html.theme-excel .excel-sheet-backdrop .excel-sheet-backdrop-root.has-user-selection table.jexcel td.selected {
+  border-color: #217346 !important;
+}
+
+
+  html.theme-excel body:is(.app-page, .admin-page),
+  html.theme-excel body.admin-page,
+  html.theme-excel body.auth-page {
+    background-position: 0 116px;
+  }
+@media (max-width: 900px) {
+  html.theme-excel .excel-ribbon-tools {
+    display: none;
+  }
+
+  html.theme-excel .excel-ribbon-tabs {
+    height: 30px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  html.theme-excel .excel-ribbon-tab {
+    font-size: 11px;
+  }
+
+  html.theme-excel .excel-ribbon-tab:nth-child(n + 5) {
+    display: none;
+  }
+
+  html.theme-excel .excel-sheet-corner,
+  html.theme-excel .excel-column-headers,
+  html.theme-excel .excel-row-headers {
+    display: none;
+  }
+
+  html.theme-excel .excel-formula-bar {
+    top: 68px;
+  }
+
+  html.theme-excel .excel-formula-count {
+    display: none;
+  }
+
+  html.theme-excel .excel-sheet-tab:not(.is-active) {
+    display: none;
+  }
+
+  html.theme-excel .excel-chrome-offset {
+    padding-top: 116px !important;
+    padding-left: 0 !important;
+    padding-bottom: 50px !important;
+  }
+
+
+  html.theme-excel body:is(.app-page, .admin-page) .app-excel-grid {
+    height: calc(100vh - 210px);
+    min-height: 420px;
+  }
+
+  html.theme-excel body:is(.app-page, .admin-page) .app-excel-sheet-hint {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  html.theme-excel .excel-sheet-backdrop {
+    display: none;
+  }
 }
 
 @layer utilities {

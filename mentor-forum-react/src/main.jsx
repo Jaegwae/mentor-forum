@@ -2,7 +2,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
-import 'react-quill/dist/quill.snow.css';
+import 'quill/dist/quill.snow.css';
 import 'react-day-picker/style.css';
 import './styles/design-system.css';
 import { initTheme } from './hooks/useTheme.js';

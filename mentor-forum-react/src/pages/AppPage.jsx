@@ -60,6 +60,13 @@ import { pushRelayConfigured, sendPushRelayPostCreate } from '../legacy/push-rel
 import { RichEditorToolbar } from '../components/editor/RichEditorToolbar.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select.jsx';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
+import { ExcelChrome } from '../components/ui/excel-chrome.jsx';
+import { AppExcelWorkbook } from '../components/excel/AppExcelWorkbook.jsx';
+import {
+  APP_EXCEL_COL_COUNT,
+  APP_EXCEL_ROW_COUNT,
+  buildAppExcelSheetModel
+} from '../components/excel/app-excel-sheet-model.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog.jsx';
 import { useTheme } from '../hooks/useTheme.js';
 
@@ -244,6 +251,20 @@ function normalizeErrMessage(err, fallback) {
 function isPermissionDeniedError(err) {
   const code = err && err.code ? String(err.code) : '';
   return code.includes('permission-denied');
+}
+
+function shouldLogDebugPayload() {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === 'undefined') return false;
+  return window.__MENTOR_DEBUG__ === true;
+}
+
+function logErrorWithOptionalDebug(tag, error, debugPayload) {
+  if (shouldLogDebugPayload() && debugPayload) {
+    console.error(tag, debugPayload);
+    return;
+  }
+  console.error(tag, error);
 }
 
 function debugValueList(values) {
@@ -955,23 +976,30 @@ function rgbaFromHex(value, alpha = 1) {
   return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
 }
 
-function profileCardSurface(role, roleDefMap, isDark = false) {
+function profileCardSurface(role, roleDefMap, theme = 'light') {
   const roleKey = normalizeText(role) || 'Newbie';
   const roleDef = roleDefMap?.get?.(roleKey) || null;
   const palette = getRoleBadgePalette(roleKey, roleDef);
+  const normalizedTheme = normalizeText(theme).toLowerCase();
+  const isDark = normalizedTheme === 'dark';
+  const isExcel = normalizedTheme === 'excel';
   const darkBorder = rgbaFromHex(palette.borderColor, 0.62);
   const darkTint = rgbaFromHex(palette.borderColor, 0.24);
   const darkKicker = rgbaFromHex(palette.borderColor, 0.95);
+  const excelBorder = rgbaFromHex(palette.borderColor, 0.58);
+  const excelTint = rgbaFromHex(palette.bgColor, 0.38);
 
   return {
     cardStyle: {
-      borderColor: isDark ? darkBorder : palette.borderColor,
+      borderColor: isDark ? darkBorder : isExcel ? excelBorder : palette.borderColor,
       background: isDark
         ? `linear-gradient(135deg, ${darkTint} 0%, rgba(15,23,42,0.92) 100%)`
-        : `linear-gradient(135deg, ${palette.bgColor} 0%, rgba(255,255,255,0.94) 100%)`
+        : isExcel
+          ? `linear-gradient(135deg, ${excelTint} 0%, rgba(248,250,248,0.98) 72%, rgba(238,244,240,1) 100%)`
+          : `linear-gradient(135deg, ${palette.bgColor} 0%, rgba(255,255,255,0.94) 100%)`
     },
     kickerStyle: {
-      color: isDark ? darkKicker : palette.textColor
+      color: isDark ? darkKicker : isExcel ? '#1f6a41' : palette.textColor
     }
   };
 }
@@ -1473,7 +1501,8 @@ export default function AppPage() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDark } = useTheme();
+  const { theme, toggleTheme } = useTheme();
+  const isExcel = theme === 'excel';
 
   const pendingBoardIdRef = useRef(new URLSearchParams(location.search).get('boardId') || '');
   const editorRef = useRef(null);
@@ -1511,6 +1540,8 @@ export default function AppPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [postListViewMode, setPostListViewMode] = useState(POST_LIST_VIEW_MODE.LATEST);
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
+  const [excelActiveCellLabel, setExcelActiveCellLabel] = useState('');
+  const [excelFormulaText, setExcelFormulaText] = useState('=');
 
   const [boardDrawerOpen, setBoardDrawerOpen] = useState(false);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
@@ -1581,8 +1612,8 @@ export default function AppPage() {
     return coverVenueOptions[0] || COVER_FOR_DEFAULT_VENUE;
   }, [coverVenueOptions]);
   const profileSurface = useMemo(() => {
-    return profileCardSurface(currentUserProfile?.role, roleDefMap, isDark);
-  }, [currentUserProfile?.role, isDark, roleDefMap]);
+    return profileCardSurface(currentUserProfile?.role, roleDefMap, theme);
+  }, [currentUserProfile?.role, roleDefMap, theme]);
 
   const boardLookup = useMemo(() => {
     const next = new Map();
@@ -2751,14 +2782,13 @@ export default function AppPage() {
     }
 
     if (!currentBoard || !canWriteBoard(currentBoard)) {
-      const debugText = boardPermissionDebugText(currentBoard, currentUserProfile);
-      alert(`선택한 게시판에 글 작성 권한이 없습니다. (${debugText})`);
+      alert('선택한 게시판에 글 작성 권한이 없습니다.');
       return;
     }
 
     resetComposer(currentBoard);
     setComposerOpen(true);
-  }, [canWriteBoard, currentBoard, currentUserProfile, isAllBoardSelected, resetComposer]);
+  }, [canWriteBoard, currentBoard, isAllBoardSelected, resetComposer]);
 
   useEffect(() => {
     if (composerOpen) return;
@@ -3277,7 +3307,7 @@ export default function AppPage() {
           latestDebugText,
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
-        console.error('[post-create-permission-debug]', {
+        logErrorWithOptionalDebug('[post-create-permission-debug]', err, {
           error: err,
           boardId: currentBoard?.id || '',
           boardName: currentBoard?.name || '',
@@ -3307,11 +3337,12 @@ export default function AppPage() {
           coverForStartTimeValues: nextCoverStartTimeValues,
           coverForEndTimeValues: nextCoverEndTimeValues,
           coverForVenueValues: nextCoverVenueValues,
-          invalidRangeIndexes
+          invalidRangeIndexes,
+          debugText
         });
         setComposerMessage({
           type: 'error',
-          text: `${normalizeErrMessage(err, '저장 실패')} (${debugText})`
+          text: normalizeErrMessage(err, '저장 실패')
         });
         setSubmittingPost(false);
         return;
@@ -3333,7 +3364,7 @@ export default function AppPage() {
             createdAtMs: Date.now()
           });
         } catch (relayErr) {
-          console.error('[post-create-push-relay-dispatch-failed]', {
+          logErrorWithOptionalDebug('[post-create-push-relay-dispatch-failed]', relayErr, {
             error: relayErr,
             postId: createdPostId,
             boardId: normalizeText(currentBoard?.id)
@@ -3348,7 +3379,7 @@ export default function AppPage() {
     try {
       await loadPostsForCurrentBoard();
     } catch (err) {
-      console.error('[post-create-list-refresh-failed]', {
+      logErrorWithOptionalDebug('[post-create-list-refresh-failed]', err, {
         error: err,
         boardId: currentBoard?.id || '',
         boardName: currentBoard?.name || '',
@@ -3356,7 +3387,7 @@ export default function AppPage() {
       });
       setListMessage({
         type: 'error',
-        text: `게시글은 등록되었지만 목록을 갱신하지 못했습니다. 새로고침 후 확인해주세요. (errorCode=${normalizeText(err?.code) || '-'})`
+        text: '게시글은 등록되었지만 목록을 갱신하지 못했습니다. 새로고침 후 확인해주세요.'
       });
     }
 
@@ -3457,7 +3488,7 @@ export default function AppPage() {
         .map((item) => item.label);
       setVenueOptions(options.length ? options : DEFAULT_COVER_FOR_VENUE_OPTIONS);
     }, (err) => {
-      console.error('[venue-option-sync-subscribe-failed]', {
+      logErrorWithOptionalDebug('[venue-option-sync-subscribe-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3489,7 +3520,7 @@ export default function AppPage() {
       });
       setViewedPostIdMap(nextMap);
     }, (err) => {
-      console.error('[viewed-post-sync-subscribe-failed]', {
+      logErrorWithOptionalDebug('[viewed-post-sync-subscribe-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3531,7 +3562,7 @@ export default function AppPage() {
         .sort((a, b) => b.updatedAtMs - a.updatedAtMs);
       setMobilePushTokens(rows);
     }, (err) => {
-      console.error('[push-token-sync-subscribe-failed]', {
+      logErrorWithOptionalDebug('[push-token-sync-subscribe-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3587,7 +3618,7 @@ export default function AppPage() {
       normalized.sort((a, b) => b.createdAtMs - a.createdAtMs);
       setNotifications(normalized.slice(0, NOTIFICATION_MAX_ITEMS));
     }, (err) => {
-      console.error('[notification-sync-subscribe-failed]', {
+      logErrorWithOptionalDebug('[notification-sync-subscribe-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3605,7 +3636,7 @@ export default function AppPage() {
       });
       setNotificationPrefs(nextPrefs);
     }, (err) => {
-      console.error('[notification-pref-sync-subscribe-failed]', {
+      logErrorWithOptionalDebug('[notification-pref-sync-subscribe-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3684,7 +3715,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       });
     } catch (err) {
-      console.error('[notification-sync-write-failed]', {
+      logErrorWithOptionalDebug('[notification-sync-write-failed]', err, {
         error: err,
         uid: currentUserUid,
         notificationId
@@ -3719,7 +3750,7 @@ export default function AppPage() {
             updatedAt: serverTimestamp()
           });
         } catch (err) {
-          console.error('[notification-sync-mark-all-read-failed]', {
+          logErrorWithOptionalDebug('[notification-sync-mark-all-read-failed]', err, {
             error: err,
             uid: currentUserUid,
             notificationId: item.id
@@ -3746,7 +3777,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       });
     } catch (err) {
-      console.error('[notification-sync-mark-read-failed]', {
+      logErrorWithOptionalDebug('[notification-sync-mark-read-failed]', err, {
         error: err,
         uid: currentUserUid,
         notificationId: targetId
@@ -3772,7 +3803,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (err) {
-      console.error('[notification-pref-sync-write-failed]', {
+      logErrorWithOptionalDebug('[notification-pref-sync-write-failed]', err, {
         error: err,
         uid: currentUserUid,
         boardId: targetId
@@ -3802,7 +3833,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (err) {
-      console.error('[notification-pref-type-write-failed]', {
+      logErrorWithOptionalDebug('[notification-pref-type-write-failed]', err, {
         error: err,
         uid: currentUserUid,
         prefKey: targetKey
@@ -3839,7 +3870,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (err) {
-      console.error('[mobile-push-pref-board-write-failed]', {
+      logErrorWithOptionalDebug('[mobile-push-pref-board-write-failed]', err, {
         error: err,
         uid: currentUserUid,
         boardId: boardKey,
@@ -3868,7 +3899,7 @@ export default function AppPage() {
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (err) {
-      console.error('[mobile-push-pref-global-write-failed]', {
+      logErrorWithOptionalDebug('[mobile-push-pref-global-write-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3947,7 +3978,7 @@ export default function AppPage() {
       await setMobilePushGlobalPreference(true);
       setMobilePushStatus({ type: 'notice', text: '모바일 알림이 켜졌습니다.' });
     } catch (err) {
-      console.error('[mobile-push-enable-failed]', {
+      logErrorWithOptionalDebug('[mobile-push-enable-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -3979,7 +4010,7 @@ export default function AppPage() {
       await setMobilePushGlobalPreference(false);
       setMobilePushStatus({ type: 'notice', text: '모바일 알림을 껐습니다.' });
     } catch (err) {
-      console.error('[mobile-push-disable-failed]', {
+      logErrorWithOptionalDebug('[mobile-push-disable-failed]', err, {
         error: err,
         uid: currentUserUid
       });
@@ -4404,15 +4435,172 @@ export default function AppPage() {
   }, [coverCalendarCursor, coverCalendarEventsByDate, coverCalendarSelectedDate, todayDate]);
 
   const loadingText = ready ? '게시글을 불러오는 중...' : '초기화 중...';
+  const isExcelDesktopMode = isExcel && !compactListMode;
+  const userRoleLabel = useMemo(() => {
+    const roleKey = normalizeText(currentUserProfile?.role);
+    if (!roleKey) return '-';
+    return roleDefMap.get(roleKey)?.labelKo || roleKey;
+  }, [currentUserProfile?.role, roleDefMap]);
+
+  const excelBoardItems = useMemo(() => {
+    return drawerItems
+      .filter((item) => item && !isDividerItem(item))
+      .map((item) => ({
+        id: item.id,
+        name: item.name || item.id,
+        isSelected: item.id === selectedBoardId
+      }));
+  }, [drawerItems, selectedBoardId]);
+
+  const excelPosts = useMemo(() => {
+    return currentPagePosts.map((post, idx) => {
+      const no = totalPostCount - (currentPageStartIndex + idx);
+      const board = boardLookup.get(normalizeText(post.boardId)) || null;
+      const boardLabel = board?.name || post.boardId || '-';
+      const commentCount = numberOrZero(commentCountByPost[post.id]);
+      const isRecentPost = recentUnreadPostIdSet.has(String(post.id));
+      const coverSummary = isCoverForBoardId(post.boardId) ? summarizeCoverForPost(post) : null;
+      const coverStatusTag = coverSummary?.label || '';
+      const isPinned = isPinnedPost(post);
+      const titleSegments = [
+        isPinned ? '[고정]' : '',
+        coverStatusTag ? `[${coverStatusTag}]` : '',
+        post.title || '(제목 없음)',
+        commentCount > 0 ? `[${commentCount}]` : '',
+        isRecentPost ? '[N]' : ''
+      ].filter(Boolean);
+
+      return {
+        postId: post.id,
+        boardId: post.boardId,
+        no,
+        title: titleSegments.join(' '),
+        author: post.authorName || post.authorUid || '-',
+        dateText: formatPostListDate(post.createdAt),
+        views: numberOrZero(post.views),
+        boardLabel
+      };
+    });
+  }, [
+    boardLookup,
+    commentCountByPost,
+    currentPagePosts,
+    currentPageStartIndex,
+    recentUnreadPostIdSet,
+    totalPostCount
+  ]);
+
+  const excelSheetModel = useMemo(() => {
+    return buildAppExcelSheetModel({
+      rowCount: APP_EXCEL_ROW_COUNT,
+      colCount: APP_EXCEL_COL_COUNT,
+      userDisplayName,
+      userRoleLabel,
+      boardItems: excelBoardItems,
+      selectedBoardId,
+      canAccessAdminSite,
+      hasUnreadNotifications,
+      isMobilePushEnabled: isMobilePushEnabled && hasActivePushToken,
+      currentBoardName,
+      totalPostCount,
+      postListViewMode,
+      posts: excelPosts,
+      safeCurrentPage,
+      totalPageCount,
+      paginationPages,
+      showComposerAction: !composerFabHidden,
+      emptyMessage: loadingPosts ? loadingText : (activeListMessage.text || postListEmptyText)
+    });
+  }, [
+    activeListMessage.text,
+    canAccessAdminSite,
+    composerFabHidden,
+    currentBoardName,
+    excelBoardItems,
+    excelPosts,
+    hasActivePushToken,
+    hasUnreadNotifications,
+    isMobilePushEnabled,
+    loadingPosts,
+    loadingText,
+    paginationPages,
+    postListEmptyText,
+    postListViewMode,
+    safeCurrentPage,
+    selectedBoardId,
+    totalPageCount,
+    totalPostCount,
+    userDisplayName,
+    userRoleLabel
+  ]);
+
+  const handleExcelSelectCell = useCallback((payload) => {
+    const label = normalizeText(payload?.label);
+    const text = String(payload?.text ?? '').trim();
+    setExcelActiveCellLabel(label || '');
+    setExcelFormulaText(text || '=');
+  }, []);
+
+  const handleExcelOpenPost = useCallback((postId, boardId) => {
+    if (!postId) return;
+    handleMovePost(postId, boardId || selectedBoardId);
+  }, [handleMovePost, selectedBoardId]);
+
+  const handleExcelSortChange = useCallback((mode) => {
+    const normalized = normalizeText(mode).toLowerCase();
+    setPostListViewMode(normalized === POST_LIST_VIEW_MODE.POPULAR ? POST_LIST_VIEW_MODE.POPULAR : POST_LIST_VIEW_MODE.LATEST);
+  }, []);
+
+  const handleExcelPageChange = useCallback((pageNo) => {
+    const nextPage = Math.max(1, Math.min(totalPageCount, Math.floor(Number(pageNo) || 1)));
+    setCurrentPage(nextPage);
+  }, [totalPageCount]);
 
   return (
     <>
+      {isExcel ? (
+        <ExcelChrome
+          title="통합 문서1"
+          activeTab="홈"
+          sheetName="Sheet1"
+          countLabel={`${totalPostCount}건`}
+          activeCellLabel={isExcelDesktopMode ? excelActiveCellLabel : ''}
+          formulaText={isExcelDesktopMode ? excelFormulaText : '='}
+          compact={compactListMode}
+          showHeaders
+          rowCount={APP_EXCEL_ROW_COUNT}
+          colCount={APP_EXCEL_COL_COUNT}
+        />
+      ) : null}
       <motion.main
-        className="page stack forum-shell"
+        className={isExcel ? 'page stack forum-shell excel-chrome-offset' : 'page stack forum-shell'}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
+        {isExcelDesktopMode ? (
+          <AppExcelWorkbook
+            sheetRows={excelSheetModel.rowData}
+            rowCount={excelSheetModel.rowCount}
+            colCount={excelSheetModel.colCount}
+            onSelectCell={handleExcelSelectCell}
+            onOpenPost={handleExcelOpenPost}
+            onSelectBoard={handleSelectBoard}
+            onOpenComposer={openComposer}
+            onNavigateMyPosts={() => navigate(myPostsPage)}
+            onNavigateMyComments={() => navigate(myCommentsPage)}
+            onNavigateAdmin={() => navigate(MENTOR_FORUM_CONFIG.app.adminPage)}
+            onOpenGuide={() => setGuideModalOpen(true)}
+            onToggleTheme={toggleTheme}
+            onLogout={() => handleLogout().catch(() => {})}
+            onSortChange={handleExcelSortChange}
+            onPageChange={handleExcelPageChange}
+            onMoveHome={handleMoveHome}
+            onOpenNotifications={() => setNotificationCenterOpen(true)}
+            onOpenMobilePush={() => setMobilePushModalOpen(true)}
+          />
+        ) : null}
+        <div className={isExcelDesktopMode ? 'hidden' : ''}>
         <section className="card hero-card">
           <div className="row space-between mobile-col">
             <div>
@@ -5041,6 +5229,7 @@ export default function AppPage() {
             </div>
           </div>
         </section>
+        </div>
       </motion.main>
 
       <AnimatePresence>
@@ -5228,6 +5417,29 @@ export default function AppPage() {
                   원하는 게시판을 먼저 선택해야 사용할 수 있습니다.
                 </p>
               </div>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">0-1. 테마 바꾸기 (라이트/다크/엑셀)</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>
+                  우측 상단
+                  {' '}
+                  <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
+                    라이트/다크/엑셀
+                  </button>
+                  {' '}
+                  버튼(현재 테마 표시 + 테마 토글)을 눌러 화면 테마를 변경할 수 있습니다.
+                </li>
+                <li>
+                  테마는
+                  {' '}
+                  <strong>라이트 → 다크 → 엑셀 → 라이트</strong>
+                  {' '}
+                  순서로 순환됩니다.
+                </li>
+                <li>선택한 테마는 저장되며, 새로고침하거나 다른 탭을 열어도 동일하게 유지/동기화됩니다.</li>
+              </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">

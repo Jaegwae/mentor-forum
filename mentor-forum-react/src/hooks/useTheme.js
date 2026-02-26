@@ -4,11 +4,29 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 const THEME_STORAGE_KEY = 'mentor_forum_theme';
 const THEME_LIGHT = 'light';
 const THEME_DARK = 'dark';
+const THEME_EXCEL = 'excel';
 const THEME_CHANGE_EVENT = 'mentor_forum_theme_change';
+const THEME_SEQUENCE = [THEME_LIGHT, THEME_DARK, THEME_EXCEL];
 
-function normalizeTheme(value) {
+export function isMobileLike() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const hoverFine = window.matchMedia('(hover: hover)').matches;
+  const pointerFine = window.matchMedia('(pointer: fine)').matches;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  return !desktopLike;
+}
+
+const THEME_SEQUENCE_MOBILE = [THEME_LIGHT, THEME_DARK];
+
+function normalizeTheme(value, guardMobile = false) {
   const theme = String(value || '').trim().toLowerCase();
   if (theme === THEME_DARK) return THEME_DARK;
+  if (theme === THEME_EXCEL) {
+    if (guardMobile && isMobileLike()) return THEME_LIGHT;
+    return THEME_EXCEL;
+  }
   return THEME_LIGHT;
 }
 
@@ -26,6 +44,7 @@ function applyTheme(theme) {
   const normalized = normalizeTheme(theme);
   const root = document.documentElement;
   root.classList.toggle('theme-dark', normalized === THEME_DARK);
+  root.classList.toggle('theme-excel', normalized === THEME_EXCEL);
   root.dataset.theme = normalized;
 
   if (typeof window !== 'undefined') {
@@ -46,7 +65,9 @@ function writeStoredTheme(theme) {
 
 export function initTheme() {
   const initialTheme = readStoredTheme();
-  applyTheme(initialTheme);
+  const safe = isMobileLike() && initialTheme === THEME_EXCEL ? THEME_LIGHT : initialTheme;
+  applyTheme(safe);
+  if (safe !== initialTheme) writeStoredTheme(safe);
 }
 
 export function useTheme() {
@@ -91,13 +112,21 @@ export function useTheme() {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (normalizeTheme(prev) === THEME_DARK ? THEME_LIGHT : THEME_DARK));
+    setTheme((prev) => {
+      const current = normalizeTheme(prev);
+      const authPage = typeof document !== 'undefined' && document.body.classList.contains('auth-page');
+      const seq = (isMobileLike() || authPage) ? THEME_SEQUENCE_MOBILE : THEME_SEQUENCE;
+      const index = seq.indexOf(current);
+      const nextIndex = index >= 0 ? (index + 1) % seq.length : 0;
+      return seq[nextIndex];
+    });
   }, []);
 
   return useMemo(() => ({
     theme: normalizeTheme(theme),
     isDark: normalizeTheme(theme) === THEME_DARK,
-    setTheme: (nextTheme) => setTheme(normalizeTheme(nextTheme)),
+    isExcel: normalizeTheme(theme) === THEME_EXCEL,
+    setTheme: (nextTheme) => setTheme(normalizeTheme(nextTheme, true)),
     toggleTheme
   }), [theme, toggleTheme]);
 }

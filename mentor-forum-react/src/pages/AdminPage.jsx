@@ -12,6 +12,14 @@ import {
   SelectValue
 } from '../components/ui/select.jsx';
 import { ThemeToggle } from '../components/ui/theme-toggle.jsx';
+import { ExcelChrome } from '../components/ui/excel-chrome.jsx';
+import { AppExcelWorkbook } from '../components/excel/AppExcelWorkbook.jsx';
+import {
+  EXCEL_STANDARD_COL_COUNT,
+  EXCEL_STANDARD_ROW_COUNT,
+  buildAdminExcelSheetModel
+} from '../components/excel/secondary-excel-sheet-models.js';
+import { useTheme } from '../hooks/useTheme.js';
 import {
   auth,
   db,
@@ -34,7 +42,8 @@ import {
   query,
   where,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  writeBatch
 } from '../legacy/firebase-app.js';
 import {
   buildPermissions,
@@ -153,6 +162,23 @@ const legacyRoleVisibilityCleanup = {
 
 function normalizeText(value) {
   return String(value || '').trim();
+}
+
+function detectCompactListMode() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const hoverFine = window.matchMedia('(hover: hover)').matches;
+  const pointerFine = window.matchMedia('(pointer: fine)').matches;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+
+  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  return !desktopLike;
+}
+
+function shouldLogDebugPayload() {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === 'undefined') return false;
+  return window.__MENTOR_DEBUG__ === true;
 }
 
 function isPermissionDeniedError(err) {
@@ -521,6 +547,9 @@ export default function AdminPage() {
   usePageMeta('멘토포럼 관리자 사이트', 'admin-page');
 
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const isExcel = theme === 'excel';
+  const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
   const expiryTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -1207,14 +1236,33 @@ export default function AdminPage() {
 
   const persistBoardOrder = useCallback(async (items) => {
     if (!currentUser) return;
+    const MAX_BATCH_OPS = 450;
+    let batch = writeBatch(db);
+    let opCount = 0;
+    const commits = [];
 
     for (let idx = 0; idx < items.length; idx += 1) {
       const item = items[idx];
-      await setDoc(doc(db, 'boards', item.id), {
+      batch.set(doc(db, 'boards', item.id), {
         sortOrder: (idx + 1) * 10,
         updatedAt: serverTimestamp(),
         updatedBy: currentUser.uid
       }, { merge: true });
+      opCount += 1;
+
+      if (opCount >= MAX_BATCH_OPS) {
+        commits.push(batch.commit());
+        batch = writeBatch(db);
+        opCount = 0;
+      }
+    }
+
+    if (opCount > 0) {
+      commits.push(batch.commit());
+    }
+
+    for (const commitTask of commits) {
+      await commitTask;
     }
   }, [currentUser]);
 
@@ -1839,35 +1887,39 @@ export default function AdminPage() {
           `errorCode=${normalizeText(err?.code) || '-'}`
         ]);
 
-        console.error('[user-role-update-permission-debug]', {
-          error: err,
-          targetUid: uid,
-          myUid: currentUser?.uid || '',
-          originalRole,
-          selectedRole,
-          payloadKeys: Object.keys(payload),
-          localCanManageRoles: !!permissions?.canManageRoles,
-          localMyRole: myRole,
-          localMyRawRole: myRawRole,
-          localMyRawRoleHex: debugCodePoints(myRawRoleExact),
-          localMyLevel: myRoleLevel,
-          localTargetLevel: roleLevelOf(originalRole),
-          localSelectedLevel: roleLevelOf(selectedRole),
-          localTargetLower: roleLevelOf(originalRole) < myRoleLevel,
-          localSelectedLower: roleLevelOf(selectedRole) < myRoleLevel,
-          latestMyDocExists,
-          latestMyRole,
-          latestMyRawRole,
-          latestMyRawRoleHex,
-          latestTargetDocExists,
-          latestTargetRole,
-          latestTargetRawRole,
-          latestTargetRawRoleHex,
-          latestTargetLower,
-          latestSelectedLower
-        });
+        if (shouldLogDebugPayload()) {
+          console.error('[user-role-update-permission-debug]', {
+            error: err,
+            targetUid: uid,
+            myUid: currentUser?.uid || '',
+            originalRole,
+            selectedRole,
+            payloadKeys: Object.keys(payload),
+            localCanManageRoles: !!permissions?.canManageRoles,
+            localMyRole: myRole,
+            localMyRawRole: myRawRole,
+            localMyRawRoleHex: debugCodePoints(myRawRoleExact),
+            localMyLevel: myRoleLevel,
+            localTargetLevel: roleLevelOf(originalRole),
+            localSelectedLevel: roleLevelOf(selectedRole),
+            localTargetLower: roleLevelOf(originalRole) < myRoleLevel,
+            localSelectedLower: roleLevelOf(selectedRole) < myRoleLevel,
+            latestMyDocExists,
+            latestMyRole,
+            latestMyRawRole,
+            latestMyRawRoleHex,
+            latestTargetDocExists,
+            latestTargetRole,
+            latestTargetRawRole,
+            latestTargetRawRoleHex,
+            latestTargetLower,
+            latestSelectedLower
+          });
+        } else {
+          console.error('[user-role-update-permission-debug]', err);
+        }
 
-        pushMessage(`권한 오류입니다. 현재 등급에서 허용되지 않은 작업입니다. (${debugText})`, 'error');
+        pushMessage('권한 오류입니다. 현재 등급에서 허용되지 않은 작업입니다.', 'error');
         return;
       }
       throw err;
@@ -2013,6 +2065,40 @@ export default function AdminPage() {
     venueOptions
   ]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {};
+    const wideMedia = window.matchMedia('(min-width: 901px)');
+    const hoverMedia = window.matchMedia('(hover: hover)');
+    const pointerMedia = window.matchMedia('(pointer: fine)');
+
+    const syncMode = () => setCompactListMode(detectCompactListMode());
+    syncMode();
+
+    if (
+      typeof wideMedia.addEventListener === 'function'
+      && typeof hoverMedia.addEventListener === 'function'
+      && typeof pointerMedia.addEventListener === 'function'
+    ) {
+      wideMedia.addEventListener('change', syncMode);
+      hoverMedia.addEventListener('change', syncMode);
+      pointerMedia.addEventListener('change', syncMode);
+      return () => {
+        wideMedia.removeEventListener('change', syncMode);
+        hoverMedia.removeEventListener('change', syncMode);
+        pointerMedia.removeEventListener('change', syncMode);
+      };
+    }
+
+    wideMedia.addListener(syncMode);
+    hoverMedia.addListener(syncMode);
+    pointerMedia.addListener(syncMode);
+    return () => {
+      wideMedia.removeListener(syncMode);
+      hoverMedia.removeListener(syncMode);
+      pointerMedia.removeListener(syncMode);
+    };
+  }, []);
+
   const canManageBoards = !!permissions?.canManageBoards;
   const canManageRoleDefinitions = !!permissions?.canManageRoleDefinitions;
   const canManageRoles = !!permissions?.canManageRoles;
@@ -2052,15 +2138,175 @@ export default function AdminPage() {
 
   const boardCount = boardRows.length;
   const venueCount = venueOptions.length;
+  const excelBoardRows = useMemo(() => {
+    return boardRows.map((row) => ({
+      id: row.id,
+      name: row.name || row.id,
+      description: row.description || '-',
+      allowedRolesText: Array.isArray(row.allowedRoles) ? row.allowedRoles.join(', ') : '-'
+    }));
+  }, [boardRows]);
+
+  const excelVenueRows = useMemo(() => {
+    return venueOptions.map((row) => ({
+      id: row.id,
+      label: row.label || '-'
+    }));
+  }, [venueOptions]);
+
+  const excelRoleRows = useMemo(() => {
+    return sortedRoles.map((roleDoc) => ({
+      role: roleDoc.role,
+      labelKo: roleDoc.labelKo || '-',
+      level: roleLevelWithDefinitions(roleDoc.role, roleDefinitions),
+      summary: roleSummaryText(roleDoc) || '-'
+    }));
+  }, [roleDefinitions, sortedRoles]);
+
+  const excelUserRows = useMemo(() => {
+    return filteredUsers.map((userRow) => {
+      const currentRole = normalizeText(userRow.role) || 'Newbie';
+      const draft = userDrafts[userRow.uid] || { role: currentRole };
+      const state = evaluateUserManageState(userRow.uid, currentRole, draft.role);
+      const roleChanged = normalizeText(draft.role) !== currentRole;
+      const canSave = state.type === 'ok' && roleChanged;
+      return {
+        uid: userRow.uid,
+        email: userRow.email || '-',
+        name: userRow.realName || userRow.nickname || '-',
+        currentRole,
+        draftRole: draft.role,
+        state: canSave ? state.label : (roleChanged ? state.label : '변경 없음'),
+        locked: state.type === 'lock',
+        canSave
+      };
+    });
+  }, [filteredUsers, userDrafts, evaluateUserManageState]);
+
+  const excelSheetModel = useMemo(() => {
+    return buildAdminExcelSheetModel({
+      adminNickname,
+      adminRoleText,
+      boardRows: excelBoardRows,
+      venueRows: excelVenueRows,
+      roleRows: excelRoleRows,
+      userRows: excelUserRows
+    });
+  }, [adminNickname, adminRoleText, excelBoardRows, excelRoleRows, excelUserRows, excelVenueRows]);
+
+  const isExcelDesktopMode = isExcel && !compactListMode;
+  const [excelActiveCellLabel, setExcelActiveCellLabel] = useState('');
+  const [excelFormulaText, setExcelFormulaText] = useState('=');
+  const handleExcelSelectCell = useCallback((payload) => {
+    const label = normalizeText(payload?.label);
+    const text = String(payload?.text ?? '').trim();
+    setExcelActiveCellLabel(label || '');
+    setExcelFormulaText(text || '=');
+  }, []);
+
+  const handleExcelAction = useCallback((actionType, payload) => {
+    if (actionType === 'refreshBoards') {
+      refreshBoards().catch((err) => pushMessage(err?.message || '새로고침 실패', 'error'));
+      return;
+    }
+    if (actionType === 'openBoardEdit') {
+      openBoardEditModal();
+      return;
+    }
+    if (actionType === 'openBoardCreate') {
+      openBoardCreateModal();
+      return;
+    }
+    if (actionType === 'refreshVenues') {
+      refreshVenueOptions().catch((err) => pushMessage(err?.message || '체험관 새로고침 실패', 'error'));
+      return;
+    }
+    if (actionType === 'openRoleEdit') {
+      openRoleEditModal();
+      return;
+    }
+    if (actionType === 'openRoleCreate') {
+      openRoleCreateModal();
+      return;
+    }
+    if (actionType === 'refreshUsers') {
+      refreshUsers().catch((err) => pushMessage(err?.message || '회원 목록 새로고침 실패', 'error'));
+      return;
+    }
+    if (actionType === 'syncNicknameIndex') {
+      backfillNicknameIndex().catch((err) => pushMessage(err?.message || '닉네임 인덱스 동기화 실패', 'error'));
+      return;
+    }
+    if (actionType === 'cycleUserRole') {
+      const uid = payload?.uid;
+      if (!uid) return;
+      const options = sortedRoleOptionsForSelect.map((o) => o.value);
+      if (!options.length) return;
+      setUserDrafts((prev) => {
+        const current = prev[uid]?.role || filteredUsers.find((u) => u.uid === uid)?.role || 'Newbie';
+        const currentIdx = options.indexOf(normalizeText(current));
+        const nextIdx = (currentIdx + 1) % options.length;
+        return { ...prev, [uid]: { role: options[nextIdx] } };
+      });
+      return;
+    }
+    if (actionType === 'saveUserRoleExcel') {
+      const uid = payload?.uid;
+      if (!uid) return;
+      const userRow = filteredUsers.find((u) => u.uid === uid);
+      if (!userRow) return;
+      saveUserRole(userRow).catch((err) => pushMessage(err?.message || '회원 권한 변경 실패', 'error'));
+    }
+  }, [
+    backfillNicknameIndex,
+    filteredUsers,
+    openBoardCreateModal,
+    openBoardEditModal,
+    openRoleCreateModal,
+    openRoleEditModal,
+    pushMessage,
+    refreshBoards,
+    refreshUsers,
+    refreshVenueOptions,
+    saveUserRole,
+    sortedRoleOptionsForSelect
+  ]);
 
   return (
     <>
+      {isExcel ? (
+        <ExcelChrome
+          title="통합 문서1"
+          activeTab="홈"
+          sheetName="Sheet1"
+          countLabel={`${boardCount}개`}
+          activeCellLabel={isExcelDesktopMode ? excelActiveCellLabel : ''}
+          formulaText={isExcelDesktopMode ? excelFormulaText : '='}
+          showHeaders
+          rowCount={EXCEL_STANDARD_ROW_COUNT}
+          colCount={EXCEL_STANDARD_COL_COUNT}
+          compact={compactListMode}
+        />
+      ) : null}
       <motion.main
-        className="page stack admin-shell"
+        className={isExcel ? 'page stack admin-shell excel-chrome-offset' : 'page stack admin-shell'}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
       >
+        {isExcelDesktopMode ? (
+          <AppExcelWorkbook
+            sheetRows={excelSheetModel.rowData}
+            rowCount={excelSheetModel.rowCount}
+            colCount={excelSheetModel.colCount}
+            onSelectCell={handleExcelSelectCell}
+            onMoveHome={() => navigate(MENTOR_FORUM_CONFIG.app.appPage)}
+            onToggleTheme={toggleTheme}
+            onLogout={() => handleLogout().catch(() => {})}
+            onAction={handleExcelAction}
+          />
+        ) : null}
+        <div className={isExcelDesktopMode ? 'hidden' : ''}>
         <section className="card admin-hero">
           <div className="row space-between mobile-col">
             <div>
@@ -2453,6 +2699,7 @@ export default function AdminPage() {
             </section>
           </div>
         </section>
+        </div>
       </motion.main>
 
       <AdminModal

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CircleCheck, Eye, EyeOff, KeyRound, Mail, UserPlus2, UserRound } from 'lucide-react';
 import { usePageMeta } from '../hooks/usePageMeta.js';
+import { useTheme } from '../hooks/useTheme.js';
 import {
   auth,
   db,
@@ -43,6 +44,7 @@ function isPasswordMatch(password, passwordConfirm) {
   return String(password || '') !== '' && String(password || '') === String(passwordConfirm || '');
 }
 
+
 function validatePassword(password, passwordConfirm) {
   if (!isPasswordStrong(password)) {
     return '비밀번호는 영문, 숫자, 특수문자를 포함한 8자 이상이어야 합니다.';
@@ -75,6 +77,13 @@ export default function SignupPage() {
   usePageMeta('멘토포럼 회원가입', 'auth-page');
 
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+
+  // Auth pages only support light/dark. Force-downgrade excel to light.
+  useEffect(() => {
+    if (theme === 'excel') setTheme('light');
+  }, [theme, setTheme]);
+
   const [email, setEmail] = useState('');
   const [realName, setRealName] = useState('');
   const [nickname, setNickname] = useState('');
@@ -130,6 +139,7 @@ export default function SignupPage() {
       setMessage({ type: 'error', text: err.message || 'Firebase 설정 오류' });
     }
   }, []);
+
 
   const passwordRule = useMemo(() => {
     if (!password) {
@@ -347,7 +357,8 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="page auth-page-wrap flex min-h-[calc(100vh-2rem)] items-center">
+    <>
+      <main className="page auth-page-wrap flex min-h-[calc(100vh-2rem)] items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -546,6 +557,7 @@ export default function SignupPage() {
           </CardFooter>
         </Card>
       </motion.div>
-    </main>
+      </main>
+    </>
   );
 }
