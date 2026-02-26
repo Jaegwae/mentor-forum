@@ -2,16 +2,21 @@
 
 레포지토리: [Jaegwae/mentor-forum](https://github.com/Jaegwae/mentor-forum)
 
-이 저장소는 **2개 영역**을 함께 관리합니다.
+이 저장소는 **2개 운영 영역**을 함께 관리합니다.
 
 | 영역 | 경로 | 역할 | 현재 운영 기준 |
 |---|---|---|---|
-| React 웹앱(현행) | `mentor-forum-react/` | 실제 서비스 코드(프론트+Firebase 연동) | ✅ 주 개발/배포 대상 |
-| GAS 레거시(스프레드시트 기반) | 루트 (`Code.gs`, `index.html` 등) | 과거 운영 자산/연동 참고 코드 | ⚠ 유지보수용 |
+| React 웹앱(멘토포럼) | `mentor-forum-react/` | 멘토포럼 커뮤니티 서비스(게시판/댓글/관리자/테마) | ✅ 운영 중 |
+| GAS 이슈관리 시스템(스프레드시트 기반) | 루트 (`Code.gs`, `index.html` 등) | 교구/이슈 접수·조회 운영 화면 + 멘토포럼 진입 버튼 제공 | ✅ 운영 중 |
 
 ## 운영 URL
 - 서비스: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
 - Firebase 프로젝트: `guro-mentor-forum`
+
+## 운영 흐름
+- GAS 이슈관리 시스템에서 이슈 등록/조회/관리 업무를 수행합니다.
+- GAS 화면의 `멘토포럼` 버튼을 누르면 별도 운영 중인 React 멘토포럼으로 이동합니다.
+  - 코드 기준: `JavaScriptCore.html`의 `openMentorForum()` → `https://guro-mentor-forum.web.app/app`
 
 ---
 
@@ -76,21 +81,22 @@ mentor-forum/
 
 ---
 
-## 4. 루트 GAS 레거시 파일 설명
+## 4. 루트 GAS 운영 파일 설명
 
-루트 파일들은 스프레드시트+GAS 기반 구버전(또는 참고용) 자산입니다.
+루트 파일들은 실제 운영 중인 스프레드시트+GAS 이슈관리 시스템 코드입니다.
 
 - `Code.gs`
-  - 폼 처리/데이터 조회/공지 렌더링 유틸
-  - 이미지/URL/리치텍스트 정규화 보조 함수 포함
+  - GAS 웹앱 엔트리(`doGet`) 및 시트 입출력/검증/리치텍스트 처리
+  - 이슈 데이터 저장, 이미지 업로드, 조회/가공 로직
 - `index.html`, `style.html`, `Docs.html`, `JavaScriptCore.html`, `JavaScriptData.html`
-  - 구버전 프론트 조각 파일
+  - 이슈관리 UI(탭/폼/조회/상세/문서)와 클라이언트 동작
+  - `openMentorForum()`을 통해 멘토포럼(React) 이동 제공
 - `appsscript.json`, `.clasp.json`
   - GAS 프로젝트 메타데이터
 
 주의:
-- 현재 서비스 운영은 React 앱(`mentor-forum-react/`) 기준입니다.
-- 루트 GAS 코드는 별도 목적(레거시 유지/비교/참고)으로만 다룹니다.
+- GAS와 React 앱은 목적이 다르며 함께 운영됩니다.
+- React 앱 개발/배포는 `mentor-forum-react/` 기준으로 진행합니다.
 
 ---
 
