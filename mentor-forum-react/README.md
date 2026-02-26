@@ -1,104 +1,64 @@
-# Mentor Forum React (V2)
+# Mentor Forum React
 
-멘토포럼의 React + Firebase 기반 프론트엔드/운영 앱입니다.  
-이 디렉터리(`mentor-forum-react/`)가 실제 서비스 배포 단위입니다.
+멘토포럼의 **실서비스용 React + Firebase 앱**입니다.
 
-## 1. 프로젝트 개요
+- 운영 URL: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
+- Firebase 프로젝트: `guro-mentor-forum`
+- 라우트 베이스: `/app`, `/post`, `/admin`, `/me/posts`, `/me/comments`
 
-멘토포럼은 멘토/운영진 커뮤니티를 위한 게시판 서비스입니다.
+---
 
-- 역할(Role) 기반 접근 제어
-- 게시글/댓글/멘션/알림 중심 커뮤니케이션
-- 라이트/다크 모드 + 모바일/데스크톱 대응
-- Firebase Hosting + Firestore 기반 운영
-- Firebase Functions 없이 GAS 릴레이로 모바일 푸시 지원
+## 1. 핵심 기능
 
-## 2. 최근 반영 사항 (최신)
+### 1) 인증/권한
+- Firebase Auth 로그인/회원가입/이메일 인증
+- 역할(Role) 기반 접근 제어 (`Newbie`, `Mentor`, `Staff`, `Admin`, `Super_Admin`)
+- 관리자 페이지 접근/작업 권한 분리
 
-- 멘토포럼 UI/레이아웃 V2 리디자인(라이트/다크)
-- 게시판 좌측 내비 + 최근 댓글 패널 분리
-- 게시글 목록 가독성 개선 (N 배지, 댓글 수 강조, 고정 배지)
-- 게시글 상세/내가 쓴 글/내가 쓴 댓글 페이지 구조 통일
-- 관리자 상단고정(핀) 기능 반영
-- 모바일 알림(PWA + FCM + GAS Relay) 연동
-- iOS 중복 알림/빈 본문 알림 이슈 보정
-- 알림 fanout 로직 보정(토큰/환경별 skip 처리 개선)
-- GAS 릴레이의 `relay_debug` Firestore 저장 코드 제거
+### 2) 게시판/게시글
+- 게시판 선택 + URL 동기화(`?boardId=...`)
+- 게시글 목록 정렬(`최신`, `인기`)
+- 게시글 상세, 댓글, 멘션
+- 고정글(핀) 처리 및 상태 배지
 
-## 3. 라우트
+### 3) 알림
+- 알림센터(필터/읽음 처리/게시판별 on/off)
+- 멘션 알림(`@닉네임`, `@all` 관리 전용)
+- 모바일 푸시(FCM) + GAS 릴레이 전송
 
-- `/login`: 로그인
-- `/signup`: 회원가입
-- `/app`: 메인 게시판
-- `/post`: 게시글 상세
-- `/me/posts`: 내가 쓴 글
-- `/me/comments`: 내가 쓴 댓글
-- `/admin`: 관리자 사이트
+### 4) 테마
+- 데스크톱: `라이트 → 다크 → 엑셀` 순환
+- 모바일/인증 화면: `라이트 ↔ 다크` 제한
+- 테마 저장(localStorage) + 다중 탭 동기화
 
-레거시 URL도 리다이렉트 처리합니다.
+### 5) 엑셀 모드
+- 공통 엑셀 크롬(`통합 문서1` 제목바, 리본, 수식바, 시트 탭, 상태바)
+- `/app` 엑셀 모드: **Jspreadsheet CE** 기반 셀 인터랙션 UI
+- 셀 선택/동작(게시판 이동, 상세 열기, 정렬, 페이지 이동, 글쓰기 등)
 
-- `/login.html` -> `/login`
-- `/signup.html` -> `/signup`
-- `/app.html` -> `/app`
-- `/post.html` -> `/post`
-- `/admin.html` -> `/admin`
+---
 
-## 4. 기능 상세
+## 2. 최근 개선 사항
 
-### 4.1 게시판/목록
+### 성능
+- `/me/posts`: 커서 페이지네이션 (`limit + startAfter`)
+- `/me/comments`: 커서 페이지네이션 + post hydrate N+1 제거(`documentId() in (...)` 청크 조회)
+- 관리자 게시판 순서 저장: `writeBatch` 청크 커밋
 
-- 게시판 선택 시 URL `?boardId=...` 동기화
-- 정렬 탭: `최신`, `인기`
-- 새 글 `N` 배지 노출
-- 댓글 수 강조 색상
-- 상단 고정 게시글 `고정` 배지
-- 대체근무 게시글 상태(완료/취소) 시각 구분
+### 보안/운영
+- 사용자 UI 오류 메시지에서 내부 디버그 정보 제거
+- 상세 payload 로그는 개발 플래그에서만 출력
+- Firestore 인덱스 정리 및 배포 반영
 
-### 4.2 게시글 상세/복귀
+### 의존성
+- `firebase@12.9.0`
+- `vite@7.3.1`
+- `quill@2.0.2`
+- `npm audit: 0 vulnerabilities`
 
-- 상세 진입 시 게시판 컨텍스트 보존
-- `목록으로`/브라우저 뒤로가기 시 원래 게시판 복귀 우선
-- 댓글 작성/수정/삭제 흐름 일관화
+---
 
-### 4.3 멘션/알림센터
-
-- `@닉네임` 멘션 알림
-- `@all` 멘션은 관리자 전용
-- 알림센터:
-  - 필터(전체/새 글/멘션/댓글)
-  - 모두 읽음
-  - 게시판별 알림 on/off
-  - 댓글/멘션 알림 on/off
-
-### 4.4 모바일 푸시 알림
-
-- Firebase Cloud Messaging(Web Push) 기반
-- iOS Safari PWA, Android Chrome 지원
-- 게시판별 모바일 알림 수신 선택
-- 활성 토큰 상태 표시(지원/권한/활성기기)
-
-### 4.5 내 활동
-
-- 내가 쓴 글 목록
-- 내가 쓴 댓글 목록
-- 클릭 시 원문 게시글 이동
-
-### 4.6 최근 댓글
-
-- 데스크톱 좌측 패널에서 최신 5개 댓글 표시
-- 클릭 시 해당 게시글 상세 이동
-- 모바일에서는 비노출(의도된 정책)
-
-## 5. 기술 스택
-
-- React 18 + Vite
-- Firebase Auth / Firestore / Hosting / FCM
-- React Router
-- Tailwind + 커스텀 디자인 시스템 CSS
-- Quill 기반 리치에디터
-- Framer Motion
-
-## 6. 폴더 구조
+## 3. 폴더 구조
 
 ```text
 mentor-forum-react/
@@ -113,21 +73,19 @@ mentor-forum-react/
 │  │  ├─ MyPostsPage.jsx
 │  │  ├─ MyCommentsPage.jsx
 │  │  └─ AdminPage.jsx
-│  ├─ components/ui/
+│  ├─ components/
+│  │  ├─ excel/
+│  │  ├─ editor/
+│  │  └─ ui/
 │  ├─ hooks/
 │  ├─ legacy/
-│  │  ├─ config.js
-│  │  ├─ firebase-app.js
-│  │  ├─ push-notifications.js
-│  │  ├─ push-relay.js
-│  │  ├─ rich-editor.js
-│  │  └─ rbac.js
-│  └─ styles/design-system.css
+│  └─ styles/
 ├─ public/
+│  ├─ favicon.png
+│  ├─ manifest.webmanifest
 │  └─ firebase-messaging-sw.js
-├─ scripts/gas-push-relay/
-│  ├─ Code.gs
-│  └─ README.md
+├─ scripts/
+│  └─ gas-push-relay/
 ├─ firebase.json
 ├─ firestore.rules
 ├─ firestore.indexes.json
@@ -135,151 +93,121 @@ mentor-forum-react/
 └─ README.md
 ```
 
-## 7. 로컬 실행
+---
 
-### 7.1 요구사항
+## 4. 라우트
 
-- Node.js 18 이상 권장
-- npm 9 이상 권장
+- `/login` 로그인
+- `/signup` 회원가입
+- `/app` 메인 게시판
+- `/post` 게시글 상세
+- `/admin` 관리자
+- `/me/posts` 내가 쓴 글
+- `/me/comments` 내가 쓴 댓글
 
-### 7.2 설치
+레거시 경로도 리다이렉트 지원:
+- `/login.html`, `/signup.html`, `/app.html`, `/post.html`, `/admin.html`, `/me/posts.html`, `/me/comments.html`
 
+---
+
+## 5. 로컬 개발
+
+### 요구사항
+- Node.js 20+ 권장 (현재 22에서 검증)
+- npm
+
+### 설치/실행
 ```bash
 npm install
-```
-
-### 7.3 개발 서버
-
-```bash
 npm run dev
 ```
 
-### 7.4 빌드/프리뷰
-
+### 빌드/프리뷰
 ```bash
 npm run build
 npm run preview
 ```
 
-## 8. 환경변수
+---
 
-프로젝트 루트(`mentor-forum-react/`)에 `.env.local` 생성:
+## 6. 환경변수
+
+`.env.local` 예시:
 
 ```bash
 VITE_PUSH_RELAY_URL=https://script.google.com/macros/s/xxxxxxxxxxxxxxxx/exec
 VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
 ```
 
-- `VITE_PUSH_RELAY_URL`: GAS 웹앱 URL
-- `VITE_FIREBASE_MESSAGING_VAPID_KEY`: Firebase Cloud Messaging 웹 푸시 VAPID 키
+- `VITE_PUSH_RELAY_URL`: GAS 웹앱 릴레이 URL
+- `VITE_FIREBASE_MESSAGING_VAPID_KEY`: FCM 웹푸시 VAPID 키
 
-## 9. 배포
+---
 
-### 9.1 Hosting 배포
+## 7. 배포
 
+### Hosting + Rules + Indexes
 ```bash
-./node_modules/.bin/firebase deploy --only hosting --project guro-mentor-forum
+npx firebase deploy --only hosting,firestore:rules,firestore:indexes --project guro-mentor-forum
 ```
 
-### 9.2 Hosting + Rules 배포
+### 배포 후 점검
+1. `/login` 로그인
+2. `/app` 게시판 선택/글 읽기
+3. `/post` 상세/댓글 동작
+4. `/me/posts`, `/me/comments` 더보기 동작
+5. `/admin` (권한 계정) 관리 동작
+6. 테마 순환/저장/탭 동기화
+7. 모바일 푸시 수신(선택)
 
+---
+
+## 8. Firestore 인덱스
+
+현재 주요 인덱스:
+- `comments`: `authorUid ASC`, `createdAt DESC`
+- `posts`: `authorUid ASC`, `createdAt DESC`
+- `posts`: `boardId ASC`, `createdAt DESC`
+
+파일: [`firestore.indexes.json`](./firestore.indexes.json)
+
+---
+
+## 9. GAS 푸시 릴레이
+
+Firebase Functions(Blaze) 없이 푸시 전송을 위해 GAS Web App을 릴레이로 사용합니다.
+
+- 문서: [`scripts/gas-push-relay/README.md`](./scripts/gas-push-relay/README.md)
+- 클라이언트 구현: `src/legacy/push-relay.js`
+- iOS PWA 환경 안정화를 위한 `sendBeacon / GET fallback` 포함
+
+---
+
+## 10. 트러블슈팅 요약
+
+### `vite: command not found`
 ```bash
-./node_modules/.bin/firebase deploy --only hosting,firestore:rules --project guro-mentor-forum
+npm install
+npm run dev
 ```
 
-### 9.3 홈 화면 아이콘(iOS/Android)
+### 권한 오류
+- 사용자 메시지는 요약형으로 표시됨
+- 개발 상세 로그가 필요하면 브라우저 콘솔에서:
+```js
+window.__MENTOR_DEBUG__ = true
+```
 
-- 아이콘 원본 파일: `public/favicon.png` (현재 1280x1280)
-- Android 홈화면 추가 아이콘: `public/manifest.webmanifest`의 `icons` 기준
-- iOS 홈화면 추가 아이콘: `index.html`의 `apple-touch-icon` 기준
+### iOS 푸시 미수신
+- Safari 탭이 아닌 홈 화면(PWA) 실행인지 확인
+- 권한/집중모드/저전력모드 확인
 
-아이콘 변경 절차:
+---
 
-1. `public/favicon.png` 교체
-2. 필요 시 `public/manifest.webmanifest`의 `icons.sizes`를 실제 해상도로 맞춤
-3. 배포
-4. 기기에서 기존 홈화면 아이콘 삭제 후 다시 `홈 화면에 추가` (캐시 방지)
-
-## 10. 모바일 푸시 아키텍처 (GAS 릴레이)
-
-Blaze 기반 Functions 없이 푸시를 보내기 위해, GAS를 릴레이로 사용합니다.
-
-동작 흐름:
-
-1. 앱에서 알림 문서 생성(새 글/댓글/멘션)
-2. 클라이언트가 GAS로 `idToken + 이벤트 정보` 전송
-3. GAS가 ID 토큰 검증
-4. Firestore에서 수신 대상/환경설정/토큰 확인
-5. FCM HTTP v1로 푸시 발송
-6. 브라우저 SW(`firebase-messaging-sw.js`)가 표시 처리
-
-상세 설치는 `scripts/gas-push-relay/README.md` 참고.
-
-## 11. 사용자 가이드: iOS/Android 알림 받기
-
-### 11.1 iOS (iPhone, Safari)
-
-iOS 웹푸시는 반드시 **Safari + 홈 화면 추가(PWA 실행)** 조건이 필요합니다.
-
-1. iPhone Safari에서 포럼 접속
-2. Safari 공유 버튼 -> `홈 화면에 추가`
-3. 홈 화면 아이콘으로 포럼 실행
-4. 로그인 후 `내 정보 -> 모바일 알림`
-5. `모바일 알림 켜기` 클릭
-6. iOS 권한 팝업에서 `허용`
-7. 상태 값 확인
-   - 기기 지원 = 지원됨
-   - 알림 권한 = 허용
-   - 활성 기기 = 1대 이상
-8. 게시판별 모바일 알림에서 원하는 게시판 ON
-9. 다른 계정으로 테스트 글/댓글/멘션 발생시켜 수신 확인
-
-iOS 점검 포인트:
-
-- Safari 탭에서 실행하면 수신 불가 (홈 화면 앱으로 실행 필요)
-- 설정 -> 알림에서 포럼 앱 허용 여부 확인
-- 집중 모드/방해금지/저전력 모드 확인
-- 앱 재실행 후 다시 테스트
-
-### 11.2 Android (Chrome)
-
-1. Android Chrome에서 포럼 접속
-2. 로그인 후 `내 정보 -> 모바일 알림`
-3. `모바일 알림 켜기` 클릭
-4. 알림 권한 팝업 `허용`
-5. 상태 값 확인
-   - 기기 지원 = 지원됨
-   - 알림 권한 = 허용
-   - 활성 기기 = 1대 이상
-6. 게시판별 모바일 알림 ON
-7. 다른 계정으로 테스트 이벤트 발생 후 수신 확인
-
-Android 점검 포인트:
-
-- Chrome 사이트 알림 권한 허용
-- OS 앱 알림 허용
-- 배터리 최적화 예외(필요 시)
-- 홈 화면 추가(PWA)로 사용하면 안정성 향상
-
-## 12. 알림/데이터 운영 참고
-
-- 게시글/댓글을 지워도 기존 알림 문서는 별도로 남을 수 있습니다.
-- 알림만 비우려면 알림 컬렉션(`users/{uid}/notifications`) 정리가 필요합니다.
-- `notification_prefs`는 사용자 알림 설정값이므로, 설정을 유지하려면 삭제하지 않습니다.
-
-## 13. 체크리스트 (배포 전)
-
-- 로그인/회원가입 정상 동작
-- 게시판 이동 -> 상세 -> 목록 복귀 정상
-- 라이트/다크 테마 주요 화면 확인
-- 모바일 메뉴/리스트/모달 깨짐 확인
-- 최근 댓글 5개 노출/클릭 이동 확인
-- 모바일 푸시(iOS/Android) 수신 테스트
-
-## 14. 관련 문서
-
-- GAS 푸시 릴레이 설치 문서: `scripts/gas-push-relay/README.md`
+## 11. 참고
+- 상위 워크스페이스 README: [`../README.md`](../README.md)
+- GAS 릴레이 문서: [`./scripts/gas-push-relay/README.md`](./scripts/gas-push-relay/README.md)
 - 메인 페이지: `src/pages/AppPage.jsx`
 - 상세 페이지: `src/pages/PostPage.jsx`
-- 권한 유틸: `src/legacy/rbac.js`
-- Firestore Rules: `firestore.rules`
+- 권한: `src/legacy/rbac.js`
+- 규칙/인덱스: `firestore.rules`, `firestore.indexes.json`
