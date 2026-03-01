@@ -10,7 +10,8 @@
 | GAS 이슈관리 시스템(스프레드시트 기반) | 루트 (`Code.gs`, `index.html` 등) | 교구/이슈 접수·조회 운영 화면 + 멘토스 진입 버튼 제공 | ✅ 운영 중 |
 
 ## 운영 URL
-- 서비스: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
+- 멘토포럼 : [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
+- 이슈 관리 시트 : [구로 이슈 관리 시트](https://script.google.com/macros/s/AKfycbxyr-Ml5t99Ykf-uVlJbXNijXDbTQJdbDpNMzIGtZrkx64VJUOxIgjrWrNumeKskO5u/exec)
 - Firebase 프로젝트: `guro-mentor-forum`
 
 ## 운영 흐름
