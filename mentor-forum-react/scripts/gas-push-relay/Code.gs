@@ -7,6 +7,11 @@ const SCRIPT_PROP_KEY = {
 
 const MOBILE_PUSH_PREF_GLOBAL = 'pref_mobile_push_global';
 const MOBILE_PUSH_PREF_BOARD_PREFIX = 'pref_mobile_push_board:';
+const WORK_SCHEDULE_BOARD_ID = 'work_schedule';
+const WORK_SCHEDULE_ALERT_PREF_KEY = 'pref_work_schedule_shift_alert';
+const WORK_SCHEDULE_ALERT_SUBTYPE = 'work_schedule_shift_alert';
+const WORK_SCHEDULE_PHASE_TODAY = 'today';
+const WORK_SCHEDULE_PHASE_TOMORROW = 'tomorrow';
 const APP_BASE_URL = 'https://guro-mentor-forum.web.app';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -47,6 +52,54 @@ function doPost(e) {
       error: normalizeText_(err && err.message) || 'internal-error'
     });
   }
+}
+
+// ---- Work schedule server-side reminder entrypoints ----
+// Run this with a daily trigger around 21:00 (Asia/Seoul): sends "전날" reminder for tomorrow shifts.
+function runWorkScheduleTomorrowReminder() {
+  return dispatchWorkScheduleShiftAlertsByPhase_(WORK_SCHEDULE_PHASE_TOMORROW);
+}
+
+// Run this with a daily trigger around 08:30 (Asia/Seoul): sends "당일" reminder for today shifts.
+function runWorkScheduleTodayReminder() {
+  return dispatchWorkScheduleShiftAlertsByPhase_(WORK_SCHEDULE_PHASE_TODAY);
+}
+
+// Convenience setup: creates both daily triggers.
+// - runWorkScheduleTomorrowReminder: 21:00
+// - runWorkScheduleTodayReminder: 08:30
+function setupWorkScheduleReminderTriggers() {
+  clearWorkScheduleReminderTriggers();
+
+  ScriptApp.newTrigger('runWorkScheduleTomorrowReminder')
+    .timeBased()
+    .everyDays(1)
+    .atHour(21)
+    .nearMinute(0)
+    .create();
+
+  ScriptApp.newTrigger('runWorkScheduleTodayReminder')
+    .timeBased()
+    .everyDays(1)
+    .atHour(8)
+    .nearMinute(30)
+    .create();
+
+  return { ok: true, installed: true };
+}
+
+function clearWorkScheduleReminderTriggers() {
+  const targetHandlers = {
+    runWorkScheduleTomorrowReminder: true,
+    runWorkScheduleTodayReminder: true
+  };
+
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    const name = normalizeText_(trigger.getHandlerFunction());
+    if (!targetHandlers[name]) return;
+    ScriptApp.deleteTrigger(trigger);
+  });
+  return { ok: true, cleared: true };
 }
 
 function handleRelayPayload_(payload, sourceTag) {
@@ -288,6 +341,562 @@ function dispatchPostCreateFanout_(payload, actorUid) {
   console.log('[relay-fanout-result]', counters);
 
   return counters;
+}
+
+function dispatchWorkScheduleShiftAlertsByPhase_(phase) {
+  const startedAtMs = Date.now();
+  const HARD_LIMIT_MS = 25000;
+  const normalizedPhase = normalizeWorkSchedulePhase_(phase);
+  if (!normalizedPhase) return { ok: false, error: 'invalid-phase' };
+
+  const board = getBoardDoc_(WORK_SCHEDULE_BOARD_ID);
+  if (!board) return { ok: true, skipped: true, reason: 'board-not-found', boardId: WORK_SCHEDULE_BOARD_ID };
+  if (board.isDivider === true) return { ok: true, skipped: true, reason: 'board-is-divider', boardId: WORK_SCHEDULE_BOARD_ID };
+
+  const targetDateKey = resolveWorkScheduleTargetDateKey_(normalizedPhase);
+  if (!targetDateKey) return { ok: false, error: 'invalid-target-date', phase: normalizedPhase };
+
+  const rows = listWorkScheduleRowsForDate_(targetDateKey);
+  if (!rows.length) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: 'no-matching-work-schedule-rows',
+      phase: normalizedPhase,
+      targetDateKey: targetDateKey
+    };
+  }
+
+  const counters = {
+    ok: true,
+    eventType: WORK_SCHEDULE_ALERT_SUBTYPE,
+    phase: normalizedPhase,
+    boardId: WORK_SCHEDULE_BOARD_ID,
+    targetDateKey: targetDateKey,
+    scannedUsers: 0,
+    eligibleUsers: 0,
+    notificationsCreated: 0,
+    notificationsUpdated: 0,
+    skippedNoMatch: 0,
+    skippedPhasePref: 0,
+    skippedBoardAccess: 0,
+    skippedPushPref: 0,
+    skippedNoToken: 0,
+    skippedUnchanged: 0,
+    failedUsers: 0,
+    sent: 0,
+    failed: 0,
+    removedTokens: 0,
+    timedOut: false,
+    elapsedMs: 0
+  };
+
+  const users = listAllUsers_();
+  for (var idx = 0; idx < users.length; idx += 1) {
+    if ((Date.now() - startedAtMs) > HARD_LIMIT_MS) {
+      counters.timedOut = true;
+      break;
+    }
+
+    const userRow = users[idx];
+    const uid = normalizeText_(userRow && userRow.uid);
+    const rawRole = normalizeText_(userRow && userRow.role);
+    const realName = normalizeText_(userRow && userRow.realName);
+    if (!uid || !realName) continue;
+    counters.scannedUsers += 1;
+
+    try {
+      if (!canUseBoardByRawRole_(board, rawRole)) {
+        counters.skippedBoardAccess += 1;
+        continue;
+      }
+      counters.eligibleUsers += 1;
+
+      if (getNotificationPrefEnabled_(uid, WORK_SCHEDULE_ALERT_PREF_KEY) === false) {
+        counters.skippedPhasePref += 1;
+        continue;
+      }
+
+      const match = findBestWorkScheduleMatchForUser_(rows, realName);
+      if (!match) {
+        counters.skippedNoMatch += 1;
+        continue;
+      }
+
+      const notificationId = buildWorkScheduleNotificationId_(uid, targetDateKey, normalizedPhase);
+      const notification = buildWorkScheduleShiftNotification_({
+        uid: uid,
+        phase: normalizedPhase,
+        targetDateKey: targetDateKey,
+        match: match
+      });
+
+      const upsertResult = upsertNotificationDocIfChanged_(uid, notificationId, notification);
+      if (upsertResult.status === 'unchanged') {
+        counters.skippedUnchanged += 1;
+        continue;
+      }
+      if (upsertResult.status === 'updated') counters.notificationsUpdated += 1;
+      else counters.notificationsCreated += 1;
+
+      if (!isMobilePushEnabledForUser_(uid, WORK_SCHEDULE_BOARD_ID)) {
+        counters.skippedPushPref += 1;
+        continue;
+      }
+
+      const tokenRows = listEnabledPushTokens_(uid);
+      if (!tokenRows.length) {
+        counters.skippedNoToken += 1;
+        continue;
+      }
+
+      const pushPayload = buildPushPayloadFromNotification_(upsertResult.notification, notificationId);
+      const sendResult = sendPushToTokens_(uid, tokenRows, pushPayload);
+      counters.sent += sendResult.sent;
+      counters.failed += sendResult.failed;
+      counters.removedTokens += sendResult.removedTokens;
+    } catch (err) {
+      counters.failedUsers += 1;
+      console.error('[work-schedule-reminder-user-failed]', {
+        uid: uid,
+        phase: normalizedPhase,
+        targetDateKey: targetDateKey,
+        error: normalizeText_(err && err.message)
+      });
+    }
+  }
+
+  counters.elapsedMs = Date.now() - startedAtMs;
+  console.log('[work-schedule-reminder-result]', counters);
+  return counters;
+}
+
+function normalizeWorkSchedulePhase_(phase) {
+  const raw = normalizeText_(phase).toLowerCase();
+  if (raw === WORK_SCHEDULE_PHASE_TODAY) return WORK_SCHEDULE_PHASE_TODAY;
+  if (raw === WORK_SCHEDULE_PHASE_TOMORROW) return WORK_SCHEDULE_PHASE_TOMORROW;
+  return '';
+}
+
+function seoulDateParts_() {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const mapped = {};
+  fmt.formatToParts(now).forEach(function (part) {
+    if (part.type !== 'literal') mapped[part.type] = part.value;
+  });
+  return {
+    year: Number(mapped.year || 0),
+    month: Number(mapped.month || 0),
+    day: Number(mapped.day || 0),
+    dateKey: (mapped.year || '0000') + '-' + (mapped.month || '00') + '-' + (mapped.day || '00')
+  };
+}
+
+function addDaysToDateKey_(dateKey, days) {
+  const match = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+  const next = new Date(year, month - 1, day + Number(days || 0));
+  if (Number.isNaN(next.getTime())) return '';
+  const y = String(next.getFullYear());
+  const m = String(next.getMonth() + 1).padStart(2, '0');
+  const d = String(next.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
+function resolveWorkScheduleTargetDateKey_(phase) {
+  const todayKey = seoulDateParts_().dateKey;
+  if (phase === WORK_SCHEDULE_PHASE_TODAY) return todayKey;
+  if (phase === WORK_SCHEDULE_PHASE_TOMORROW) return addDaysToDateKey_(todayKey, 1);
+  return '';
+}
+
+function normalizeDateKey_(value) {
+  const text = normalizeText_(value);
+  if (!text) return '';
+  const directMatch = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (!directMatch) return '';
+  const year = Number(directMatch[1]);
+  const month = Number(directMatch[2]);
+  const day = Number(directMatch[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+  return String(year) + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+}
+
+function normalizeWorkScheduleMemberText_(value) {
+  const text = String(value == null ? '' : value)
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[，、]/g, ',')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*[,;]\s*/g, ',')
+    .trim();
+  if (!text) return '';
+  return text
+    .split(',')
+    .map(function (token) { return normalizeText_(token); })
+    .filter(function (token) { return !!token; })
+    .join(', ')
+    .replace(/[,;\s]+$/g, '');
+}
+
+function splitEducationParts_(value) {
+  const raw = String(value == null ? '' : value)
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ');
+
+  const educationParts = [];
+  let memberRaw = raw;
+  memberRaw = memberRaw.replace(/[([]\s*교육\s*[:：]\s*([^\)\]]+)\s*[)\]]/gi, function (_match, captured) {
+    educationParts.push(String(captured || ''));
+    return ' ';
+  });
+  memberRaw = memberRaw.replace(/(?:^|[\s,;])교육\s*[:：]\s*([^,;]+)/gi, function (_match, captured) {
+    educationParts.push(String(captured || ''));
+    return ' ';
+  });
+
+  return {
+    member: normalizeWorkScheduleMemberText_(memberRaw),
+    education: normalizeWorkScheduleMemberText_(educationParts.join(', '))
+  };
+}
+
+function recoverSplitEducationName_(memberValue, educationValue) {
+  const member = normalizeWorkScheduleMemberText_(memberValue);
+  const education = normalizeWorkScheduleMemberText_(educationValue);
+  if (!member || !education) return { member: member, education: education };
+
+  const trailingMatch = member.match(/(?:^|,\s*)([0-9A-Za-z가-힣]{1,4})\)$/);
+  const leadingMatch = education.match(/^([0-9A-Za-z가-힣]{1,4})(?:,\s*|$)/);
+  if (!trailingMatch || !leadingMatch) return { member: member, education: education };
+
+  const trailing = trailingMatch[1];
+  const leading = leadingMatch[1];
+  const reconstructed = normalizeWorkScheduleMemberText_(leading + trailing);
+  if (!reconstructed) return { member: member, education: education };
+
+  const memberWithoutTrailing = normalizeWorkScheduleMemberText_(
+    member.replace(/(?:^|,\s*)[0-9A-Za-z가-힣]{1,4}\)\s*$/, '')
+  );
+  const educationWithoutLeading = normalizeWorkScheduleMemberText_(
+    education.replace(/^[0-9A-Za-z가-힣]{1,4}(?:,\s*|$)/, '')
+  );
+
+  return {
+    member: memberWithoutTrailing,
+    education: normalizeWorkScheduleMemberText_([reconstructed, educationWithoutLeading].join(', '))
+  };
+}
+
+function normalizeWorkScheduleRow_(row) {
+  const source = row && typeof row === 'object' ? row : {};
+  const dateKey = normalizeDateKey_(source.dateKey || source.date || source.dayKey);
+  const fullTimeParts = splitEducationParts_(source.fullTime || source.fulltime || source.full || '');
+  const part1Parts = splitEducationParts_(source.part1 || '');
+  const part2Parts = splitEducationParts_(source.part2 || '');
+  const part3Parts = splitEducationParts_(source.part3 || '');
+  const inlineEducation = normalizeWorkScheduleMemberText_(
+    [fullTimeParts.education, part1Parts.education, part2Parts.education, part3Parts.education].join(', ')
+  );
+  const rowEducation = normalizeWorkScheduleMemberText_(source.education || '');
+  let mergedEducation = normalizeWorkScheduleMemberText_([rowEducation, inlineEducation].join(', '));
+
+  const fullTimeRecovered = recoverSplitEducationName_(fullTimeParts.member, mergedEducation);
+  mergedEducation = fullTimeRecovered.education;
+  const part1Recovered = recoverSplitEducationName_(part1Parts.member, mergedEducation);
+  mergedEducation = part1Recovered.education;
+  const part2Recovered = recoverSplitEducationName_(part2Parts.member, mergedEducation);
+  mergedEducation = part2Recovered.education;
+  const part3Recovered = recoverSplitEducationName_(part3Parts.member, mergedEducation);
+  mergedEducation = part3Recovered.education;
+
+  return {
+    dateKey: dateKey,
+    dateLabel: normalizeText_(source.dateLabel || source.dateText || ''),
+    weekday: normalizeText_(source.weekday || source.dayOfWeek || source.day || ''),
+    fullTime: fullTimeRecovered.member,
+    part1: part1Recovered.member,
+    part2: part2Recovered.member,
+    part3: part3Recovered.member,
+    education: mergedEducation
+  };
+}
+
+function runFirestoreStructuredQuery_(structuredQuery) {
+  const projectId = getRequiredScriptProperty_(SCRIPT_PROP_KEY.FIREBASE_PROJECT_ID);
+  const accessToken = getServiceAccessToken_();
+  const endpoint = 'https://firestore.googleapis.com/v1/projects/' + encodeURIComponent(projectId) + '/databases/(default)/documents:runQuery';
+  const res = UrlFetchApp.fetch(endpoint, {
+    method: 'post',
+    contentType: 'application/json',
+    muteHttpExceptions: true,
+    headers: {
+      Authorization: 'Bearer ' + accessToken
+    },
+    payload: JSON.stringify({ structuredQuery: structuredQuery || {} })
+  });
+  const code = res.getResponseCode();
+  const text = res.getContentText();
+  if (code < 200 || code >= 300) {
+    throw new Error('firestore-run-query-failed:' + code + ':' + truncateText_(text, 240));
+  }
+  const rows = safeJsonParse_(text);
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(function (row) {
+      return decodeFirestoreDocument_(row && row.document);
+    })
+    .filter(function (doc) { return !!doc; });
+}
+
+function listWorkScheduleRowsForDate_(targetDateKey) {
+  const dateKey = normalizeDateKey_(targetDateKey);
+  if (!dateKey) return [];
+
+  const posts = runFirestoreStructuredQuery_({
+    from: [{ collectionId: 'posts' }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'boardId' },
+        op: 'EQUAL',
+        value: { stringValue: WORK_SCHEDULE_BOARD_ID }
+      }
+    },
+    limit: 1200
+  });
+
+  const rows = [];
+  posts.forEach(function (post) {
+    if (!post || post.deleted === true) return;
+    const postId = normalizeText_(post.__id);
+    if (!postId) return;
+    const sourceRows = Array.isArray(post.workScheduleRows) ? post.workScheduleRows : [];
+    const updatedAtMs = toMillis_(post.updatedAt) || toMillis_(post.createdAt) || Number(post.createdAtMs) || 0;
+
+    sourceRows.forEach(function (rawRow, rowIndex) {
+      const row = normalizeWorkScheduleRow_(rawRow);
+      if (row.dateKey !== dateKey) return;
+      if (!row.fullTime && !row.part1 && !row.part2 && !row.part3 && !row.education) return;
+      rows.push({
+        postId: postId,
+        postTitle: normalizeText_(post.title),
+        postUpdatedAtMs: updatedAtMs,
+        postAuthorUid: normalizeText_(post.authorUid),
+        postAuthorName: normalizeText_(post.authorName),
+        rowIndex: Number(rowIndex) || 0,
+        row: row
+      });
+    });
+  });
+
+  rows.sort(function (a, b) {
+    if (b.postUpdatedAtMs !== a.postUpdatedAtMs) return b.postUpdatedAtMs - a.postUpdatedAtMs;
+    return a.rowIndex - b.rowIndex;
+  });
+  return rows;
+}
+
+function toMillis_(value) {
+  if (value == null) return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const t = Date.parse(value);
+    return Number.isFinite(t) ? t : 0;
+  }
+  return 0;
+}
+
+function normalizeNameToken_(value) {
+  return normalizeText_(value)
+    .replace(/\s+/g, '')
+    .replace(/[^0-9A-Za-z가-힣]/g, '')
+    .toLowerCase();
+}
+
+function textContainsPersonName_(text, personName) {
+  const nameToken = normalizeNameToken_(personName);
+  if (!nameToken || nameToken.length < 2) return false;
+  const source = normalizeNameToken_(text);
+  if (!source) return false;
+  return source.indexOf(nameToken) >= 0;
+}
+
+function summarizeWorkScheduleRoleMatches_(row, realName) {
+  const fields = [
+    { key: 'fullTime', label: '풀타임' },
+    { key: 'part1', label: '파트1' },
+    { key: 'part2', label: '파트2' },
+    { key: 'part3', label: '파트3' },
+    { key: 'education', label: '교육' }
+  ];
+
+  const matches = [];
+  fields.forEach(function (field) {
+    const value = normalizeWorkScheduleMemberText_(row && row[field.key]);
+    if (!value) return;
+    if (!textContainsPersonName_(value, realName)) return;
+    matches.push(field.label + ': ' + value);
+  });
+  return matches;
+}
+
+function findBestWorkScheduleMatchForUser_(rows, realName) {
+  const list = Array.isArray(rows) ? rows : [];
+  const name = normalizeText_(realName);
+  if (!name) return null;
+
+  for (var i = 0; i < list.length; i += 1) {
+    const candidate = list[i];
+    const roleMatches = summarizeWorkScheduleRoleMatches_(candidate && candidate.row, name);
+    if (!roleMatches.length) continue;
+    return {
+      postId: normalizeText_(candidate.postId),
+      postTitle: normalizeText_(candidate.postTitle),
+      postAuthorUid: normalizeText_(candidate.postAuthorUid),
+      postAuthorName: normalizeText_(candidate.postAuthorName),
+      row: candidate.row,
+      roleMatches: roleMatches
+    };
+  }
+
+  return null;
+}
+
+function formatDateLabelFromDateKey_(dateKey, fallbackDateLabel) {
+  const key = normalizeDateKey_(dateKey);
+  if (!key) return normalizeText_(fallbackDateLabel) || '-';
+  const parts = key.split('-');
+  return Number(parts[0]) + '년 ' + Number(parts[1]) + '월 ' + Number(parts[2]) + '일';
+}
+
+function sanitizeId_(value) {
+  return normalizeText_(value)
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .slice(0, 120);
+}
+
+function buildWorkScheduleNotificationId_(uid, targetDateKey, phase) {
+  return 'work_schedule_' + sanitizeId_(targetDateKey) + '_' + sanitizeId_(phase) + '_' + sanitizeId_(uid);
+}
+
+function extractWorkScheduleRoleLabels_(roleMatches) {
+  const source = Array.isArray(roleMatches) ? roleMatches : [];
+  const labels = [];
+  source.forEach(function (matchText) {
+    const text = normalizeText_(matchText);
+    if (!text) return;
+    const label = normalizeText_(text.split(':')[0]);
+    if (!label) return;
+    if (labels.indexOf(label) >= 0) return;
+    labels.push(label);
+  });
+  return labels;
+}
+
+function buildWorkScheduleShiftNotification_(args) {
+  const uid = normalizeText_(args && args.uid);
+  const phase = normalizeWorkSchedulePhase_(args && args.phase);
+  const targetDateKey = normalizeDateKey_(args && args.targetDateKey);
+  const match = args && args.match;
+  const row = (match && match.row) || {};
+  const roleMatches = (match && Array.isArray(match.roleMatches)) ? match.roleMatches : [];
+  const phaseLabel = phase === WORK_SCHEDULE_PHASE_TODAY ? '당일' : '전날';
+  const dateLabel = formatDateLabelFromDateKey_(targetDateKey, row.dateLabel || '');
+  const weekday = normalizeText_(row.weekday);
+  const roleLabels = extractWorkScheduleRoleLabels_(roleMatches);
+  const roleSummary = roleLabels.length ? roleLabels.join(' / ') : '근무';
+  // Push payload builder already prefixes title with [boardName].
+  // Keep raw title clean to avoid duplicate "[근무일정] [근무일정]" text.
+  const title = '출근 ' + phaseLabel + ' 알림';
+  const body = normalizeText_(
+    '[' + dateLabel + (weekday ? ' (' + weekday + ')' : '') + '] ' + roleSummary + ' 근무 예정'
+  );
+
+  return {
+    userUid: uid,
+    actorUid: normalizeText_(match && match.postAuthorUid) || 'system',
+    postId: normalizeText_(match && match.postId),
+    boardId: WORK_SCHEDULE_BOARD_ID,
+    boardName: '근무일정',
+    type: 'post',
+    subtype: WORK_SCHEDULE_ALERT_SUBTYPE,
+    title: title,
+    actorName: normalizeText_(match && match.postAuthorName) || '근무일정 동기화',
+    body: body,
+    commentId: '',
+    createdAtMs: Date.now(),
+    readAtMs: 0
+  };
+}
+
+function upsertNotificationDocIfChanged_(targetUid, notificationId, notification) {
+  const uid = normalizeText_(targetUid);
+  const id = normalizeText_(notificationId);
+  if (!uid || !id) throw new Error('invalid-notification-target');
+
+  const existing = getNotificationDoc_(uid, id);
+  const existingBody = normalizeText_(existing && existing.body);
+  const existingTitle = normalizeText_(existing && existing.title);
+  const existingPostId = normalizeText_(existing && existing.postId);
+  const existingBoardId = normalizeText_(existing && existing.boardId);
+
+  const nextBody = normalizeText_(notification && notification.body);
+  const nextTitle = normalizeText_(notification && notification.title);
+  const nextPostId = normalizeText_(notification && notification.postId);
+  const nextBoardId = normalizeText_(notification && notification.boardId);
+
+  const sameCore = !!existing
+    && existingBody === nextBody
+    && existingTitle === nextTitle
+    && existingPostId === nextPostId
+    && existingBoardId === nextBoardId;
+
+  if (sameCore) {
+    return {
+      status: 'unchanged',
+      notification: existing
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const createdAtIso = normalizeText_(existing && existing.createdAt) || nowIso;
+  const payload = {
+    userUid: uid,
+    actorUid: normalizeText_(notification && notification.actorUid),
+    postId: nextPostId,
+    boardId: nextBoardId,
+    boardName: normalizeText_(notification && notification.boardName),
+    type: normalizeText_(notification && notification.type) || 'post',
+    subtype: normalizeText_(notification && notification.subtype) || WORK_SCHEDULE_ALERT_SUBTYPE,
+    title: nextTitle || '(제목 없음)',
+    actorName: normalizeText_(notification && notification.actorName) || '근무일정 동기화',
+    body: nextBody,
+    commentId: normalizeText_(notification && notification.commentId),
+    createdAtMs: Number(notification && notification.createdAtMs) || Date.now(),
+    readAtMs: 0,
+    createdAt: createdAtIso,
+    updatedAt: nowIso
+  };
+
+  firestoreRequest_('patch', ['users', uid, 'notifications', id], {
+    fields: encodeFirestoreFields_(payload)
+  });
+
+  return {
+    status: existing ? 'updated' : 'created',
+    notification: payload
+  };
 }
 
 function parseRequestJson_(e) {
@@ -578,7 +1187,8 @@ function listAllUsers_() {
         .map(function (doc) {
           return {
             uid: normalizeText_(doc.__id),
-            role: normalizeText_(doc.role)
+            role: normalizeText_(doc.role),
+            realName: normalizeText_(doc.realName)
           };
         })
     );
@@ -805,6 +1415,7 @@ function fallbackPushBody_(subtype, actorName) {
   if (subtype === 'post_comment') return actorName + '님이 내 게시글에 댓글을 남겼습니다.';
   if (subtype === 'reply_comment') return actorName + '님이 내 댓글에 답글을 남겼습니다.';
   if (subtype === 'mention' || subtype === 'mention_all') return actorName + '님이 회원님을 언급했습니다.';
+  if (subtype === WORK_SCHEDULE_ALERT_SUBTYPE) return '근무일정 알림이 도착했습니다.';
   return '새 알림이 도착했습니다.';
 }
 

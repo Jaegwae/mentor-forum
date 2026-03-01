@@ -10,7 +10,8 @@ import {
   getBoardById,
   listBoardsByName,
   listBoardsByAllowedRole,
-  listDividerBoards
+  listDividerBoards,
+  upsertBoardById
 } from '../../services/firestore/boards.js';
 import {
   listPinnedPostsByBoard,
@@ -23,6 +24,9 @@ import { countCommentsByPost } from '../../services/firestore/comments.js';
 import {
   FALLBACK_ROLE_DEFINITIONS,
   NOTICE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_NAME,
+  WORK_SCHEDULE_BOARD_DESCRIPTION,
   PINNED_POST_FETCH_LIMIT,
   POST_LIST_VIEW_MODE
 } from './constants.js';
@@ -41,6 +45,28 @@ import {
   normalizeBoardIdentity,
   comparePostsWithPinnedPriority
 } from './utils.js';
+
+function resolveWorkScheduleAllowedRoles(roleDefMap) {
+  const fallback = ['Mentor', 'Staff', 'Admin', 'Super_Admin'];
+  if (!(roleDefMap instanceof Map) || !roleDefMap.size) return fallback;
+
+  const roles = [...roleDefMap.keys()]
+    .map((roleKey) => normalizeText(roleKey))
+    .filter((roleKey) => roleKey && roleKey !== 'Newbie');
+
+  return roles.length ? roles : fallback;
+}
+
+function workScheduleFallbackBoard(roleDefMap) {
+  return {
+    id: WORK_SCHEDULE_BOARD_ID,
+    isDivider: false,
+    name: WORK_SCHEDULE_BOARD_NAME,
+    description: WORK_SCHEDULE_BOARD_DESCRIPTION,
+    allowedRoles: resolveWorkScheduleAllowedRoles(roleDefMap),
+    sortOrder: 5
+  };
+}
 
 export async function loadRoleDefinitions() {
   const definitions = (await listRoleDefinitionDocs()).map(({ id, ...data }) => ({ role: id, ...data }));
@@ -145,6 +171,30 @@ export async function loadBoards(roleKey, roleDefMap = null, rawRole = '') {
     });
     dividerRows.forEach((row) => byId.set(row.id, row));
     rawItems = Array.from(byId.values());
+  }
+
+  const workScheduleBoardExists = rawItems.some((item) => normalizeText(item?.id) === WORK_SCHEDULE_BOARD_ID);
+  const canViewWorkScheduleBoard = normalizedRole !== 'Newbie' && !isExplicitNewbieRole(normalizedRawRole);
+
+  if (canViewWorkScheduleBoard && !workScheduleBoardExists) {
+    const fallbackBoard = workScheduleFallbackBoard(roleDefMap);
+    rawItems = [...rawItems, fallbackBoard];
+
+    if (privileged) {
+      try {
+        await upsertBoardById(WORK_SCHEDULE_BOARD_ID, {
+          isDivider: false,
+          name: fallbackBoard.name,
+          description: fallbackBoard.description,
+          allowedRoles: fallbackBoard.allowedRoles,
+          sortOrder: fallbackBoard.sortOrder,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (_) {
+        // Keep UI fallback board even when bootstrap write fails.
+      }
+    }
   }
 
   return sortBoardNavItems(rawItems);

@@ -5,6 +5,9 @@ import { deleteField } from '../../legacy/firebase-app.js';
 
 export const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
 export const DEFAULT_VENUE_LABELS = ['구로', '경기도서관'];
+export const WORK_SCHEDULE_BOARD_ID = 'work_schedule';
+export const WORK_SCHEDULE_BOARD_NAME = '근무일정';
+export const WORK_SCHEDULE_BOARD_DESCRIPTION = '근무 일정 공유 게시판';
 
 export const roleFlagDefs = [
   { key: 'canModerate', label: '글/댓글 강제 수정·삭제' },

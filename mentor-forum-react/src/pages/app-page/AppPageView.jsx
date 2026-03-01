@@ -41,6 +41,7 @@ const {
   ALL_BOARD_ID,
   NOTICE_BOARD_ID,
   COVER_FOR_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
   COVER_FOR_STATUS,
   COVER_FOR_MAX_DATES,
   COVER_FOR_REQUEST_TITLE,
@@ -130,7 +131,6 @@ const {
   toDateKey,
   fromDateKey,
   formatDateKeyLabel,
-  isCoverForBoardId,
   normalizeDateKeyInput,
   normalizeTimeInput,
   timeValueToMinutes,
@@ -175,7 +175,8 @@ const {
   canWriteBoardWithProfile,
   mergePostsByCreatedAtDesc,
   getVisiblePosts,
-  buildAuthorName
+  buildAuthorName,
+  normalizeWorkScheduleMemberText
 } = pageUtils;
 
 function ComposerDayPickerDropdown(props) {
@@ -225,6 +226,16 @@ function ComposerDayPickerDropdown(props) {
   );
 }
 
+function normalizeScheduleCellText(value) {
+  return normalizeWorkScheduleMemberText(value);
+}
+
+function hasScheduleCellText(value) {
+  const normalized = normalizeScheduleCellText(value);
+  if (!normalized) return false;
+  if (/^[-–—]+$/.test(normalized)) return false;
+  return true;
+}
 
 function RoleBadge({ role, roleDefMap }) {
   const roleKey = normalizeText(role) || 'Newbie';
@@ -519,6 +530,15 @@ export function AppPageView({ vm }) {
     handleExcelPageChange
   } = vm;
 
+  // Keep mobile navigation accessible even when a browser reports desktop-like
+  // viewport metrics (for example, iOS "request desktop site").
+  const forumListLayoutStyle = compactListMode
+    ? { marginTop: '10px', gridTemplateColumns: 'minmax(0, 1fr)', gap: '10px' }
+    : { marginTop: '10px' };
+  const mobileHamburgerStyle = compactListMode && !boardDrawerOpen
+    ? { display: 'inline-flex' }
+    : undefined;
+
   return (
     <>
       {isExcel ? (
@@ -585,6 +605,7 @@ export function AppPageView({ vm }) {
                 type="button"
                 className={boardDrawerOpen ? 'mobile-hamburger-btn hidden' : 'mobile-hamburger-btn'}
                 aria-label="게시판 메뉴 열기"
+                style={mobileHamburgerStyle}
                 onClick={() => setBoardDrawerOpen(true)}
               >
                 <Menu size={18} />
@@ -630,8 +651,8 @@ export function AppPageView({ vm }) {
         </section>
 
         <section className="forum-content-shell">
-          <div className="forum-list-layout" style={{ marginTop: '10px' }}>
-            <div className="forum-side-column">
+          <div className="forum-list-layout" style={forumListLayoutStyle}>
+            <div className={compactListMode ? 'forum-side-column hidden' : 'forum-side-column'} aria-hidden={compactListMode}>
               <aside className="board-rail" aria-label="게시판 목록">
                 <section className="board-rail-profile" aria-label="내 정보" style={profileSurface.cardStyle}>
                   <div className="board-profile-head-row">
@@ -824,26 +845,45 @@ export function AppPageView({ vm }) {
                       >
                         <span className="cover-calendar-day-num">{cell.day}</span>
                         <span className="cover-calendar-day-events" aria-hidden="true">
-                          {compactListMode ? (
-                            cell.eventCount > 0 ? (
-                              <span className="cover-calendar-event-count">{cell.eventCount}건</span>
-                            ) : null
-                          ) : (
+                          {normalizeText(currentBoard?.id) === WORK_SCHEDULE_BOARD_ID ? (
                             <>
                               {cell.previewEvents.map((event, idx) => (
-                                <span
-                                  key={`${cell.key}-${event.postId}-${idx}`}
-                                  className="cover-calendar-event"
-                                  title={event.label}
-                                  style={pastelToneStyle(event.tone)}
-                                >
-                                  {event.label}
-                                </span>
+                                event.label ? (
+                                  <span
+                                    key={`${cell.key}-${event.postId}-${idx}`}
+                                    className="cover-calendar-event"
+                                    title={event.label}
+                                    style={pastelToneStyle(event.tone)}
+                                  >
+                                    {event.label}
+                                  </span>
+                                ) : null
                               ))}
-                              {cell.hasMoreEvents ? (
-                                <span className="cover-calendar-event-more">+{cell.moreCount}건</span>
-                              ) : null}
                             </>
+                          ) : (
+                            compactListMode ? (
+                              cell.eventCount > 0 ? (
+                                <span className="cover-calendar-event-count">{cell.eventCount}건</span>
+                              ) : null
+                            ) : (
+                              <>
+                                {cell.previewEvents.map((event, idx) => (
+                                  event.label ? (
+                                    <span
+                                      key={`${cell.key}-${event.postId}-${idx}`}
+                                      className="cover-calendar-event"
+                                      title={event.label}
+                                      style={pastelToneStyle(event.tone)}
+                                    >
+                                      {event.label}
+                                    </span>
+                                  ) : null
+                                ))}
+                                {cell.hasMoreEvents ? (
+                                  <span className="cover-calendar-event-more">+{cell.moreCount}건</span>
+                                ) : null}
+                              </>
+                            )
                           )}
                         </span>
                       </button>
@@ -852,7 +892,9 @@ export function AppPageView({ vm }) {
                 </div>
 
                 <p className="meta" style={{ marginTop: '8px' }}>
-                  날짜를 누르면 해당 날짜의 구하는 중 요청 목록이 모달로 열립니다.
+                  {normalizeText(currentBoard?.id) === WORK_SCHEDULE_BOARD_ID
+                    ? '날짜를 누르면 해당 날짜의 근무일정 배치 목록이 모달로 열립니다.'
+                    : '날짜를 누르면 해당 날짜의 구하는 중 요청 목록이 모달로 열립니다.'}
                 </p>
               </div>
 
@@ -961,7 +1003,7 @@ export function AppPageView({ vm }) {
                         const boardTone = buildPastelTone(board?.id || boardLabel);
                         const commentCount = numberOrZero(commentCountByPost[post.id]);
                         const isRecentPost = recentUnreadPostIdSet.has(String(post.id));
-                        const coverSummary = isCoverForBoardId(post.boardId) ? summarizeCoverForPost(post) : null;
+                        const coverSummary = normalizeText(post.boardId) === COVER_FOR_BOARD_ID ? summarizeCoverForPost(post) : null;
                         const coverStatusClass = coverSummary?.statusClass || '';
                         const isCoverClosed = !!coverSummary?.isClosed;
                         const coverStatusTag = coverSummary?.label || '';
@@ -1054,7 +1096,7 @@ export function AppPageView({ vm }) {
                     const boardLabel = board?.name || post.boardId || '-';
                     const commentCount = numberOrZero(commentCountByPost[post.id]);
                     const isRecentPost = recentUnreadPostIdSet.has(String(post.id));
-                    const coverSummary = isCoverForBoardId(post.boardId) ? summarizeCoverForPost(post) : null;
+                    const coverSummary = normalizeText(post.boardId) === COVER_FOR_BOARD_ID ? summarizeCoverForPost(post) : null;
                     const coverStatusClass = coverSummary?.statusClass || '';
                     const isCoverClosed = !!coverSummary?.isClosed;
                     const coverStatusTag = coverSummary?.label || '';
@@ -1457,7 +1499,7 @@ export function AppPageView({ vm }) {
                   {' '}
                   을 누르면 완료됩니다.
                 </li>
-                <li>대체근무요청 게시판은 날짜/시간/체험관까지 입력해야 등록됩니다.</li>
+                <li>대체근무 게시판은 날짜/시간/체험관까지 입력해야 등록됩니다.</li>
               </ol>
               <div className="error" style={{ marginTop: '10px' }}>
                 중요: 게시글 작성은 각 게시판 화면에서만 가능합니다. <strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.
@@ -1818,6 +1860,30 @@ export function AppPageView({ vm }) {
                 )}
               </div>
             </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">근무일정 푸시 알림</p>
+              <p className="meta mobile-push-note" style={{ marginTop: '6px' }}>
+                근무일정 캘린더에서 본인 이름이 매칭된 전날/당일 알림을 푸시로 받습니다.
+              </p>
+              {(() => {
+                const enabled = isNotificationTypeEnabled(NOTIFICATION_PREF_KEY.WORK_SCHEDULE_SHIFT_ALERT);
+                return (
+                  <button
+                    type="button"
+                    className={enabled ? 'notification-pref-item is-on' : 'notification-pref-item is-off'}
+                    disabled={mobilePushWorking || !isMobilePushEnabled || !hasActivePushToken}
+                    onClick={() => toggleNotificationTypePreference(NOTIFICATION_PREF_KEY.WORK_SCHEDULE_SHIFT_ALERT)}
+                  >
+                    <span className="notification-pref-main">
+                      <span className="notification-pref-name">근무일정 전날/당일 푸시</span>
+                      <span className="notification-pref-state">{enabled ? '켜짐' : '꺼짐'}</span>
+                    </span>
+                    {enabled ? <Bell size={14} /> : <BellOff size={14} />}
+                  </button>
+                );
+              })()}
+            </section>
           </div>
 
           <div className="mt-3 flex justify-end">
@@ -2008,25 +2074,75 @@ export function AppPageView({ vm }) {
               </div>
               <p className="meta" style={{ margin: '8px 0 0' }}>총 {coverCalendarModalItems.length}건</p>
               <div className="cover-calendar-modal-list" style={{ marginTop: '10px' }}>
-                {coverCalendarModalItems.length ? coverCalendarModalItems.map((item) => (
-                  <button
-                    key={`cover-calendar-modal-item-${item.eventId || item.postId}`}
-                    type="button"
-                    className="cover-calendar-modal-item"
-                    style={pastelToneCardStyle(item.tone)}
-                    onClick={() => {
-                      setCoverCalendarModalOpen(false);
-                      handleMovePost(item.postId, item.boardId);
-                    }}
-                  >
-                    <span className="cover-calendar-modal-item-author" style={pastelToneStyle(item.tone)}>
-                      [{item.startTimeValue || COVER_FOR_DEFAULT_START_TIME}~{item.endTimeValue || COVER_FOR_DEFAULT_END_TIME}] [{item.venue || COVER_FOR_DEFAULT_VENUE}]
-                    </span>
-                    <span className="cover-calendar-modal-item-title">{item.title || '(제목 없음)'}</span>
-                    <span className="cover-calendar-modal-item-meta">작성자: {item.authorName || '익명'}</span>
-                  </button>
-                )) : (
-                  <p className="muted" style={{ margin: 0 }}>해당 날짜에 구하는 중인 요청이 없습니다.</p>
+                {coverCalendarModalItems.length ? coverCalendarModalItems.map((item) => {
+                  const isWorkScheduleItem = item.kind === 'work_schedule';
+                  const isDarkTheme = normalizeText(theme).toLowerCase() === 'dark';
+                  const itemStyle = isWorkScheduleItem && isDarkTheme
+                    ? {
+                      backgroundColor: 'rgba(19, 54, 44, 0.9)',
+                      borderColor: 'rgba(52, 211, 153, 0.45)'
+                    }
+                    : pastelToneCardStyle(item.tone);
+
+                  return (
+                    <button
+                      key={`cover-calendar-modal-item-${item.eventId || item.postId}`}
+                      type="button"
+                      className="cover-calendar-modal-item"
+                      style={itemStyle}
+                      onClick={() => {
+                        setCoverCalendarModalOpen(false);
+                        handleMovePost(item.postId, item.boardId);
+                      }}
+                    >
+                      {isWorkScheduleItem ? (() => {
+                        const fullTime = normalizeScheduleCellText(item.fullTime);
+                        const part1 = normalizeScheduleCellText(item.part1);
+                        const part2 = normalizeScheduleCellText(item.part2);
+                        const part3 = normalizeScheduleCellText(item.part3);
+                        const education = normalizeScheduleCellText(item.education);
+                        const segments = [
+                          { key: 'fulltime', label: '풀타임', value: fullTime },
+                          { key: 'part1', label: '파트1', value: part1 },
+                          { key: 'part2', label: '파트2', value: part2 },
+                          { key: 'part3', label: '파트3', value: part3 },
+                          { key: 'education', label: '교육', value: education }
+                        ].filter((segment) => hasScheduleCellText(segment.value));
+
+                        return (
+                          <div className="work-schedule-role-list">
+                            {segments.length ? segments.map((segment) => (
+                              <span
+                                key={`work-schedule-segment-${item.eventId || item.postId}-${segment.key}`}
+                                className={`work-schedule-role-chip is-${segment.key}`}
+                              >
+                                <span className="work-schedule-role-label">{segment.label}</span>
+                                <span className="work-schedule-role-value">{segment.value}</span>
+                              </span>
+                            )) : (
+                              <span className="work-schedule-role-chip is-empty">배정 정보 없음</span>
+                            )}
+                          </div>
+                        );
+                      })() : (
+                        <span className="cover-calendar-modal-item-author" style={pastelToneStyle(item.tone)}>
+                          [{item.startTimeValue || COVER_FOR_DEFAULT_START_TIME}~{item.endTimeValue || COVER_FOR_DEFAULT_END_TIME}] [{item.venue || COVER_FOR_DEFAULT_VENUE}]
+                        </span>
+                      )}
+                      {isWorkScheduleItem ? null : (
+                        <>
+                          <span className="cover-calendar-modal-item-title">{item.title || '(제목 없음)'}</span>
+                          <span className="cover-calendar-modal-item-meta">작성자: {item.authorName || '익명'}</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                }) : (
+                  <p className="muted" style={{ margin: 0 }}>
+                    {normalizeText(currentBoard?.id) === WORK_SCHEDULE_BOARD_ID
+                      ? '해당 날짜에 등록된 근무일정이 없습니다.'
+                      : '해당 날짜에 구하는 중인 요청이 없습니다.'}
+                  </p>
                 )}
               </div>
             </motion.section>
@@ -2150,7 +2266,7 @@ export function AppPageView({ vm }) {
 
                 {composerIsCoverForBoard ? (
                   <div className="cover-for-date-box">
-                    <p className="meta" style={{ margin: 0, fontWeight: 700 }}>대체근무 요청 날짜/시간 (필수)</p>
+                    <p className="meta" style={{ margin: 0, fontWeight: 700 }}>{`${currentBoard?.name || '캘린더'} 날짜/시간 (필수)`}</p>
                     <div className="cover-for-date-list" style={{ marginTop: '8px' }}>
                       {composerCoverDateKeys.map((dateKey, idx) => {
                         const currentVenueRaw = sanitizeCoverForVenueInput(composerCoverVenueValues[idx]);

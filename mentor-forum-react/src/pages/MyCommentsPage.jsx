@@ -3,7 +3,7 @@
  * - collectionGroup(comments) 조회 후 원본 post 정보를 hydrate해 목록을 구성한다.
  * - 일반 카드 UI/Excel 모드를 동일 데이터 흐름으로 유지한다.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, Users2 } from 'lucide-react';
@@ -94,12 +94,27 @@ function snippetText(value) {
 
 function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const shortestScreen = Math.min(
+    Number(window.screen?.width || 0),
+    Number(window.screen?.height || 0)
+  );
+  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
+
   const hoverFine = window.matchMedia('(hover: hover)').matches;
   const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
+  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
 
-  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
+  if (touchLikeInput && screenLooksMobile) return true;
+
+  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
   return !desktopLike;
 }
 
@@ -176,6 +191,7 @@ export default function MyCommentsPage() {
   const [commentsCursor, setCommentsCursor] = useState(null);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [loadingMoreComments, setLoadingMoreComments] = useState(false);
+  const boardNameMapRef = useRef({});
 
   const roleDefMap = useMemo(() => createRoleDefMap(roleDefinitions), [roleDefinitions]);
   const userRoleLabel = useMemo(() => {
@@ -187,6 +203,10 @@ export default function MyCommentsPage() {
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
+
+  useEffect(() => {
+    boardNameMapRef.current = boardNameMap;
+  }, [boardNameMap]);
 
   const loadBoardNameMap = useCallback(async () => {
     const boardSnap = await getDocs(collection(db, 'boards'));
@@ -251,8 +271,9 @@ export default function MyCommentsPage() {
     if (!append) setMessage({ type: '', text: '' });
 
     try {
-      const activeBoardNameMap = Object.keys(boardNameMap).length
-        ? boardNameMap
+      const cachedBoardNameMap = boardNameMapRef.current || {};
+      const activeBoardNameMap = Object.keys(cachedBoardNameMap).length
+        ? cachedBoardNameMap
         : await loadBoardNameMap();
 
       const constraints = [
@@ -302,7 +323,7 @@ export default function MyCommentsPage() {
         setLoading(false);
       }
     }
-  }, [boardNameMap, hydrateCommentRows, loadBoardNameMap]);
+  }, [hydrateCommentRows, loadBoardNameMap]);
 
   useEffect(() => {
     let active = true;
@@ -614,7 +635,7 @@ export default function MyCommentsPage() {
         </div>
       </section>
 
-      <section className="my-activity-content-layout">
+      <section className="my-activity-content-layout" style={{ marginTop: '10px' }}>
         <aside className="board-rail my-activity-side-rail" aria-label="내 정보">
           <section className="board-rail-profile my-activity-side-profile">
             <div className="board-profile-head-row">
@@ -662,9 +683,13 @@ export default function MyCommentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {!ready || loading ? (
+                {loading ? (
                   <tr>
                     <td colSpan={5} className="muted">불러오는 중...</td>
+                  </tr>
+                ) : !comments.length ? (
+                  <tr>
+                    <td colSpan={5} className="muted">아직 작성한 댓글이 없습니다.</td>
                   </tr>
                 ) : comments.map((comment, idx) => {
                   const no = comments.length - idx;
@@ -682,7 +707,7 @@ export default function MyCommentsPage() {
             </table>
           </div>
 
-          {ready && !loading ? (
+          {!loading && comments.length > 0 ? (
             <div className="row" style={{ marginTop: '12px', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -696,9 +721,9 @@ export default function MyCommentsPage() {
           ) : null}
 
           <div className="my-activity-mobile-list">
-            {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
-            {ready && !loading && !comments.length ? <p className="muted">아직 작성한 댓글이 없습니다.</p> : null}
-            {ready && !loading ? comments.map((comment, idx) => {
+            {loading ? <p className="muted">불러오는 중...</p> : null}
+            {!loading && !comments.length ? <p className="muted">아직 작성한 댓글이 없습니다.</p> : null}
+            {!loading ? comments.map((comment, idx) => {
               const no = comments.length - idx;
               return (
                 <button
@@ -717,7 +742,7 @@ export default function MyCommentsPage() {
                 </button>
               );
             }) : null}
-            {ready && !loading ? (
+            {!loading && comments.length > 0 ? (
               <div className="row" style={{ marginTop: '10px', justifyContent: 'center' }}>
                 <button
                   type="button"

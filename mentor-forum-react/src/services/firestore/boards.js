@@ -3,6 +3,7 @@ import {
   db,
   doc,
   getDoc,
+  setDoc,
   collection,
   query,
   where,
@@ -25,6 +26,11 @@ export async function getBoardById(boardId) {
   const snap = await getDoc(doc(db, 'boards', String(boardId || '')));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
+}
+
+// Upsert by known board ID (used for system-board bootstrap).
+export function upsertBoardById(boardId, payload, options = { merge: true }) {
+  return setDoc(doc(db, 'boards', String(boardId || '')), payload, options);
 }
 
 // Lookup by display name for compatibility paths.

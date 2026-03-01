@@ -42,6 +42,20 @@ export function subscribeRecentPosts({ maxItems = 120, onNext, onError }) {
   return onSnapshot(postsQuery, onNext, onError);
 }
 
+// Realtime stream for a single board.
+// Uses boardId equality only to avoid additional composite index requirements.
+export function subscribePostsByBoard({ boardId, onNext, onError }) {
+  const normalizedBoardId = String(boardId || '').trim();
+  if (!normalizedBoardId) {
+    return () => {};
+  }
+  const postsQuery = query(
+    collection(db, 'posts'),
+    where('boardId', '==', normalizedBoardId)
+  );
+  return onSnapshot(postsQuery, onNext, onError);
+}
+
 // Fallback path used when ordered collectionGroup query fails due to data gaps.
 export function fetchRecentCommentsFallback({ maxItems }) {
   return getDocs(query(

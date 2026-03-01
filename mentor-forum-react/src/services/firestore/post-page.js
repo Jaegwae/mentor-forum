@@ -18,6 +18,14 @@ import {
   deleteDoc
 } from '../../legacy/firebase-app.js';
 
+function isMissingIndexError(err) {
+  const code = String(err?.code || '').toLowerCase();
+  const message = String(err?.message || '').toLowerCase();
+  const indexPhrase = message.includes('requires') && message.includes('index');
+  const notReadyPhrase = message.includes('index') && message.includes('not ready');
+  return code.includes('failed-precondition') && (indexPhrase || notReadyPhrase);
+}
+
 // Mention candidate lookup from nickname index.
 export function fetchMentionIndexDocs({ keyPrefix = '', maxItems = 8 } = {}) {
   const baseCollection = collection(db, 'nickname_index');
@@ -39,11 +47,29 @@ export function fetchBoardDoc(boardId) {
 
 // Realtime comments stream for the current post.
 export function subscribeCommentsForPost({ postId, onNext, onError }) {
-  const q = query(
-    collection(db, 'posts', String(postId || ''), 'comments'),
-    orderBy('createdAt', 'asc')
+  const commentsRef = collection(db, 'posts', String(postId || ''), 'comments');
+  const orderedQuery = query(commentsRef, orderBy('createdAt', 'asc'));
+
+  let unsub = () => {};
+  let fallbackAttached = false;
+
+  unsub = onSnapshot(
+    orderedQuery,
+    onNext,
+    (err) => {
+      if (!fallbackAttached && isMissingIndexError(err)) {
+        fallbackAttached = true;
+        // 인덱스 빌드 중에는 무정렬 구독으로 폴백하고, 화면 레이어에서 정렬한다.
+        unsub = onSnapshot(commentsRef, onNext, onError);
+        return;
+      }
+      onError?.(err);
+    }
   );
-  return onSnapshot(q, onNext, onError);
+
+  return () => {
+    unsub?.();
+  };
 }
 
 // Core post document read.

@@ -55,7 +55,23 @@ npm run build
 3. GAS가 토큰 검증 후 Firestore에서 알림/설정/푸시토큰 읽음
 4. 허용된 경우 FCM 푸시 발송
 
-## 7) 참고
+## 7) 근무일정 서버 스케줄 푸시 (전날/당일)
+확장프로그램은 근무표 동기화만 수행하고, 근무일정 푸시는 이 GAS가 서버 트리거로 발송합니다.
+
+1. GAS 편집기에서 `runWorkScheduleTomorrowReminder`, `runWorkScheduleTodayReminder` 함수가 있는지 확인
+2. 최초 1회 `setupWorkScheduleReminderTriggers()` 수동 실행
+3. 생성되는 트리거
+   - `runWorkScheduleTomorrowReminder`: 매일 `21:00` (전날 알림)
+   - `runWorkScheduleTodayReminder`: 매일 `08:30` (당일 알림)
+4. 해제가 필요하면 `clearWorkScheduleReminderTriggers()` 실행
+
+동작 조건:
+- `work_schedule` 게시글의 `workScheduleRows`에서 대상 날짜를 조회
+- 사용자 `realName`이 `풀타임/파트1/파트2/파트3/교육`에 매칭될 때만 알림 생성
+- `pref_work_schedule_shift_alert`가 `false`면 제외
+- 모바일 푸시 글로벌/게시판 토글이 꺼져 있으면 푸시는 제외
+
+## 8) 참고
 - iPhone은 `Safari + 홈 화면에 추가(PWA)` 환경에서만 웹푸시 수신 가능
 - GAS 웹앱은 브라우저 CORS 제약 때문에 클라이언트에서 `no-cors` 전송으로 처리
 - 현재 스크립트는 `relay_debug` 컬렉션에 별도 디버그 로그를 저장하지 않음(실행 로그/콘솔 로그 기준 확인)

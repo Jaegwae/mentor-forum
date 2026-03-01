@@ -60,6 +60,7 @@ import * as pageUtils from './utils.js';
 const {
   AUTO_LOGOUT_MESSAGE,
   DEFAULT_VENUE_LABELS,
+  WORK_SCHEDULE_BOARD_ID,
   roleFlagDefs,
   ROLE_KEY_ALIASES,
   ROLE_COLOR_PRESETS,
@@ -981,8 +982,8 @@ export function AdminPageView({ vm }) {
                 <button
                   id="deleteBoardBtn"
                   type="button"
-                  className={isSuperAdminUser ? 'btn-danger' : 'btn-danger hidden'}
-                  disabled={!canManageBoards || !editBoardForm.id || !isSuperAdminUser}
+                  className={isSuperAdminUser && editBoardForm.id !== WORK_SCHEDULE_BOARD_ID ? 'btn-danger' : 'btn-danger hidden'}
+                  disabled={!canManageBoards || !editBoardForm.id || !isSuperAdminUser || editBoardForm.id === WORK_SCHEDULE_BOARD_ID}
                   onClick={() => removeBoard().catch((err) => pushMessage(err?.message || '게시판 삭제 실패', 'error'))}
                 >
                   삭제

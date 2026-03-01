@@ -8,6 +8,8 @@ import {
   ALL_BOARD_ID,
   NOTICE_BOARD_ID,
   COVER_FOR_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_WRITE_ROLES,
   COVER_FOR_STATUS,
   COVER_FOR_MAX_DATES,
   COVER_FOR_DEFAULT_START_TIME,
@@ -401,6 +403,16 @@ export function isForcedNotification(item) {
   return normalizeText(item?.subtype) === NOTIFICATION_SUBTYPE.MENTION_ALL;
 }
 
+export function isWorkScheduleShiftAlertNotification(item) {
+  const notificationId = normalizeText(item?.id || item?.notificationId);
+  const boardId = normalizeText(item?.boardId);
+  const subtype = normalizeText(item?.subtype);
+
+  if (subtype === NOTIFICATION_SUBTYPE.WORK_SCHEDULE_SHIFT_ALERT) return true;
+  if (boardId !== WORK_SCHEDULE_BOARD_ID) return false;
+  return /^work_schedule_/i.test(notificationId);
+}
+
 export function notificationMatchesFeedFilter(item, filterValue) {
   const filter = normalizeNotificationFeedFilter(filterValue);
   if (filter === NOTIFICATION_FEED_FILTER.ALL) return true;
@@ -412,12 +424,27 @@ export function notificationMatchesFeedFilter(item, filterValue) {
 
 export function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const shortestScreen = Math.min(
+    Number(window.screen?.width || 0),
+    Number(window.screen?.height || 0)
+  );
+  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
+
   const hoverFine = window.matchMedia('(hover: hover)').matches;
   const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
+  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
 
-  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
+  if (touchLikeInput && screenLooksMobile) return true;
+
+  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
   return !desktopLike;
 }
 
@@ -454,7 +481,183 @@ export function formatDateKeyLabel(key) {
 }
 
 export function isCoverForBoardId(boardId) {
-  return normalizeText(boardId) === COVER_FOR_BOARD_ID;
+  const normalized = normalizeText(boardId);
+  return normalized === COVER_FOR_BOARD_ID || normalized === WORK_SCHEDULE_BOARD_ID;
+}
+
+export function isWorkScheduleBoardId(boardId) {
+  return normalizeText(boardId) === WORK_SCHEDULE_BOARD_ID;
+}
+
+export function isCalendarBoardId(boardId) {
+  return isCoverForBoardId(boardId);
+}
+
+export function normalizeWorkScheduleRows(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  const byDateKey = new Map();
+
+  source.forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    const dateKey = normalizeDateKeyInput(row.dateKey || row.date || row.dayKey);
+    if (!dateKey) return;
+
+    const fullTimeParts = splitEducationParts(row.fullTime || row.fulltime || row.full || '');
+    const part1Parts = splitEducationParts(row.part1 || '');
+    const part2Parts = splitEducationParts(row.part2 || '');
+    const part3Parts = splitEducationParts(row.part3 || '');
+    const inlineEducation = normalizeWorkScheduleMemberText(
+      [fullTimeParts.education, part1Parts.education, part2Parts.education, part3Parts.education].join(', ')
+    );
+    const rowEducation = normalizeWorkScheduleMemberText(row.education || '');
+    let mergedEducation = normalizeWorkScheduleMemberText([rowEducation, inlineEducation].join(', '));
+
+    const fullTimeRecovered = recoverSplitEducationName(fullTimeParts.member, mergedEducation);
+    mergedEducation = fullTimeRecovered.education;
+    const part1Recovered = recoverSplitEducationName(part1Parts.member, mergedEducation);
+    mergedEducation = part1Recovered.education;
+    const part2Recovered = recoverSplitEducationName(part2Parts.member, mergedEducation);
+    mergedEducation = part2Recovered.education;
+    const part3Recovered = recoverSplitEducationName(part3Parts.member, mergedEducation);
+    mergedEducation = part3Recovered.education;
+
+    const nextRow = {
+      dateKey,
+      dateLabel: normalizeText(row.dateLabel || row.dateText || ''),
+      weekday: normalizeText(row.weekday || row.dayOfWeek || row.day || ''),
+      fullTime: fullTimeRecovered.member,
+      part1: part1Recovered.member,
+      part2: part2Recovered.member,
+      part3: part3Recovered.member,
+      education: mergedEducation
+    };
+
+    if (!byDateKey.has(dateKey)) {
+      byDateKey.set(dateKey, nextRow);
+      return;
+    }
+
+    const existing = byDateKey.get(dateKey);
+    byDateKey.set(dateKey, {
+      dateKey,
+      dateLabel: existing.dateLabel || nextRow.dateLabel,
+      weekday: existing.weekday || nextRow.weekday,
+      fullTime: existing.fullTime || nextRow.fullTime,
+      part1: existing.part1 || nextRow.part1,
+      part2: existing.part2 || nextRow.part2,
+      part3: existing.part3 || nextRow.part3,
+      education: existing.education || nextRow.education
+    });
+  });
+
+  return [...byDateKey.values()].sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey), 'ko'));
+}
+
+export function normalizeWorkScheduleMemberText(value) {
+  const text = String(value ?? '')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[，、]/g, ',')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*[,;]\s*/g, ',')
+    .trim();
+  if (!text) return '';
+  return text
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .join(', ')
+    .replace(/[,;\s]+$/g, '');
+}
+
+export function splitEducationParts(value) {
+  const raw = String(value ?? '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ');
+
+  const educationParts = [];
+  let memberRaw = raw;
+  memberRaw = memberRaw.replace(/[([]\s*교육\s*[:：]\s*([^\)\]]+)\s*[)\]]/gi, (_match, captured) => {
+    educationParts.push(String(captured || ''));
+    return ' ';
+  });
+  memberRaw = memberRaw.replace(/(?:^|[\s,;])교육\s*[:：]\s*([^,;]+)/gi, (_match, captured) => {
+    educationParts.push(String(captured || ''));
+    return ' ';
+  });
+
+  return {
+    member: normalizeWorkScheduleMemberText(memberRaw),
+    education: normalizeWorkScheduleMemberText(educationParts.join(', '))
+  };
+}
+
+export function recoverSplitEducationName(memberValue, educationValue) {
+  const member = normalizeWorkScheduleMemberText(memberValue);
+  const education = normalizeWorkScheduleMemberText(educationValue);
+  if (!member || !education) return { member, education };
+
+  const trailingMatch = member.match(/(?:^|,\s*)([0-9A-Za-z가-힣]{1,4})\)$/);
+  const leadingMatch = education.match(/^([0-9A-Za-z가-힣]{1,4})(?:,\s*|$)/);
+  if (!trailingMatch || !leadingMatch) return { member, education };
+
+  const trailing = trailingMatch[1];
+  const leading = leadingMatch[1];
+  const reconstructed = normalizeWorkScheduleMemberText(`${leading}${trailing}`);
+  if (!reconstructed) return { member, education };
+
+  const memberWithoutTrailing = normalizeWorkScheduleMemberText(
+    member.replace(/(?:^|,\s*)[0-9A-Za-z가-힣]{1,4}\)\s*$/, '')
+  );
+  const educationWithoutLeading = normalizeWorkScheduleMemberText(
+    education.replace(/^[0-9A-Za-z가-힣]{1,4}(?:,\s*|$)/, '')
+  );
+
+  return {
+    member: memberWithoutTrailing,
+    education: normalizeWorkScheduleMemberText([reconstructed, educationWithoutLeading].join(', '))
+  };
+}
+
+export function buildWorkScheduleSummaryLines(row) {
+  const lines = [];
+  const fullTime = normalizeWorkScheduleMemberText(row?.fullTime);
+  const part1 = normalizeWorkScheduleMemberText(row?.part1);
+  const part2 = normalizeWorkScheduleMemberText(row?.part2);
+  const part3 = normalizeWorkScheduleMemberText(row?.part3);
+  const education = normalizeWorkScheduleMemberText(row?.education);
+  if (fullTime) lines.push(`풀타임: ${fullTime}`);
+  if (part1) lines.push(`파트1: ${part1}`);
+  if (part2) lines.push(`파트2: ${part2}`);
+  if (part3) lines.push(`파트3: ${part3}`);
+  if (education) lines.push(`교육: ${education}`);
+  return lines;
+}
+
+export function normalizePersonNameToken(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .replace(/[^0-9A-Za-z가-힣]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+export function textContainsPersonName(text, personName) {
+  const nameToken = normalizePersonNameToken(personName);
+  if (!nameToken || nameToken.length < 2) return false;
+  const source = normalizePersonNameToken(text);
+  if (!source) return false;
+  return source.includes(nameToken);
+}
+
+export function workScheduleRowContainsPersonName(row, personName) {
+  return (
+    textContainsPersonName(row?.fullTime, personName)
+    || textContainsPersonName(row?.part1, personName)
+    || textContainsPersonName(row?.part2, personName)
+    || textContainsPersonName(row?.part3, personName)
+    || textContainsPersonName(row?.education, personName)
+  );
 }
 
 export function normalizeDateKeyInput(value) {
@@ -856,6 +1059,10 @@ export function navSortValue(item) {
 
 export function sortBoardNavItems(items) {
   return [...items].sort((a, b) => {
+    const aPriority = isWorkScheduleBoardId(a?.id) ? 0 : 1;
+    const bPriority = isWorkScheduleBoardId(b?.id) ? 0 : 1;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+
     const sa = navSortValue(a);
     const sb = navSortValue(b);
     if (sa !== sb) return sa - sb;
@@ -999,6 +1206,11 @@ export function canUseBoardWithProfile(board, profile, roleDefMap) {
 
   const roleKey = normalizeRoleKey(profile.role, roleDefMap);
   const rawRole = normalizeText(profile.rawRole || profile.role);
+
+  if (isWorkScheduleBoardId(board.id)) {
+    return roleKey !== 'Newbie' && !isExplicitNewbieRole(rawRole);
+  }
+
   if (isPrivilegedBoardRole(roleKey)) return true;
 
   const allowedRoles = Array.isArray(board.allowedRoles) ? board.allowedRoles : [];
@@ -1020,6 +1232,10 @@ export function canWriteBoardWithProfile(board, profile, roleDefMap) {
 
   const roleKey = normalizeRoleKey(profile.role, roleDefMap);
   const rawRole = normalizeText(profile.rawRole || profile.role);
+
+  if (isWorkScheduleBoardId(board.id)) {
+    return WORK_SCHEDULE_WRITE_ROLES.includes(roleKey);
+  }
 
   if (roleKey === 'Newbie') {
     if (isExplicitNewbieRole(rawRole)) return false;

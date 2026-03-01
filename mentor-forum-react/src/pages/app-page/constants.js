@@ -6,6 +6,10 @@ import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
 export const ALL_BOARD_ID = '__all__';
 export const NOTICE_BOARD_ID = MENTOR_FORUM_CONFIG.app.noticeBoardId || 'Notice';
 export const COVER_FOR_BOARD_ID = 'cover_for';
+export const WORK_SCHEDULE_BOARD_ID = 'work_schedule';
+export const WORK_SCHEDULE_BOARD_NAME = '근무일정';
+export const WORK_SCHEDULE_BOARD_DESCRIPTION = '근무 일정 공유 게시판';
+export const WORK_SCHEDULE_WRITE_ROLES = ['Super_Admin', 'Admin', 'Staff'];
 export const COVER_FOR_STATUS = {
   SEEKING: 'seeking',
   COMPLETED: 'completed',
@@ -53,11 +57,13 @@ export const NOTIFICATION_SUBTYPE = {
   POST_COMMENT: 'post_comment',
   REPLY_COMMENT: 'reply_comment',
   MENTION: 'mention',
-  MENTION_ALL: 'mention_all'
+  MENTION_ALL: 'mention_all',
+  WORK_SCHEDULE_SHIFT_ALERT: 'work_schedule_shift_alert'
 };
 export const NOTIFICATION_PREF_KEY = {
   COMMENT: 'pref_comment',
-  MENTION: 'pref_mention'
+  MENTION: 'pref_mention',
+  WORK_SCHEDULE_SHIFT_ALERT: 'pref_work_schedule_shift_alert'
 };
 export const MOBILE_PUSH_PREF_KEY = {
   GLOBAL: 'pref_mobile_push_global',

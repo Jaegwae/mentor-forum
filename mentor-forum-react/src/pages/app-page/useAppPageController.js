@@ -38,6 +38,7 @@ const {
   ALL_BOARD_ID,
   NOTICE_BOARD_ID,
   COVER_FOR_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
   COVER_FOR_STATUS,
   COVER_FOR_MAX_DATES,
   COVER_FOR_REQUEST_TITLE,
@@ -122,12 +123,17 @@ const {
   notificationCategoryLabel,
   notificationHeadline,
   isForcedNotification,
+  isWorkScheduleShiftAlertNotification,
   notificationMatchesFeedFilter,
   detectCompactListMode,
   toDateKey,
   fromDateKey,
   formatDateKeyLabel,
-  isCoverForBoardId,
+  isCalendarBoardId,
+  normalizeWorkScheduleRows,
+  normalizeWorkScheduleMemberText,
+  buildWorkScheduleSummaryLines,
+  workScheduleRowContainsPersonName,
   normalizeDateKeyInput,
   normalizeTimeInput,
   timeValueToMinutes,
@@ -1096,7 +1102,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       } else {
         if (!currentBoard) {
           const fallbackBoardId = normalizeText(selectedId);
-          const fallbackLimit = fallbackBoardId === COVER_FOR_BOARD_ID ? 320 : 50;
+          const fallbackLimit = isCalendarBoardId(fallbackBoardId) ? 320 : 50;
           posts = await queryPostsForBoard(fallbackBoardId, fallbackLimit, {
             allowLooseFallback: true,
             boardName: fallbackBoardId
@@ -1107,7 +1113,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
           setLoadingPosts(false);
           return;
         } else {
-          const boardPostLimit = currentBoard.id === COVER_FOR_BOARD_ID ? 320 : 50;
+          const boardPostLimit = isCalendarBoardId(currentBoard.id) ? 320 : 50;
           posts = await queryPostsForBoard(currentBoard.id, boardPostLimit, {
             allowLooseFallback: true,
             boardName: currentBoard.name || ''
@@ -1141,6 +1147,48 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     if (!ready || !currentUserProfile) return;
     loadPostsForCurrentBoard().catch(() => {});
   }, [ready, currentUserProfile, selectedBoardId, boardList, loadPostsForCurrentBoard]);
+
+  useEffect(() => {
+    if (!ready || !currentUserProfile) return () => {};
+
+    const targetBoardId = normalizeText(selectedBoardId);
+    if (!targetBoardId || targetBoardId === ALL_BOARD_ID) return () => {};
+    if (!isCalendarBoardId(targetBoardId)) return () => {};
+    if (currentBoard && !canUseBoard(currentBoard)) return () => {};
+
+    let cancelled = false;
+    const unsubscribe = appFirestore.subscribePostsByBoard({
+      boardId: targetBoardId,
+      onNext: (snap) => {
+        if (cancelled) return;
+
+        const posts = snap.docs.map((row) => ({ id: row.id, ...row.data() }));
+        const nextVisiblePosts = getVisiblePosts(posts);
+        setVisiblePosts(nextVisiblePosts);
+
+        if (!nextVisiblePosts.length) {
+          setListMessage({ type: 'notice', text: '게시글이 없습니다.' });
+          setLoadingPosts(false);
+          return;
+        }
+
+        setListMessage({ type: '', text: '' });
+        setLoadingPosts(false);
+      },
+      onError: (err) => {
+        logErrorWithOptionalDebug('[calendar-board-realtime-subscribe-failed]', err, {
+          error: err,
+          uid: currentUserUid,
+          boardId: targetBoardId
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [canUseBoard, currentBoard, currentUserProfile, currentUserUid, ready, selectedBoardId]);
 
   useEffect(() => {
     if (!ready || !currentUserUid || !currentUserProfile || !boardList.length) return () => {};
@@ -1431,7 +1479,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     const todayKey = toDateKey(new Date()) || toDateKey(todayDate);
     setPostTitle('');
     setComposerMessage({ type: '', text: '' });
-    if (board && isCoverForBoardId(board.id)) {
+    if (board && normalizeText(board.id) === COVER_FOR_BOARD_ID) {
       setComposerCoverDateKeys(todayKey ? [todayKey] : []);
       setComposerCoverStartTimeValues([COVER_FOR_DEFAULT_START_TIME]);
       setComposerCoverEndTimeValues([COVER_FOR_DEFAULT_END_TIME]);
@@ -1755,7 +1803,8 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     const payload = editor ? editor.getPayload() : { text: '', runs: [] };
     const delta = editor?.getDelta?.() || { ops: [{ insert: '\n' }] };
     const cleanTitle = normalizeText(postTitle);
-    const coverEntryCompositeValues = currentBoard.id === COVER_FOR_BOARD_ID
+    const isCoverRequestBoard = normalizeText(currentBoard.id) === COVER_FOR_BOARD_ID;
+    const coverEntryCompositeValues = isCoverRequestBoard
       ? normalizeCoverForDateTimeEntries(
         composerCoverDateKeys,
         composerCoverStartTimeValues,
@@ -1770,13 +1819,13 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
         return `${entry.dateKey}|${entry.startTimeValue}|${entry.endTimeValue}|${venue}`;
       })
       : [];
-    const duplicateCoverEntryValues = currentBoard.id === COVER_FOR_BOARD_ID
+    const duplicateCoverEntryValues = isCoverRequestBoard
       ? [...new Set(
         coverEntryCompositeValues.filter((entryValue, idx) => coverEntryCompositeValues.indexOf(entryValue) !== idx)
       )]
       : [];
     const coverDateFallbackKey = toDateKey(new Date()) || toDateKey(todayDate);
-    const nextCoverDateTimeEntries = currentBoard.id === COVER_FOR_BOARD_ID
+    const nextCoverDateTimeEntries = isCoverRequestBoard
       ? normalizeCoverForDateTimeEntries(
         composerCoverDateKeys,
         composerCoverStartTimeValues,
@@ -1803,7 +1852,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       return;
     }
 
-    if (currentBoard.id === COVER_FOR_BOARD_ID && duplicateCoverEntryValues.length) {
+    if (isCoverRequestBoard && duplicateCoverEntryValues.length) {
       const duplicateDateText = duplicateCoverEntryValues
         .map((entryValue) => {
           const [dateKey = '', startTimeValue = '', endTimeValue = '', venue = ''] = String(entryValue).split('|');
@@ -1817,13 +1866,13 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       return;
     }
 
-    if (currentBoard.id === COVER_FOR_BOARD_ID && !nextCoverDateKeys.length) {
-      setComposerMessage({ type: 'error', text: '대체근무 요청 날짜를 최소 1개 선택해주세요.' });
+    if (isCoverRequestBoard && !nextCoverDateKeys.length) {
+      setComposerMessage({ type: 'error', text: '캘린더 게시판 일정 날짜를 최소 1개 선택해주세요.' });
       return;
     }
 
     if (
-      currentBoard.id === COVER_FOR_BOARD_ID
+      isCoverRequestBoard
       && nextCoverDateTimeEntries.some((entry) => !normalizeCoverForVenue(entry.venue))
     ) {
       setComposerMessage({ type: 'error', text: '각 날짜별 체험관을 선택해주세요.' });
@@ -1831,7 +1880,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     }
 
     if (
-      currentBoard.id === COVER_FOR_BOARD_ID
+      isCoverRequestBoard
       && nextCoverDateTimeEntries.some((entry) => !isValidTimeRange(entry.startTimeValue, entry.endTimeValue))
     ) {
       setComposerMessage({ type: 'error', text: '요청 시간은 시작 시간보다 늦은 종료 시간을 선택해주세요.' });
@@ -1861,7 +1910,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
         views: 0
       };
 
-      if (currentBoard.id === COVER_FOR_BOARD_ID) {
+      if (isCoverRequestBoard) {
         payloadToCreate.coverForStatus = COVER_FOR_STATUS.SEEKING;
         payloadToCreate.coverForDateKeys = nextCoverDateKeys;
         payloadToCreate.coverForDateStatuses = nextCoverDateKeys.map(() => COVER_FOR_STATUS.SEEKING);
@@ -1950,7 +1999,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
         const invalidRangeIndexes = nextCoverDateTimeEntries
           .map((entry, idx) => (isValidTimeRange(entry.startTimeValue, entry.endTimeValue) ? '' : String(idx + 1)))
           .filter(Boolean);
-        const coverDebugText = currentBoard?.id === COVER_FOR_BOARD_ID
+        const coverDebugText = isCoverRequestBoard
           ? joinDebugParts([
             `coverDateCount=${nextCoverDateKeys.length}`,
             `coverDates=${debugValueList(nextCoverDateKeys)}`,
@@ -2274,6 +2323,8 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
           const postId = normalizeText(data.postId || row.id);
           const boardId = normalizeText(data.boardId);
           if (!id || !postId || !boardId) return null;
+          const subtype = normalizeText(data.subtype);
+          if (isWorkScheduleShiftAlertNotification({ id, boardId, subtype })) return null;
           return {
             id,
             postId,
@@ -2281,7 +2332,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
             boardName: normalizeText(data.boardName) || boardId,
             title: normalizeText(data.title) || '(제목 없음)',
             type: normalizeNotificationType(data.type),
-            subtype: normalizeText(data.subtype),
+            subtype,
             actorUid: normalizeText(data.actorUid || ''),
             actorName: normalizeText(data.actorName || data.authorName) || '익명',
             body: normalizeText(data.body || ''),
@@ -2350,6 +2401,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     const notificationId = normalizeText(payload?.notificationId || payload?.id) || `post:${postId}`;
     const type = normalizeNotificationType(payload?.type);
     const subtype = normalizeText(payload?.subtype || '');
+    if (isWorkScheduleShiftAlertNotification({ id: notificationId, boardId, subtype })) return;
     const createdAtMs = Number(payload?.createdAtMs) || Date.now();
     const nextItem = {
       id: notificationId,
@@ -2962,8 +3014,9 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     : '사용자';
 
   const showCurrentBoardAudience = !isAllBoardSelected && !!currentBoard;
-  const showCoverCalendar = !!currentBoard && isCoverForBoardId(currentBoard.id);
-  const composerIsCoverForBoard = !!currentBoard && isCoverForBoardId(currentBoard.id);
+  const calendarBoardId = normalizeText(selectedBoardId) || normalizeText(currentBoard?.id);
+  const showCoverCalendar = isCalendarBoardId(calendarBoardId);
+  const composerIsCoverForBoard = !!currentBoard && normalizeText(currentBoard.id) === COVER_FOR_BOARD_ID;
   const myPostsPage = MENTOR_FORUM_CONFIG.app.myPostsPage || '/me/posts';
   const myCommentsPage = MENTOR_FORUM_CONFIG.app.myCommentsPage || '/me/comments';
 
@@ -3000,13 +3053,49 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
   const coverCalendarEventsByDate = useMemo(() => {
     const map = new Map();
     if (!showCoverCalendar) return map;
+    const currentUserRealName = normalizeText(currentUserProfile?.realName);
 
     visiblePosts
-      .filter((post) => !isDeletedPost(post) && isCoverForBoardId(post.boardId))
+      .filter((post) => !isDeletedPost(post) && isCalendarBoardId(post.boardId))
       .forEach((post) => {
-        const entries = postCoverForDateEntries(post);
         const authorName = normalizeText(post.authorName || post.authorUid) || '익명';
         const tone = buildPastelTone(post.id);
+        const boardId = normalizeText(post.boardId);
+
+        if (boardId === WORK_SCHEDULE_BOARD_ID) {
+          const rows = normalizeWorkScheduleRows(post?.workScheduleRows);
+          rows.forEach((row, rowIndex) => {
+            const dateKey = normalizeDateKeyInput(row?.dateKey);
+            if (!dateKey) return;
+
+            const summaryLines = buildWorkScheduleSummaryLines(row);
+            const eventId = [String(post.id), String(dateKey), 'work_schedule', String(rowIndex)].join('|');
+            if (!map.has(dateKey)) map.set(dateKey, []);
+            map.get(dateKey).push({
+              id: eventId,
+              eventId,
+              kind: 'work_schedule',
+              postId: post.id,
+              boardId: post.boardId,
+              authorName,
+              title: normalizeText(post.title) || '(제목 없음)',
+              fullTime: normalizeWorkScheduleMemberText(row?.fullTime),
+              part1: normalizeWorkScheduleMemberText(row?.part1),
+              part2: normalizeWorkScheduleMemberText(row?.part2),
+              part3: normalizeWorkScheduleMemberText(row?.part3),
+              education: normalizeWorkScheduleMemberText(row?.education),
+              summaryLines,
+              label: currentUserRealName && workScheduleRowContainsPersonName(row, currentUserRealName)
+                ? '[근무 하는 날]'
+                : '',
+              tone,
+              createdAtMs: toMillis(post.createdAt)
+            });
+          });
+          return;
+        }
+
+        const entries = postCoverForDateEntries(post);
 
         entries.forEach(({ dateKey, status, startTimeValue, endTimeValue, venue }, entryIndex) => {
           if (!dateKey) return;
@@ -3026,6 +3115,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
           map.get(dateKey).push({
             id: eventId,
             eventId,
+            kind: 'cover_for',
             postId: post.id,
             boardId: post.boardId,
             authorName,
@@ -3050,7 +3140,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     });
 
     return map;
-  }, [showCoverCalendar, visiblePosts]);
+  }, [currentUserProfile?.realName, showCoverCalendar, visiblePosts]);
 
   const coverCalendarModalItems = useMemo(() => {
     if (!coverCalendarModalDateKey) return [];
@@ -3094,11 +3184,22 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       const dayEvents = coverCalendarEventsByDate.get(dateKey) || [];
       const eventCount = dayEvents.length;
       if (eventCount > 0) classes.push('has-events');
-      const previewEvents = dayEvents.slice(0, COVER_CALENDAR_PREVIEW_LIMIT).map((event) => ({
-        postId: event.postId,
-        label: `[${event.startTimeValue || COVER_FOR_DEFAULT_START_TIME}~${event.endTimeValue || COVER_FOR_DEFAULT_END_TIME}] [${event.venue || COVER_FOR_DEFAULT_VENUE}]`,
-        tone: event.tone
-      }));
+      const hasWorkScheduleEvents = dayEvents.some((event) => event.kind === 'work_schedule');
+      const previewEvents = hasWorkScheduleEvents
+        ? (() => {
+          const mineEvent = dayEvents.find((event) => normalizeText(event?.label));
+          if (!mineEvent) return [];
+          return [{
+            postId: mineEvent.postId,
+            label: normalizeText(mineEvent.label),
+            tone: mineEvent.tone
+          }];
+        })()
+        : dayEvents.slice(0, COVER_CALENDAR_PREVIEW_LIMIT).map((event) => ({
+          postId: event.postId,
+          label: `[${event.startTimeValue || COVER_FOR_DEFAULT_START_TIME}~${event.endTimeValue || COVER_FOR_DEFAULT_END_TIME}] [${event.venue || COVER_FOR_DEFAULT_VENUE}]`,
+          tone: event.tone
+        }));
 
       cells.push({
         key: dateKey,
@@ -3139,7 +3240,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       const boardLabel = board?.name || post.boardId || '-';
       const commentCount = numberOrZero(commentCountByPost[post.id]);
       const isRecentPost = recentUnreadPostIdSet.has(String(post.id));
-      const coverSummary = isCoverForBoardId(post.boardId) ? summarizeCoverForPost(post) : null;
+      const coverSummary = normalizeText(post.boardId) === COVER_FOR_BOARD_ID ? summarizeCoverForPost(post) : null;
       const coverStatusTag = coverSummary?.label || '';
       const isPinned = isPinnedPost(post);
       const titleSegments = [

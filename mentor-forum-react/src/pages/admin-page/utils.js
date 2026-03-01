@@ -19,12 +19,27 @@ export function sanitizeRoleKey(value) {
 
 export function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const shortestScreen = Math.min(
+    Number(window.screen?.width || 0),
+    Number(window.screen?.height || 0)
+  );
+  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
+
   const hoverFine = window.matchMedia('(hover: hover)').matches;
   const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
+  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
 
-  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
+  if (touchLikeInput && screenLooksMobile) return true;
+
+  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
   return !desktopLike;
 }
 

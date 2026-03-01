@@ -232,6 +232,20 @@ service cloud.firestore {
         : null;
     }
 
+    function isWorkScheduleBoardId(boardId) {
+      return boardId is string && boardId == 'work_schedule';
+    }
+
+    function canUseWorkScheduleByRawRole(rawRole) {
+      return rawRole is string
+        && rawRole.size() > 0
+        && rawRole != 'Newbie';
+    }
+
+    function canWriteWorkScheduleByRawRole(rawRole) {
+      return rawRole in ['Super_Admin', 'Admin', 'Staff'];
+    }
+
     function canUseBoard(boardId) {
       return canUseBoardByRawRole(boardId, role());
     }
@@ -243,15 +257,15 @@ service cloud.firestore {
     }
 
     function boardRoleCandidatesByRaw(rawRole) {
-      return normalizedRoleKey(rawRole) == 'Super_Admin'
+      return rawRole == 'Super_Admin'
         ? ['Super_Admin', 'SUPER_ADMIN', 'super_admin', 'super-admin', 'super admin', '개발자', rawRole]
-        : normalizedRoleKey(rawRole) == 'Admin'
+        : rawRole == 'Admin'
           ? ['Admin', 'ADMIN', 'admin', '관리자', rawRole]
-          : normalizedRoleKey(rawRole) == 'Staff'
+          : rawRole == 'Staff'
             ? ['Staff', 'STAFF', 'staff', '운영진', rawRole]
-            : normalizedRoleKey(rawRole) == 'Mentor'
+            : rawRole == 'Mentor'
               ? ['Mentor', 'MENTOR', 'mentor', '멘토', '토', rawRole]
-              : normalizedRoleKey(rawRole) == 'Newbie'
+              : rawRole == 'Newbie'
                 ? ['Newbie', 'NEWBIE', 'newbie', '새싹', rawRole]
                 : (
                   rawRole is string && rawRole.size() > 0
@@ -292,16 +306,7 @@ service cloud.firestore {
     function boardAllowsRawRole(boardData, rawRole) {
       return boardData != null
         && boardData.allowedRoles is list
-        && (
-          boardData.allowedRoles.hasAny(boardRoleCandidatesByRaw(rawRole))
-          || (
-            isCoreRole(normalizedRoleKey(rawRole))
-            && allowedRolesContainCanonicalCoreRole(
-              boardData.allowedRoles,
-              normalizedRoleKey(rawRole)
-            )
-          )
-        );
+        && boardData.allowedRoles.hasAny(boardRoleCandidatesByRaw(rawRole));
     }
 
     function canUseBoardDataByRawRole(boardData, rawRole) {
@@ -311,12 +316,20 @@ service cloud.firestore {
     }
 
     function canUseBoardByRawRole(boardId, rawRole) {
-      return canUseBoardDataByRawRole(boardDataById(boardId), rawRole);
+      return isWorkScheduleBoardId(boardId)
+        ? canUseWorkScheduleByRawRole(rawRole)
+        : canUseBoardDataByRawRole(boardDataById(boardId), rawRole);
     }
 
     function canWriteBoardByRawRole(boardId, rawRole) {
-      return canUseBoardByRawRole(boardId, rawRole)
-        && !isExplicitNewbieRawRole(rawRole);
+      return isWorkScheduleBoardId(boardId)
+        ? canWriteWorkScheduleByRawRole(rawRole)
+        : (
+          canUseBoardByRawRole(boardId, rawRole)
+          && rawRole != 'Newbie'
+          && rawRole is string
+          && rawRole.size() > 0
+        );
     }
 
     function canWriteBoard(boardId) {
@@ -478,7 +491,10 @@ service cloud.firestore {
 
     match /boards/{boardId} {
       allow read: if signedIn();
-      allow create, update, delete: if signedIn() && canManageBoards();
+      allow create, update: if signedIn() && canManageBoards();
+      allow delete: if signedIn()
+        && canManageBoards()
+        && boardId != 'work_schedule';
     }
 
     match /venue_options/{venueId} {
@@ -588,7 +604,13 @@ service cloud.firestore {
       }
 
       match /notification_prefs/{boardId} {
-        allow read: if signedIn() && request.auth.uid == userId;
+        allow read: if signedIn() && (
+          request.auth.uid == userId
+          || (
+            canAccessAdminSite()
+            && boardId == 'pref_work_schedule_shift_alert'
+          )
+        );
 
         allow create, update: if signedIn()
           && request.auth.uid == userId

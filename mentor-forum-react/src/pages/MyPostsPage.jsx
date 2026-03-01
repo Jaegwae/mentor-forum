@@ -79,12 +79,27 @@ function formatDate(value) {
 
 function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const shortestScreen = Math.min(
+    Number(window.screen?.width || 0),
+    Number(window.screen?.height || 0)
+  );
+  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
+
   const hoverFine = window.matchMedia('(hover: hover)').matches;
   const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
+  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
 
-  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
+  if (touchLikeInput && screenLooksMobile) return true;
+
+  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
   return !desktopLike;
 }
 
@@ -529,7 +544,7 @@ export default function MyPostsPage() {
         </div>
       </section>
 
-      <section className="my-activity-content-layout">
+      <section className="my-activity-content-layout" style={{ marginTop: '10px' }}>
         <aside className="board-rail my-activity-side-rail" aria-label="내 정보">
           <section className="board-rail-profile my-activity-side-profile">
             <div className="board-profile-head-row">
@@ -577,9 +592,13 @@ export default function MyPostsPage() {
                 </tr>
               </thead>
               <tbody>
-                {!ready || loading ? (
+                {loading ? (
                   <tr>
                     <td colSpan={5} className="muted">불러오는 중...</td>
+                  </tr>
+                ) : !posts.length ? (
+                  <tr>
+                    <td colSpan={5} className="muted">아직 작성한 게시글이 없습니다.</td>
                   </tr>
                 ) : posts.map((post, idx) => {
                   const no = posts.length - idx;
@@ -598,7 +617,7 @@ export default function MyPostsPage() {
             </table>
           </div>
 
-          {ready && !loading ? (
+          {!loading && posts.length > 0 ? (
             <div className="row" style={{ marginTop: '12px', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -612,9 +631,9 @@ export default function MyPostsPage() {
           ) : null}
 
           <div className="my-activity-mobile-list">
-            {!ready || loading ? <p className="muted">불러오는 중...</p> : null}
-            {ready && !loading && !posts.length ? <p className="muted">아직 작성한 게시글이 없습니다.</p> : null}
-            {ready && !loading ? posts.map((post, idx) => {
+            {loading ? <p className="muted">불러오는 중...</p> : null}
+            {!loading && !posts.length ? <p className="muted">아직 작성한 게시글이 없습니다.</p> : null}
+            {!loading ? posts.map((post, idx) => {
               const no = posts.length - idx;
               const boardLabel = boardNameMap[post.boardId] || post.boardId || '-';
               return (
@@ -633,7 +652,7 @@ export default function MyPostsPage() {
                 </button>
               );
             }) : null}
-            {ready && !loading ? (
+            {!loading && posts.length > 0 ? (
               <div className="row" style={{ marginTop: '10px', justifyContent: 'center' }}>
                 <button
                   type="button"

@@ -49,6 +49,9 @@ import * as pageData from './data.js';
 const {
   AUTO_LOGOUT_MESSAGE,
   DEFAULT_VENUE_LABELS,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_NAME,
+  WORK_SCHEDULE_BOARD_DESCRIPTION,
   roleFlagDefs,
   ROLE_KEY_ALIASES,
   ROLE_COLOR_PRESETS,
@@ -464,8 +467,27 @@ export function useAdminPageController() {
     return loadedDefinitions;
   }, [activeEditRoleKey]);
 
-  const refreshBoards = useCallback(async (preferredBoardId = '') => {
-    const snap = await adminFirestore.fetchBoardsDocs();
+  const refreshBoards = useCallback(async (preferredBoardId = '', options = {}) => {
+    const allowBootstrap = options && Object.prototype.hasOwnProperty.call(options, 'canBootstrap')
+      ? !!options.canBootstrap
+      : !!permissions?.canManageBoards;
+    let snap = await adminFirestore.fetchBoardsDocs();
+    const hasWorkScheduleBoard = snap.docs.some((docSnap) => docSnap.id === WORK_SCHEDULE_BOARD_ID);
+
+    if (!hasWorkScheduleBoard && allowBootstrap) {
+      await adminFirestore.upsertBoardDoc(WORK_SCHEDULE_BOARD_ID, {
+        isDivider: false,
+        name: WORK_SCHEDULE_BOARD_NAME,
+        description: WORK_SCHEDULE_BOARD_DESCRIPTION,
+        allowedRoles: ['Mentor', 'Staff', 'Admin', 'Super_Admin'],
+        sortOrder: 5,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUser?.uid || ''
+      }, { merge: true });
+      snap = await adminFirestore.fetchBoardsDocs();
+    }
+
     const nextItems = sortBoardItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     setBoardItems(nextItems);
 
@@ -493,7 +515,11 @@ export function useAdminPageController() {
     });
 
     return nextItems;
-  }, [activeEditBoardId]);
+  }, [
+    activeEditBoardId,
+    currentUser?.uid,
+    permissions?.canManageBoards
+  ]);
 
   const refreshUsers = useCallback(async () => {
     const usersSnap = await adminFirestore.fetchUsersDocs();
@@ -734,7 +760,7 @@ export function useAdminPageController() {
 
         const [, , , venueRows] = await Promise.all([
           refreshRoles(),
-          refreshBoards(),
+          refreshBoards('', { canBootstrap: nextPermissions.canManageBoards }),
           refreshUsers(),
           refreshVenueOptions()
         ]);
@@ -1024,6 +1050,11 @@ export function useAdminPageController() {
 
     if (!activeEditBoardId) {
       pushMessage('게시판을 먼저 선택하세요.', 'error');
+      return;
+    }
+
+    if (activeEditBoardId === WORK_SCHEDULE_BOARD_ID) {
+      pushMessage(`${WORK_SCHEDULE_BOARD_NAME} 게시판은 삭제할 수 없습니다.`, 'error');
       return;
     }
 

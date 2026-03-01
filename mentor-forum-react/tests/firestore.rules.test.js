@@ -18,6 +18,8 @@ import {
   addDoc,
   collection,
   doc,
+  deleteDoc,
+  getDoc,
   setDoc,
   updateDoc
 } from 'firebase/firestore';
@@ -65,10 +67,40 @@ async function seedBaseData() {
       updatedAt: now
     });
 
+    await setDoc(doc(db, 'users', 'staff-user'), {
+      uid: 'staff-user',
+      email: 'staff@example.com',
+      role: 'Staff',
+      nickname: 'staff',
+      realName: 'Staff User',
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    await setDoc(doc(db, 'users', 'admin-user'), {
+      uid: 'admin-user',
+      email: 'admin@example.com',
+      role: 'Admin',
+      nickname: 'admin',
+      realName: 'Admin User',
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now
+    });
+
     await setDoc(doc(db, 'boards', 'cover_for'), {
       name: '대체근무',
       isDivider: false,
       allowedRoles: ['Admin', 'Mentor', 'Staff', 'Super_Admin'],
+      createdAt: now,
+      updatedAt: now
+    });
+
+    await setDoc(doc(db, 'boards', 'work_schedule'), {
+      name: '근무일정',
+      isDivider: false,
+      allowedRoles: ['Mentor', 'Staff', 'Admin', 'Super_Admin'],
       createdAt: now,
       updatedAt: now
     });
@@ -86,6 +118,20 @@ async function seedBaseData() {
       deleted: false,
       views: 0,
       createdAt: now,
+      updatedAt: now
+    });
+
+    await setDoc(doc(db, 'users', 'newbie-user', 'notification_prefs', 'pref_work_schedule_shift_alert'), {
+      userUid: 'newbie-user',
+      boardId: 'pref_work_schedule_shift_alert',
+      enabled: true,
+      updatedAt: now
+    });
+
+    await setDoc(doc(db, 'users', 'newbie-user', 'notification_prefs', 'pref_comment'), {
+      userUid: 'newbie-user',
+      boardId: 'pref_comment',
+      enabled: true,
       updatedAt: now
     });
   });
@@ -178,5 +224,79 @@ afterAll(async () => {
       doc(mentorDb, 'users', 'newbie-user', 'notifications', 'notif-deny'),
       { ...notificationPayload, actorUid: 'someone-else' }
     ));
+  });
+
+  it('denies mentor writing on work_schedule board', async () => {
+    const mentorDb = testEnv.authenticatedContext('mentor-user').firestore();
+
+    await assertFails(addDoc(collection(mentorDb, 'posts'), {
+      boardId: 'work_schedule',
+      title: 'work schedule by mentor',
+      visibility: 'mentor',
+      contentText: 'test',
+      contentRich: { text: 'test', runs: [] },
+      contentDelta: { ops: [{ insert: 'test\n' }] },
+      authorUid: 'mentor-user',
+      authorName: 'mentor',
+      authorRole: 'Mentor',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      deleted: false,
+      views: 0
+    }));
+  });
+
+  it('allows staff writing on work_schedule board', async () => {
+    const staffDb = testEnv.authenticatedContext('staff-user').firestore();
+
+    await assertSucceeds(addDoc(collection(staffDb, 'posts'), {
+      boardId: 'work_schedule',
+      title: 'work schedule by staff',
+      visibility: 'mentor',
+      contentText: 'test',
+      contentRich: { text: 'test', runs: [] },
+      contentDelta: { ops: [{ insert: 'test\n' }] },
+      authorUid: 'staff-user',
+      authorName: 'staff',
+      authorRole: 'Staff',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      deleted: false,
+      views: 0
+    }));
+  });
+
+  it('denies newbie writing on work_schedule board', async () => {
+    const newbieDb = testEnv.authenticatedContext('newbie-user').firestore();
+
+    await assertFails(addDoc(collection(newbieDb, 'posts'), {
+      boardId: 'work_schedule',
+      title: 'work schedule by newbie',
+      visibility: 'mentor',
+      contentText: 'test',
+      contentRich: { text: 'test', runs: [] },
+      contentDelta: { ops: [{ insert: 'test\n' }] },
+      authorUid: 'newbie-user',
+      authorName: 'newbie',
+      authorRole: 'Newbie',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      deleted: false,
+      views: 0
+    }));
+  });
+
+  it('denies deleting work_schedule board even for admin', async () => {
+    const adminDb = testEnv.authenticatedContext('admin-user').firestore();
+
+    await assertFails(deleteDoc(doc(adminDb, 'boards', 'work_schedule')));
+    await assertSucceeds(deleteDoc(doc(adminDb, 'boards', 'cover_for')));
+  });
+
+  it('allows admin to read only work-schedule shift preference across users', async () => {
+    const adminDb = testEnv.authenticatedContext('admin-user').firestore();
+
+    await assertSucceeds(getDoc(doc(adminDb, 'users', 'newbie-user', 'notification_prefs', 'pref_work_schedule_shift_alert')));
+    await assertFails(getDoc(doc(adminDb, 'users', 'newbie-user', 'notification_prefs', 'pref_comment')));
   });
 });
