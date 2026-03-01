@@ -1,5 +1,19 @@
-// Quill-based rich editor creation, sanitization, and rendering helpers.
+/**
+ * Quill 런타임 래퍼.
+ * - 툴바가 호출하는 명령(exec/setColor/setLink...)을 안정 API로 노출한다.
+ * - Delta/Payload 변환은 순수 모듈(`services/editor/rich-editor-transform`)에 위임한다.
+ * - 멘션 칩 삽입/삭제 UX, 폰트 라벨 동기화, HTML 렌더 보조 기능을 포함한다.
+ */
 import Quill from 'quill';
+import {
+  sanitizeHttpUrl as sanitizeHttpUrlPure,
+  sanitizePayloadStyle as sanitizePayloadStylePure,
+  quillSizeToPx as quillSizeToPxPure,
+  sanitizeDeltaAttributes as sanitizeDeltaAttributesPure,
+  sanitizeDelta as sanitizeDeltaPure,
+  payloadToQuillDelta as payloadToQuillDeltaPure,
+  deltaToPayload as deltaToPayloadPure
+} from '../services/editor/rich-editor-transform.js';
 
 const DEFAULT_MIN = 10;
 const DEFAULT_MAX = 48;
@@ -83,9 +97,7 @@ export function escapeHtml(text) {
 }
 
 export function sanitizeHttpUrl(url) {
-  const s = String(url || '').trim().replace(/[\u0000-\u001F\u007F]/g, '');
-  if (!/^https?:\/\//i.test(s)) return '';
-  return s;
+  return sanitizeHttpUrlPure(url);
 }
 
 function cloneStyle(style) {
@@ -251,17 +263,7 @@ export function renderRichPayloadToHtml(payload) {
 }
 
 function sanitizePayloadStyle(style, minSize, maxSize) {
-  const n = Number(style?.fontSize);
-  const fontSize = Number.isFinite(n) ? Math.max(minSize, Math.min(maxSize, Math.round(n))) : DEFAULT_FONT_SIZE;
-  return {
-    bold: !!style?.bold,
-    italic: !!style?.italic,
-    strikethrough: !!style?.strikethrough,
-    underline: !!style?.underline,
-    color: style?.color || DEFAULT_COLOR,
-    fontSize,
-    link: sanitizeHttpUrl(style?.link || '')
-  };
+  return sanitizePayloadStylePure(style, minSize, maxSize);
 }
 
 function payloadStyleToQuillAttrs(style, minSize, maxSize) {
@@ -278,15 +280,7 @@ function payloadStyleToQuillAttrs(style, minSize, maxSize) {
 }
 
 function quillSizeToPx(value, fallback) {
-  if (typeof value === 'number' && Number.isFinite(value)) return Math.round(value);
-  const src = String(value || '').trim().toLowerCase();
-  if (!src) return fallback;
-  if (src.endsWith('px')) {
-    const px = Number(src.slice(0, -2));
-    return Number.isFinite(px) ? Math.round(px) : fallback;
-  }
-  const mapped = Number(src);
-  return Number.isFinite(mapped) ? Math.round(mapped) : fallback;
+  return quillSizeToPxPure(value, fallback);
 }
 
 function quillAttrsToPayloadStyle(attrs, minSize, maxSize) {
@@ -339,78 +333,11 @@ function clampIndent(value) {
 }
 
 function sanitizeDeltaAttributes(attrs, minSize, maxSize) {
-  const source = attrs && typeof attrs === 'object' ? attrs : {};
-  const next = {};
-
-  if (source.bold) next.bold = true;
-  if (source.italic) next.italic = true;
-  if (source.strike) next.strike = true;
-  if (source.underline) next.underline = true;
-  if (source.blockquote) next.blockquote = true;
-  if (source['code-block']) next['code-block'] = true;
-
-  const header = Number(source.header);
-  if (header === 1 || header === 2) next.header = header;
-
-  const list = String(source.list || '').trim().toLowerCase();
-  if (ALLOWED_LIST_VALUES.has(list)) next.list = list;
-
-  const align = String(source.align == null ? '' : source.align).trim().toLowerCase();
-  if (ALLOWED_ALIGN_VALUES.has(align)) {
-    if (align) next.align = align;
-  }
-
-  if (source.indent != null) {
-    const indent = clampIndent(source.indent);
-    if (indent > 0) next.indent = indent;
-  }
-
-  const color = String(source.color || '').trim();
-  if (color) next.color = color;
-
-  const size = quillSizeToPx(source.size, DEFAULT_FONT_SIZE);
-  next.size = `${Math.max(minSize, Math.min(maxSize, size))}px`;
-
-  const link = sanitizeHttpUrl(source.link || '');
-  if (link) next.link = link;
-
-  return next;
+  return sanitizeDeltaAttributesPure(attrs, minSize, maxSize);
 }
 
 function sanitizeDelta(delta, minSize, maxSize) {
-  const sourceOps = Array.isArray(delta?.ops) ? delta.ops : [];
-  const ops = [];
-
-  sourceOps.forEach((op) => {
-    if (!op || typeof op !== 'object') return;
-    if (typeof op.insert === 'string') {
-      const text = op.insert;
-      if (!text) return;
-
-      ops.push({
-        insert: text,
-        attributes: sanitizeDeltaAttributes(op.attributes, minSize, maxSize)
-      });
-      return;
-    }
-
-    const mention = sanitizeMentionValue(op.insert?.['mention-chip']);
-    if (mention) {
-      ops.push({
-        insert: {
-          'mention-chip': mention
-        }
-      });
-    }
-  });
-
-  const lastInsert = ops.length ? ops[ops.length - 1].insert : '';
-  const hasTrailingNewLine = typeof lastInsert === 'string' && lastInsert.endsWith('\n');
-  if (!ops.length || !hasTrailingNewLine) {
-    ops.push({ insert: '\n', attributes: sanitizeDeltaAttributes({}, minSize, maxSize) });
-  }
-
-  return { ops };
+  return sanitizeDeltaPure(delta, minSize, maxSize);
 }
 
 function deltaLikeToQuillDelta(deltaLike, minSize, maxSize) {
@@ -421,87 +348,11 @@ function deltaLikeToQuillDelta(deltaLike, minSize, maxSize) {
 }
 
 function payloadToQuillDelta(payload, minSize, maxSize) {
-  const text = String(payload?.text || '');
-  const runs = normalizePayloadRuns(text, payload?.runs);
-  const ops = [];
-  const defaultAttrs = payloadStyleToQuillAttrs({}, minSize, maxSize);
-
-  let cursor = 0;
-  runs.forEach((run) => {
-    const start = Math.max(0, Math.min(text.length, run.start));
-    const end = Math.max(0, Math.min(text.length, run.end));
-    if (end <= start) return;
-
-    if (start > cursor) {
-      ops.push({ insert: text.slice(cursor, start), attributes: { ...defaultAttrs } });
-      cursor = start;
-    }
-
-    ops.push({
-      insert: text.slice(start, end),
-      attributes: payloadStyleToQuillAttrs(run.style, minSize, maxSize)
-    });
-    cursor = end;
-  });
-
-  if (cursor < text.length) {
-    ops.push({ insert: text.slice(cursor), attributes: { ...defaultAttrs } });
-  }
-
-  if (!ops.length) {
-    ops.push({ insert: '' });
-  }
-  ops.push({ insert: '\n' });
-  return sanitizeDelta({ ops }, minSize, maxSize);
+  return payloadToQuillDeltaPure(payload, minSize, maxSize);
 }
 
 function deltaToPayload(delta, minSize, maxSize) {
-  const ops = Array.isArray(delta?.ops) ? delta.ops : [];
-  let text = '';
-  let cursor = 0;
-  const runs = [];
-
-  ops.forEach((op) => {
-    if (!op || typeof op !== 'object') return;
-
-    let segment = '';
-    if (typeof op.insert === 'string') {
-      segment = op.insert;
-    } else {
-      const mention = sanitizeMentionValue(op.insert?.['mention-chip']);
-      if (mention) {
-        segment = `@${mention.nickname}`;
-      }
-    }
-    if (!segment) return;
-
-    const style = quillAttrsToPayloadStyle(op.attributes || {}, minSize, maxSize);
-    const start = cursor;
-    const end = cursor + segment.length;
-    text += segment;
-    cursor = end;
-
-    const last = runs[runs.length - 1];
-    if (last && styleKey(last.style) === styleKey(style)) {
-      last.end = end;
-      return;
-    }
-
-    runs.push({ start, end, style });
-  });
-
-  if (text.endsWith('\n')) {
-    text = text.slice(0, -1);
-    const nextRuns = runs
-      .map((run) => ({
-        ...run,
-        end: Math.min(run.end, text.length)
-      }))
-      .filter((run) => run.end > run.start);
-    return { text, runs: nextRuns };
-  }
-
-  return { text, runs };
+  return deltaToPayloadPure(delta, minSize, maxSize);
 }
 
 function ensureDeltaRenderQuill() {
@@ -511,6 +362,7 @@ function ensureDeltaRenderQuill() {
   }
 
   const host = document.createElement('div');
+  // 화면에는 보이지 않는 오프스크린 Quill 인스턴스를 만들어 Delta -> HTML 렌더에 재사용한다.
   host.setAttribute('aria-hidden', 'true');
   host.style.position = 'fixed';
   host.style.left = '-99999px';
@@ -558,6 +410,7 @@ export function createRichEditor(options) {
   const step = Number(options.step) || DEFAULT_STEP;
 
   if (!editorEl) {
+    // DOM이 없는 경우에도 호출부가 깨지지 않도록 no-op API를 반환한다.
     return {
       exec: () => {},
       setColor: () => {},
@@ -661,6 +514,7 @@ export function createRichEditor(options) {
 
     const cmd = String(command || '').toLowerCase();
     const formats = quill.getFormat(range);
+    // 툴바 command 문자열을 Quill format 호출로 매핑한다.
     if (cmd === 'bold') {
       quill.format('bold', !formats.bold, 'user');
     } else if (cmd === 'italic') {
@@ -693,6 +547,7 @@ export function createRichEditor(options) {
       const nextIndent = clampIndent(nowIndent + (dir > 0 ? 1 : -1));
       quill.format('indent', nextIndent > 0 ? nextIndent : false, 'user');
     } else if (cmd === 'clean') {
+      // 선택 영역이 없으면 현재 커서 포맷 기본값으로 리셋한다.
       const len = Math.max(0, Number(range.length) || 0);
       if (len > 0) {
         quill.removeFormat(range.index, len, 'user');
@@ -902,6 +757,7 @@ export function createRichEditor(options) {
     }
 
     if (armedMentionDeleteIndex === mentionEntry.index) {
+      // 연속 Backspace 두 번째 입력에서 멘션 칩을 실제 삭제한다.
       quill.deleteText(mentionEntry.index, 1, 'user');
       clearMentionDeleteArmedState();
       return false;
@@ -921,6 +777,7 @@ export function createRichEditor(options) {
       lastKnownRange = normalizeRange(range);
     }
     if (armedMentionDeleteIndex >= 0) {
+      // 커서가 멘션 칩 경계에서 벗어나면 삭제 무장 상태를 자동 해제한다.
       const cursorIndex = Number(range?.index);
       const rangeLength = Number(range?.length);
       if (!Number.isFinite(cursorIndex) || cursorIndex !== armedMentionDeleteIndex + 1 || Number.isFinite(rangeLength) && rangeLength > 0) {

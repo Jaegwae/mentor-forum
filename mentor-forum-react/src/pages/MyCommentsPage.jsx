@@ -1,4 +1,8 @@
-// User page that lists authored comments.
+/**
+ * "내가 쓴 댓글" 페이지.
+ * - collectionGroup(comments) 조회 후 원본 post 정보를 hydrate해 목록을 구성한다.
+ * - 일반 카드 UI/Excel 모드를 동일 데이터 흐름으로 유지한다.
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -135,6 +139,7 @@ function AuthorWithRole({ name, role, roleDefMap }) {
 }
 
 async function loadRoleDefinitions() {
+  // 역할 정의 누락 시에도 표시가 깨지지 않도록 fallback 정의를 함께 사용한다.
   const snap = await getDocs(collection(db, 'role_definitions'));
   const definitions = snap.docs.map((d) => ({ role: d.id, ...d.data() }));
   const mergedByRole = new Map();
@@ -201,6 +206,7 @@ export default function MyCommentsPage() {
     const postMap = new Map();
     const fetchTasks = [];
 
+    // Firestore in 쿼리 제한(최대 10개)에 맞춰 postId를 청크로 조회한다.
     for (let idx = 0; idx < postIds.length; idx += POST_IN_QUERY_CHUNK) {
       const chunk = postIds.slice(idx, idx + POST_IN_QUERY_CHUNK);
       if (!chunk.length) continue;
@@ -331,6 +337,7 @@ export default function MyCommentsPage() {
       }
 
       try {
+        // 초기 진입 시 role/profile/boardMap과 댓글 목록을 순서대로 준비한다.
         const [loadedRoleDefinitions, profileSnap] = await Promise.all([
           loadRoleDefinitions(),
           getDoc(doc(db, 'users', user.uid))
@@ -475,6 +482,7 @@ export default function MyCommentsPage() {
   }, [comments]);
 
   const excelSheetModel = useMemo(() => {
+    // Excel 시트 모델은 comment list를 화면 전용 셀 데이터로 변환한 결과다.
     return buildMyCommentsExcelSheetModel({
       userDisplayName,
       userRoleLabel,

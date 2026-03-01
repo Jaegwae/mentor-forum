@@ -1,4 +1,8 @@
-// Toolbar UI for rich-editor formatting actions.
+/**
+ * 리치 에디터 툴바 프리젠테이션/상호작용 레이어.
+ * - 버튼 클릭을 editorRef API(exec/setColor/setFontSize...)로 위임한다.
+ * - 색상 팝오버와 폰트 크기 직접 입력 UX 상태를 로컬 state로 관리한다.
+ */
 import React from 'react';
 import { HexColorInput, HexColorPicker } from 'react-colorful';
 import {
@@ -50,6 +54,7 @@ function ToolButton({ label, onClick, children, id }) {
       className="editor-tool-btn"
       title={label}
       aria-label={label}
+      // 버튼 클릭이 에디터 selection을 잃지 않도록 mousedown 기본동작을 막는다.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
@@ -69,6 +74,7 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
   const fontSizeInputRef = React.useRef(null);
 
   const readCurrentFontSize = React.useCallback(() => {
+    // Quill API 우선, fallback으로 label 텍스트를 파싱한다.
     const apiSize = Number(editorRef.current?.getSelectionFontSize?.());
     if (Number.isFinite(apiSize) && apiSize > 0) return Math.round(apiSize);
     const labelText = String(fontSizeLabelRef.current?.textContent || '').trim();
@@ -131,6 +137,7 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
     }
 
     const onPointerDown = (event) => {
+      // 바깥 클릭 시 팝오버를 닫아 키보드/마우스 UX를 일관화한다.
       if (!colorPopoverRef.current) return;
       if (colorPopoverRef.current.contains(event.target)) return;
       setColorPaletteOpen(false);
@@ -151,6 +158,7 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
 
   React.useEffect(() => {
     if (!fontSizeEditing) return;
+    // 입력 모드 진입 직후 자동 focus/select로 숫자 재입력을 빠르게 한다.
     const id = window.requestAnimationFrame(() => {
       fontSizeInputRef.current?.focus();
       fontSizeInputRef.current?.select();

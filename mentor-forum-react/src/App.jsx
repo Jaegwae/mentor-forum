@@ -1,4 +1,8 @@
-// Application router with lazy-loaded page routes.
+/**
+ * 애플리케이션 라우트 엔트리.
+ * - 모든 페이지를 lazy import로 로드해 초기 번들 크기를 줄인다.
+ * - 과거 정적 HTML 경로(`*.html`) 요청도 동일한 SPA 경로로 정규화한다.
+ */
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
@@ -14,6 +18,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'));
 export default function App() {
   return (
     <BrowserRouter>
+      {/* 라우트 청크 로딩 중 공통 폴백 화면 */}
       <Suspense fallback={(
         <main className="page flex min-h-[calc(100vh-2rem)] items-center justify-center">
           <section className="card w-full max-w-xl text-center">
@@ -35,6 +40,7 @@ export default function App() {
           <Route path="/me/posts" element={<MyPostsPage />} />
           <Route path="/me/comments" element={<MyCommentsPage />} />
 
+          {/* Legacy 정적 경로 호환: 기존 북마크/외부 링크 유지 */}
           <Route path="/login.html" element={<Navigate to="/login" replace />} />
           <Route path="/signup.html" element={<Navigate to="/signup" replace />} />
           <Route path="/app.html" element={<Navigate to="/app" replace />} />

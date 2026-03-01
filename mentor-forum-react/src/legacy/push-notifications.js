@@ -1,4 +1,8 @@
-// Web push helpers: capability checks and FCM token registration.
+/**
+ * 웹 푸시 유틸리티.
+ * - 브라우저/OS/보안 컨텍스트 지원 여부를 점검한다.
+ * - FCM 토큰 발급과 서비스워커 등록을 표준화해 호출부 중복을 줄인다.
+ */
 import { app } from './firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from './config.js';
 
@@ -48,6 +52,7 @@ function vapidKeyFromConfig() {
 }
 
 export async function getWebPushCapability() {
+  // 런타임 환경/보안 요건부터 순차 검증해 사용자에게 실패 원인을 명시한다.
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return { supported: false, reasonCode: 'no-window', reason: '브라우저 환경에서만 사용할 수 있습니다.' };
   }
@@ -129,6 +134,7 @@ export async function requestWebPushToken(options = {}) {
 
   let token = '';
   try {
+    // VAPID 키가 있으면 우선 사용하고, 실패 시 키 없이 재시도한다.
     token = normalizeText(await getToken(messaging, tokenOptions));
   } catch (errWithVapid) {
     if (!vapidKey) {

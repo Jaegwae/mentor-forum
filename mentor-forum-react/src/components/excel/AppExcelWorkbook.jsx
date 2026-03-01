@@ -1,3 +1,6 @@
+/**
+ * App 화면 엑셀 워크북 렌더/인터랙션 레이어.
+ */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import jspreadsheet from 'jspreadsheet-ce';
 import 'jspreadsheet-ce/dist/jspreadsheet.css';
@@ -10,6 +13,11 @@ import {
 } from './AppExcelCellRenderers.jsx';
 import { toExcelColumnLabel } from './app-excel-sheet-model.js';
 
+/**
+ * App 화면의 "엑셀 스타일 인터랙션 레이어".
+ * - 실제 데이터는 외부에서 row/col 모델로 주입받고, 본 컴포넌트는 렌더/선택/액션만 담당한다.
+ * - 셀별 actionType/actionPayload 규약을 해석해 기존 AppPage 이벤트 핸들러로 연결한다.
+ */
 function canRun(cell, trigger) {
   if (!cell || !cell.actionType || cell.disabled) return false;
   const expected = String(cell.trigger || 'single');
@@ -41,6 +49,8 @@ function parseCoordFromCellElement(target) {
 
 function applyWorksheetPresentation(root, cellMetaMap) {
   if (!root) return;
+  // jspreadsheet 기본 셀 DOM에 커스텀 class/style/content를 매번 주입해
+  // 앱 전용 시각 규칙(merge, action 상태, surface 색상)을 반영한다.
   const cells = root.querySelectorAll('td[data-x][data-y]');
   cells.forEach((td) => {
     const x = Number(td.getAttribute('data-x'));
@@ -104,6 +114,7 @@ export function AppExcelWorkbook({
   const onSelectCellRef = useRef(null);
 
   const workbookModel = useMemo(() => {
+    // sheetRows -> jspreadsheet 입력 데이터 + merge 메타 구조로 1회 변환한다.
     const data = [];
     const mergeCells = {};
     const cellMetaMap = new Map();
@@ -122,12 +133,14 @@ export function AppExcelWorkbook({
         row.push(cell.mergeChild ? '' : cell.text);
 
         if (!cell.mergeChild && cell.mergeAcross > 0) {
+          // 머지 anchor 셀은 jspreadsheet mergeCells 스펙으로 등록한다.
           const cellName = toCellName(colIndex, rowIndex);
           const spanWidth = Math.max(1, Math.min(cell.mergeAcross + 1, colCount - colIndex));
           mergeCells[cellName] = [spanWidth, 1];
           rowMergeAnchorCol = colIndex;
           rowMergeRemaining = cell.mergeAcross;
         } else if (cell.mergeChild && rowMergeRemaining > 0 && rowMergeAnchorCol >= 0) {
+          // 머지 child 셀 좌표는 anchor 좌표로 역참조할 수 있게 별도 인덱스를 만든다.
           mergeAnchorMap.set(key, toCoordKey(rowMergeAnchorCol, rowIndex));
           rowMergeRemaining -= 1;
         } else {
@@ -142,6 +155,7 @@ export function AppExcelWorkbook({
   }, [sheetRows, rowCount, colCount]);
 
   const dispatchAction = useCallback((cellValue) => {
+    // 시트 모델에서 정의한 actionType 문자열을 페이지 콜백으로 라우팅한다.
     const cell = normalizeAppExcelCell(cellValue);
     const payload = cell.actionPayload || {};
 
@@ -218,6 +232,7 @@ export function AppExcelWorkbook({
     if (!root) return;
 
     const updateCellWidth = () => {
+      // 열 개수에 맞춰 셀 폭을 재계산하여 작은 뷰포트에서도 최소 가독성을 유지한다.
       const availableWidth = Math.max(0, root.clientWidth || 0);
       const nextWidth = Math.max(84, Math.ceil(availableWidth / Math.max(1, colCount)));
       setCellWidth((prev) => (prev === nextWidth ? prev : nextWidth));
@@ -261,6 +276,7 @@ export function AppExcelWorkbook({
       if (!coord) return null;
       const key = toCoordKey(coord.x, coord.y);
       const anchorKey = workbookModel.mergeAnchorMap.get(key);
+      // 머지 child를 클릭/선택한 경우 실제 액션 대상은 anchor 셀로 통일한다.
       if (!anchorKey) return coord;
       const [ax, ay] = anchorKey.split(':').map((value) => Number(value));
       if (!Number.isFinite(ax) || !Number.isFinite(ay)) return coord;
@@ -319,6 +335,7 @@ export function AppExcelWorkbook({
 
         const pending = pendingPointerCellRef.current;
         if (pending && pending.x === resolvedCoord.x && pending.y === resolvedCoord.y) {
+          // pointer down -> selection으로 이어진 정상 클릭에 대해서만 single 액션을 실행한다.
           if (canRun(cell, 'single')) {
             dispatchActionRef.current(cell);
           }
@@ -380,6 +397,7 @@ export function AppExcelWorkbook({
       if (event?.isTrusted === false) return;
       const found = pickCellFromEvent(event.target);
       if (!found) return;
+      // double 트리거는 브라우저 기본 더블클릭 이벤트를 기준으로 처리한다.
       if (canRun(found.cell, 'double')) dispatchActionRef.current(found.cell);
     };
 
@@ -390,6 +408,7 @@ export function AppExcelWorkbook({
       const cell = workbookModel.cellMetaMap.get(toCoordKey(x, y));
       if (!cell) return;
       if (canRun(cell, 'enter')) {
+        // Enter 액션은 셀 편집 모드가 아니라 "선택된 액션 실행" 의미로 고정한다.
         event.preventDefault();
         dispatchActionRef.current(cell);
       }

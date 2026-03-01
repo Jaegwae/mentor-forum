@@ -1,4 +1,8 @@
-// Reusable dialog/modal primitives.
+/**
+ * Radix Dialog 기반 모달 primitive.
+ * - 오버레이/포털/키보드 포커스 트랩은 Radix 동작을 그대로 사용한다.
+ * - 디자인 시스템 class만 얹어서 페이지별 모달 스타일을 통일한다.
+ */
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
@@ -22,6 +26,7 @@ const DialogOverlay = React.forwardRef(function DialogOverlay({ className, ...pr
 const DialogContent = React.forwardRef(function DialogContent({ className, children, ...props }, ref) {
   return (
     <DialogPortal>
+      {/* 오버레이와 콘텐츠를 동일 포털 레이어(z-index)로 고정 */}
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}

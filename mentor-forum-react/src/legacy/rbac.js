@@ -1,4 +1,8 @@
-// Role metadata, permission resolution, and role badge helpers.
+/**
+ * RBAC(Role-Based Access Control) 헬퍼.
+ * - 코어 역할 메타(level/권한), 배지 색상, 권한 병합 로직을 제공한다.
+ * - 페이지 계층은 이 모듈 결과만 사용해 UI 노출/행동 허용 여부를 결정한다.
+ */
 import { MENTOR_FORUM_CONFIG } from './config.js';
 
 export const CORE_ROLES = ['Newbie', 'Mentor', 'Staff', 'Admin', 'Super_Admin'];
@@ -117,7 +121,7 @@ export function buildPermissions(role, userDoc, roleDefinition) {
     canAccessAdminSite: def.canAccessAdminSite !== undefined ? !!def.canAccessAdminSite : !!base.canAccessAdminSite
   };
 
-  // Core authorities are fixed by policy.
+  // Core 권한은 정책상 강제된다(역할 정의 문서가 낮게 들어와도 축소 불가).
   if (role === 'Admin' || role === 'Super_Admin') {
     merged.canModerate = true;
     merged.canManageBoards = true;
@@ -143,6 +147,7 @@ export function canWriteVisibility(permissions, visibility) {
 }
 
 export function sortRolesByLevel(roleDocs) {
+  // level 내림차순 우선, 동일 level은 role 키 문자열로 안정 정렬한다.
   return [...roleDocs].sort((a, b) => {
     const la = Number(a.level) || 0;
     const lb = Number(b.level) || 0;

@@ -1,9 +1,15 @@
+/**
+ * App Excel 셀 메타 데이터를 화면 표현용 속성으로 정규화하는 유틸 모듈.
+ * - 시트 모델이 어떤 형태로 넘어오더라도 렌더링 가능한 안전한 셀 형태를 보장한다.
+ * - Workbook 컴포넌트는 이 모듈의 반환값만 신뢰하고 DOM class/style를 구성한다.
+ */
 function asText(value) {
   return String(value == null ? '' : value);
 }
 
 export function normalizeAppExcelCell(value) {
   if (!value || typeof value !== 'object') {
+    // 데이터 누락 시에도 워크북이 깨지지 않도록 기본 셀 스키마를 강제한다.
     return {
       kind: 'blank',
       text: '',
@@ -42,6 +48,7 @@ export function normalizeAppExcelCell(value) {
 }
 
 export function getAppExcelCellText(value) {
+  // Formula bar 노출용 텍스트는 formulaText를 우선하고, 없으면 display text를 사용한다.
   const cell = normalizeAppExcelCell(value);
   return asText(cell.formulaText || cell.text);
 }
@@ -64,6 +71,7 @@ export function getAppExcelCellClassName(value) {
 export function getAppExcelCellStyle(value) {
   const cell = normalizeAppExcelCell(value);
   return {
+    // 디자인 시스템에서 허용한 테두리 두께 범위(1~2px)로 클램프한다.
     borderTopWidth: `${Math.max(1, Math.min(2, cell.borderTop))}px`,
     borderRightWidth: `${Math.max(1, Math.min(2, cell.borderRight))}px`,
     borderBottomWidth: `${Math.max(1, Math.min(2, cell.borderBottom))}px`,

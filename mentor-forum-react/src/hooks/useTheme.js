@@ -1,4 +1,9 @@
-// Theme state hook with localStorage and cross-tab synchronization.
+/**
+ * 전역 테마 상태 훅.
+ * - localStorage 영속화
+ * - 탭 간 동기화(storage/custom event)
+ * - 모바일/인증 화면의 excel 모드 제한 규칙
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const THEME_STORAGE_KEY = 'mentor_forum_theme';
@@ -48,6 +53,7 @@ function applyTheme(theme) {
   root.dataset.theme = normalized;
 
   if (typeof window !== 'undefined') {
+    // 동일 탭/다른 탭 모두 수신 가능한 커스텀 이벤트로 즉시 동기화한다.
     window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, {
       detail: { theme: normalized }
     }));
@@ -64,6 +70,7 @@ function writeStoredTheme(theme) {
 }
 
 export function initTheme() {
+  // 앱 부팅 시 저장값을 읽고, 모바일에서 금지된 excel 값은 light로 강등한다.
   const initialTheme = readStoredTheme();
   const safe = isMobileLike() && initialTheme === THEME_EXCEL ? THEME_LIGHT : initialTheme;
   applyTheme(safe);
@@ -80,6 +87,7 @@ export function useTheme() {
   });
 
   useEffect(() => {
+    // 상태 변경은 DOM class + storage에 항상 반영한다.
     const next = normalizeTheme(theme);
     applyTheme(next);
     writeStoredTheme(next);
@@ -115,6 +123,7 @@ export function useTheme() {
     setTheme((prev) => {
       const current = normalizeTheme(prev);
       const authPage = typeof document !== 'undefined' && document.body.classList.contains('auth-page');
+      // 인증 페이지 또는 모바일에서는 2-state(light/dark)만 순환한다.
       const seq = (isMobileLike() || authPage) ? THEME_SEQUENCE_MOBILE : THEME_SEQUENCE;
       const index = seq.indexOf(current);
       const nextIndex = index >= 0 ? (index + 1) % seq.length : 0;

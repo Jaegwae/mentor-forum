@@ -1,4 +1,8 @@
-// User page that lists authored posts.
+/**
+ * "내가 쓴 글" 페이지.
+ * - 인증/세션 검증 후 작성 게시글 목록을 페이지네이션으로 조회한다.
+ * - 일반 카드 UI와 Excel 모드 UI를 동일 데이터 소스로 렌더링한다.
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -124,6 +128,7 @@ function AuthorWithRole({ name, role, roleDefMap }) {
 }
 
 async function loadRoleDefinitions() {
+  // role_definitions + fallback을 병합해 누락 role에도 배지/라벨을 보장한다.
   const snap = await getDocs(collection(db, 'role_definitions'));
   const definitions = snap.docs.map((d) => ({ role: d.id, ...d.data() }));
   const mergedByRole = new Map();
@@ -195,6 +200,7 @@ export default function MyPostsPage() {
     if (!append) setMessage({ type: '', text: '' });
 
     try {
+      // append 모드에서는 cursor 기반으로 다음 페이지만 추가 조회한다.
       const constraints = [
         where('authorUid', '==', uid),
         orderBy('createdAt', 'desc'),
@@ -269,6 +275,7 @@ export default function MyPostsPage() {
       }
 
       try {
+        // 권한/프로필/보드명을 먼저 준비한 뒤 목록을 로드한다.
         const [loadedRoleDefinitions, profileSnap] = await Promise.all([
           loadRoleDefinitions(),
           getDoc(doc(db, 'users', user.uid))
@@ -400,6 +407,7 @@ export default function MyPostsPage() {
   }, [posts]);
 
   const excelSheetModel = useMemo(() => {
+    // Excel 모드도 동일 posts 데이터를 sheet model로만 변환해 사용한다.
     return buildMyPostsExcelSheetModel({
       userDisplayName,
       userRoleLabel,

@@ -1,4 +1,7 @@
-// Fallback page shown for unknown routes.
+/**
+ * 404 라우트 페이지.
+ * - 미정의 경로에서 사용자에게 복귀 경로(/app, /login)를 안내한다.
+ */
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,6 +14,7 @@ export default function NotFoundPage() {
   usePageMeta('페이지를 찾을 수 없음', 'auth-page');
 
   return (
+    // 인증 페이지와 동일한 레이아웃 톤을 유지해 이탈감을 줄인다.
     <main className="page auth-page-wrap flex min-h-[calc(100vh-2rem)] items-center">
       <motion.div
         initial={{ opacity: 0, y: 12 }}

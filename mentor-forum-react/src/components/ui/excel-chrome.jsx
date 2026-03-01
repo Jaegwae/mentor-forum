@@ -1,3 +1,7 @@
+/**
+ * 엑셀 스타일 UI 크롬(리본/수식바/헤더/탭/상태바) 프리젠테이션 컴포넌트.
+ * - 실제 데이터 편집 기능은 없고, 화면 몰입감을 위한 시각 레이어만 담당한다.
+ */
 import React from 'react';
 
 const DEFAULT_TABS = ['홈', '삽입', '페이지 레이아웃', '수식', '데이터', '검토', '보기'];
@@ -15,11 +19,13 @@ function columnLabel(index) {
 }
 
 function buildColumnHeaders(colCount) {
+  // 열 헤더는 1-based 인덱스를 Excel 라벨(A, B, ... AA)로 변환한다.
   const total = Math.max(1, Math.floor(Number(colCount) || 20));
   return Array.from({ length: total }, (_, i) => columnLabel(i));
 }
 
 function buildRowHeaders(rowCount) {
+  // 행 헤더는 문자열 번호로 고정하여 스크린 리더 읽기를 안정화한다.
   const total = Math.max(1, Math.floor(Number(rowCount) || 40));
   return Array.from({ length: total }, (_, i) => String(i + 1));
 }
@@ -131,6 +137,7 @@ export function ExcelChrome({
   rowCount = 40,
   colCount = 20
 }) {
+  // Chrome은 장식 목적이므로 aria-hidden을 유지하고, 실제 상호작용은 워크북 영역에서 처리한다.
   return (
     <div className="excel-chrome" aria-hidden="true">
       <ExcelRibbon title={title} activeTab={activeTab} compact={compact} />

@@ -1,4 +1,8 @@
-// Reusable button component with style variants.
+/**
+ * 프로젝트 공통 버튼 primitive.
+ * - `variant`, `size`를 cva로 조합해 페이지별 중복 클래스를 줄인다.
+ * - `asChild`를 통해 Link 등 다른 element를 버튼 스타일로 래핑할 수 있다.
+ */
 import React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
@@ -29,6 +33,7 @@ const buttonVariants = cva(
 );
 
 const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
+  // asChild=true면 Radix Slot으로 교체해 DOM 중첩(button inside a)을 피한다.
   const Comp = asChild ? Slot : 'button';
   return (
     <Comp

@@ -1,4 +1,8 @@
-// Reusable select dropdown primitives.
+/**
+ * Radix Select 기반 드롭다운 primitive.
+ * - 트리거/콘텐츠/아이템을 프로젝트 톤에 맞춘 스타일로 통일한다.
+ * - 포털 렌더링으로 overflow 컨테이너 안에서도 메뉴가 잘리지 않게 한다.
+ */
 import React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
@@ -52,6 +56,7 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 
 const SelectContent = React.forwardRef(({ className, children, position = 'popper', ...props }, ref) => (
   <SelectPrimitive.Portal>
+    {/* 메뉴는 body 포털에 렌더링해 스크롤/overflow 영향에서 분리한다. */}
     <SelectPrimitive.Content
       ref={ref}
       className={cn(

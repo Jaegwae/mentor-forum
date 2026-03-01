@@ -1,3 +1,8 @@
+/**
+ * App 메인(/app) 화면을 "엑셀 셀 모델"로 변환하는 빌더.
+ * - UI 텍스트/액션/활성상태를 셀 메타 데이터로 치환한다.
+ * - 렌더러(AppExcelWorkbook)는 이 모델을 소비해 화면을 구성한다.
+ */
 export const APP_EXCEL_ROW_COUNT = 80;
 export const APP_EXCEL_COL_COUNT = 20;
 
@@ -74,6 +79,7 @@ function applyHorizontalMerge(rows, rowCount, colCount, rowIndex, colIndex, requ
     borderRight: 0
   });
 
+  // 머지 child 셀은 anchor의 상호작용 속성(action/trigger/disabled)을 그대로 상속한다.
   for (let offset = 1; offset <= maxSpan; offset += 1) {
     patchCell(rows, rowCount, colCount, rowIndex, colIndex + offset, {
       kind: 'merge-child',
@@ -202,6 +208,7 @@ export function buildAppExcelSheetModel(input = {}) {
   const emptyMessage = toText(input.emptyMessage) || '게시글이 없습니다.';
   const showComposerAction = input.showComposerAction !== false;
 
+  // 레이아웃 surface를 먼저 채운 뒤, 섹션별 텍스트/액션 셀을 덮어쓴다.
   applySurfaceRange(rows, rowCount, colCount, 0, 0, 6, 19, 'hero');
   applySurfaceRange(rows, rowCount, colCount, 8, 0, 18, 5, 'panel');
   applySurfaceRange(rows, rowCount, colCount, 19, 0, 32, 5, 'panel');
@@ -246,6 +253,8 @@ export function buildAppExcelSheetModel(input = {}) {
     { label: hasUnreadNotifications ? '알림 센터 N' : '알림 센터', actionType: 'openNotifications' },
     { label: isMobilePushEnabled ? '모바일 알림 켜짐' : '모바일 알림 꺼짐', actionType: 'openMobilePush' }
   ].filter(Boolean);
+
+  // 좌측 패널 액션은 순서 기반 row 매핑을 고정해서 UI 위치를 안정적으로 유지한다.
   profileActions.forEach((item, idx) => {
     const rowIndex = 14 + idx;
     setActionCell(rows, rowCount, colCount, rowIndex, 0, item.label, item.actionType, null, {
@@ -314,6 +323,7 @@ export function buildAppExcelSheetModel(input = {}) {
       mergeAcross: 10
     });
   } else {
+    // 게시글 목록은 최대 16행만 렌더링하고 페이지네이션으로 넘긴다.
     posts.slice(0, 16).forEach((post, idx) => {
       const rowIndex = 14 + idx;
       setStaticCell(rows, rowCount, colCount, rowIndex, 6, post.no, {
@@ -371,6 +381,7 @@ export function buildAppExcelSheetModel(input = {}) {
     surface: 'panel'
   });
   if (showComposerAction) {
+    // 글쓰기 액션은 double-enter 트리거를 사용해 오동작 클릭을 줄인다.
     setActionCell(rows, rowCount, colCount, 32, 18, '글쓰기', 'openComposer', null, {
       kind: 'primary',
       surface: 'panel',

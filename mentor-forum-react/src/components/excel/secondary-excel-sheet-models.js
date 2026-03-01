@@ -1,3 +1,8 @@
+/**
+ * /my-posts, /my-comments, /post, /admin 용 엑셀 시트 모델 빌더 모음.
+ * - 공통 셀 DSL(setStaticCell/setActionCell/merge 유틸)을 공유한다.
+ * - 각 export 함수는 입력 상태를 "정적 셀 배열(rowData)"로 변환하는 순수 함수다.
+ */
 export const EXCEL_STANDARD_ROW_COUNT = 120;
 export const EXCEL_STANDARD_COL_COUNT = 20;
 
@@ -75,6 +80,7 @@ function applyHorizontalMerge(rows, rowCount, colCount, rowIndex, colIndex, requ
     borderRight: 0
   });
 
+  // 머지 child 셀은 anchor 셀의 상태/행동 계약을 상속해 일관된 인터랙션을 유지한다.
   for (let offset = 1; offset <= maxSpan; offset += 1) {
     patchCell(rows, rowCount, colCount, rowIndex, colIndex + offset, {
       kind: 'merge-child',
@@ -147,6 +153,7 @@ function applyOutlineRange(rows, rowCount, colCount, startRow, startCol, endRow,
 function createBaseRows(rowCount, colCount) {
   const rows = createRows(rowCount, colCount);
 
+  // 보조 화면 공통 골격: hero + profile panel + main table 영역.
   applySurfaceRange(rows, rowCount, colCount, 0, 0, 6, 19, 'hero');
   applySurfaceRange(rows, rowCount, colCount, 8, 0, 34, 5, 'panel');
   applySurfaceRange(rows, rowCount, colCount, 8, 6, 34, 19, 'panel');
@@ -265,6 +272,7 @@ function buildPagination(rows, rowCount, colCount, baseRow, input = {}) {
 }
 
 export function buildMyPostsExcelSheetModel(input = {}) {
+  // 내가 쓴 글 목록 화면용 시트 모델.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createBaseRows(rowCount, colCount);
@@ -319,6 +327,7 @@ export function buildMyPostsExcelSheetModel(input = {}) {
       mergeAcross: 9
     });
   } else {
+    // 목록 길이가 길어도 화면 고정을 위해 최대 16개 행만 출력한다.
     posts.slice(0, 16).forEach((post, idx) => {
       const rowIndex = 14 + idx;
       setStaticCell(rows, rowCount, colCount, rowIndex, 6, String(post.no || totalCount - idx), {
@@ -356,6 +365,7 @@ export function buildMyPostsExcelSheetModel(input = {}) {
 }
 
 export function buildMyCommentsExcelSheetModel(input = {}) {
+  // 내가 쓴 댓글 목록 화면용 시트 모델.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createBaseRows(rowCount, colCount);
@@ -409,6 +419,7 @@ export function buildMyCommentsExcelSheetModel(input = {}) {
       mergeAcross: 10
     });
   } else {
+    // 댓글/원글 정보를 한 줄에 함께 배치해 post 이동 액션을 유지한다.
     comments.slice(0, 16).forEach((comment, idx) => {
       const rowIndex = 14 + idx;
       setStaticCell(rows, rowCount, colCount, rowIndex, 6, String(comment.no || comments.length - idx), {
@@ -448,6 +459,7 @@ export function buildMyCommentsExcelSheetModel(input = {}) {
 }
 
 export function buildPostDetailExcelSheetModel(input = {}) {
+  // 게시글 상세 화면용 시트 모델(본문/댓글/cover-for 상태 포함).
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createRows(rowCount, colCount);
@@ -580,6 +592,7 @@ export function buildPostDetailExcelSheetModel(input = {}) {
       mergeAcross: 10
     });
   } else {
+    // 상세 화면 댓글 표는 액션(답글/삭제)까지 포함하므로 최대 8행으로 제한한다.
     comments.slice(0, 8).forEach((comment, idx) => {
       const rowIndex = commentHeaderRow + 1 + idx;
       setStaticCell(rows, rowCount, colCount, rowIndex, 6, String(idx + 1), {
@@ -694,6 +707,7 @@ export function buildPostDetailExcelSheetModel(input = {}) {
       });
 
       if (input.canChangeCoverStatus) {
+        // 상태 전환 규칙: completed/cancelled는 조건부로 seeking 복구 가능.
         if (dateStatus === 'completed') {
           if (input.canResetCoverToSeeking) {
             setActionCell(rows, rowCount, colCount, rowIndex, 17, '구하는 중', 'updateCoverStatus', {
@@ -738,6 +752,7 @@ export function buildPostDetailExcelSheetModel(input = {}) {
 }
 
 export function buildAdminExcelSheetModel(input = {}) {
+  // 관리자 화면용 시트 모델(게시판/체험관/Role/회원 등급 관리 섹션).
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createRows(rowCount, colCount);

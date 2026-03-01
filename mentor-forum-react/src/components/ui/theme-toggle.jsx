@@ -1,4 +1,8 @@
-// Theme toggle control used across pages.
+/**
+ * 전역 테마 전환 버튼.
+ * - 데스크톱: light -> dark -> excel 순환
+ * - 모바일/인증 화면: light <-> dark만 순환 (가독성/성능 보호)
+ */
 import React from 'react';
 import { MoonStar, SunMedium, FileSpreadsheet } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
@@ -27,6 +31,7 @@ export function ThemeToggle({ className = '' }) {
   const currentTheme = THEME_LABEL[theme] ? theme : THEME_LIGHT;
   const mobile = isMobileLike();
   const authPage = typeof document !== 'undefined' && document.body.classList.contains('auth-page');
+  // 로그인/회원가입 페이지와 모바일에서는 excel 모드를 비활성화한다.
   const restrictToLightDark = mobile || authPage;
   const nextTheme = (restrictToLightDark ? NEXT_THEME_MOBILE : NEXT_THEME_DESKTOP)[currentTheme] || THEME_LIGHT;
   const currentLabel = THEME_LABEL[currentTheme] || '라이트';
