@@ -1394,76 +1394,43 @@ export function AppPageView({ vm }) {
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-balance text-lg font-semibold">멘토스 사용 설명서</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
-              처음 방문한 분도 바로 사용할 수 있도록, 실제 사용 순서와 실제 버튼 모양 기준으로 정리했습니다.
+              처음 사용자 기준으로 필요한 기능만 단계별로 정리했습니다. 순서대로 따라하면 3분 안에 기본 사용을 끝낼 수 있습니다.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-1 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">0. 시작 전에</p>
+              <p className="text-sm font-bold text-foreground">0. 3분 빠른 시작</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                처음 사용할 때는 아래 순서대로 따라하면 됩니다.
-                {' '}
-                <strong>게시판 선택 → 글 읽기 → 필요하면 글/댓글 작성 → 알림 확인</strong>
-                {' '}
-                순서입니다.
+                멘토스는 아래 순서로 쓰면 가장 빠릅니다.
+                {' '}<strong>게시판 선택 → 글 읽기 → 작성/댓글 → 알림 설정</strong>.
               </p>
               <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                 <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">전체 게시글</span>
-                  :
-                  {' '}
-                  여러 게시판 글을 모아보는 화면입니다.
+                  <span className="font-bold text-foreground">1) 게시판 선택</span>
+                  : 왼쪽 목록에서 게시판을 먼저 고릅니다.
                 </p>
                 <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">글쓰기</span>
-                  :
-                  {' '}
-                  원하는 게시판을 먼저 선택해야 사용할 수 있습니다.
+                  <span className="font-bold text-foreground">2) 글 읽기</span>
+                  : 제목을 누르면 상세 화면으로 이동합니다.
+                </p>
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">3) 작성/댓글</span>
+                  : 필요한 경우만 글쓰기/댓글 작성을 진행합니다.
+                </p>
+                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                  <span className="font-bold text-foreground">4) 알림 설정</span>
+                  : 알림 센터/모바일 알림을 켜 두면 놓치지 않습니다.
                 </p>
               </div>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">0-1. 테마 바꾸기 (라이트/다크/엑셀)</p>
+              <p className="text-sm font-bold text-foreground">1. 화면 기본 사용법</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
                 <li>
-                  우측 상단
-                  {' '}
-                  <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
-                    라이트/다크/엑셀
-                  </button>
-                  {' '}
-                  버튼(현재 테마 표시 + 테마 토글)을 눌러 화면 테마를 변경할 수 있습니다.
+                  왼쪽 게시판 목록에서 이동하고, 제목을 누르면 글 상세로 들어갑니다.
                 </li>
-                <li>
-                  테마는
-                  {' '}
-                  <strong>라이트 → 다크 → 엑셀 → 라이트</strong>
-                  {' '}
-                  순서로 순환됩니다.
-                </li>
-                <li>선택한 테마는 저장되며, 새로고침하거나 다른 탭을 열어도 동일하게 유지/동기화됩니다.</li>
-              </ol>
-            </section>
-
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">1. 게시판 선택하고 글 읽기</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  왼쪽
-                  {' '}
-                  <button
-                    type="button"
-                    className="board-rail-item active guide-static-btn"
-                    style={{ width: 'auto', padding: '0.25rem 0.6rem', borderRadius: '10px' }}
-                  >
-                    게시판
-                  </button>
-                  {' '}
-                  목록에서 원하는 게시판을 선택합니다.
-                </li>
-                <li>목록에서 제목을 누르면 게시글 상세 화면으로 이동합니다.</li>
                 <li>
                   상세 화면에서는
                   {' '}
@@ -1471,183 +1438,101 @@ export function AppPageView({ vm }) {
                     목록으로
                   </button>
                   {' '}
-                  버튼으로 다시 목록으로 돌아옵니다.
+                  버튼으로 돌아옵니다.
+                </li>
+                <li>
+                  <strong>전체 게시글</strong>은 여러 게시판을 모아보는 화면입니다.
+                </li>
+                <li>
+                  목록 상단에서 <strong>최신/인기</strong> 탭으로 정렬 방식을 바꿀 수 있습니다.
                 </li>
               </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">2. 글 작성하기</p>
+              <p className="text-sm font-bold text-foreground">2. 글쓰기/댓글/멘션</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>먼저 글을 올릴 게시판을 선택합니다.</li>
                 <li>
-                  화면에서
+                  글 작성은 먼저 게시판을 선택한 뒤
                   {' '}
                   <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
                     <PencilLine size={14} />
                     글쓰기
                   </button>
-                  {' '}
-                  버튼을 눌러 작성창을 엽니다.
+                  버튼으로 시작합니다.
+                </li>
+                <li><strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.</li>
+                <li>
+                  대체근무 게시판은 날짜/시간/체험관을 입력해야 등록됩니다.
                 </li>
                 <li>
-                  제목과 본문을 입력하고,
-                  {' '}
-                  <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
-                    글 등록
-                  </button>
-                  {' '}
-                  을 누르면 완료됩니다.
-                </li>
-                <li>대체근무 게시판은 날짜/시간/체험관까지 입력해야 등록됩니다.</li>
-              </ol>
-              <div className="error" style={{ marginTop: '10px' }}>
-                중요: 게시글 작성은 각 게시판 화면에서만 가능합니다. <strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                작성을 취소할 때는
-                {' '}
-                <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
-                  취소
-                </button>
-                {' '}
-                버튼을 누르면 됩니다.
-              </p>
-            </section>
-
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">3. 댓글 쓰기와 멘션</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>게시글 상세 하단에서 댓글을 작성하고 등록합니다.</li>
-                <li>
-                  댓글/글 본문에서
+                  댓글은 게시글 상세 하단에서 작성할 수 있고,
                   {' '}
                   <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@닉네임</span>
                   {' '}
-                  을 입력하면 해당 사용자에게 멘션 알림이 전달됩니다.
+                  멘션을 보내면 해당 사용자에게 알림이 전달됩니다.
+                </li>
+                <li><span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@all</span>은 관리자 전용 기능입니다.</li>
+              </ol>
+            </section>
+
+            <section className="rounded-lg border border-border bg-card p-3">
+              <p className="text-sm font-bold text-foreground">3. 근무일정 게시판 사용법</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>
+                  <strong>근무일정</strong> 게시판을 열면 월간 캘린더가 함께 표시됩니다.
                 </li>
                 <li>
-                  {' '}
-                  <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@all</span>
-                  {' '}
-                  은 관리자 전용 기능이며, 사용 시 전체 멘션 알림을 보낼 수 있습니다.
+                  날짜를 누르면 모달이 열리고 <strong>풀타임 / 파트1 / 파트2 / 파트3 / 교육</strong>이 각각 따로 표시됩니다.
                 </li>
+                <li>값이 없는 항목(예: 파트2 비어 있음)은 모달에서 자동으로 숨겨집니다.</li>
+                <li>본인 실명과 일치하는 근무가 있으면 캘린더 날짜 칸에 <strong>[근무 하는 날]</strong> 표시가 나타납니다.</li>
+                <li>근무일정 게시글이 등록/수정되면 캘린더도 자동으로 반영됩니다.</li>
               </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">4. 알림 확인하기</p>
+              <p className="text-sm font-bold text-foreground">4. 알림(알림 센터 + 모바일 푸시)</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>내 정보에서 알림 센터 버튼을 눌러 알림 창을 엽니다.</li>
-                <li>새 글/댓글/멘션 알림을 확인하고 바로 해당 글로 이동할 수 있습니다.</li>
-                <li>필요하면 댓글 알림, 멘션 알림, 게시판별 알림을 켜고 끌 수 있습니다.</li>
+                <li>내 정보에서 알림 센터를 열어 새 글/댓글/멘션 알림을 확인할 수 있습니다.</li>
+                <li>댓글/멘션/게시판별 알림은 켜기/끄기가 가능합니다.</li>
+                <li>
+                  내 정보의 <strong>모바일 알림</strong>에서 기기 등록 후, 게시판별 푸시를 선택할 수 있습니다.
+                </li>
+                <li><strong>근무일정 전날/당일 푸시</strong> 토글을 켜면 근무 알림을 받을 수 있습니다.</li>
               </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">5. 내 활동 바로가기</p>
-              <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">내가 쓴 글</span>
-                  :
-                  {' '}
-                  내가 작성한 게시글을 최신순으로 확인할 수 있습니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">내가 쓴 댓글</span>
-                  :
-                  {' '}
-                  내가 작성한 댓글 목록에서 원본 게시글로 바로 이동할 수 있습니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">최근 댓글</span>
-                  :
-                  {' '}
-                  왼쪽 패널에서 전체 댓글 기준 최신 5개를 빠르게 확인할 수 있습니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">고정 배지</span>
-                  :
-                  {' '}
-                  목록에서
-                  {' '}
-                  <strong>고정</strong>
-                  {' '}
-                  표시가 있는 글은 상단에 유지되는 중요 글입니다.
-                </p>
-              </div>
+              <p className="text-sm font-bold text-foreground">5. 근무일정 푸시 발송 시간</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>기준 시간대는 <strong>Asia/Seoul</strong>입니다.</li>
+                <li>전날 알림: <strong>오후 9:00</strong></li>
+                <li>당일 알림: <strong>오전 8:30</strong></li>
+                <li>본인 실명이 해당 날짜 근무표에 매칭될 때만 발송됩니다.</li>
+              </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
               <p className="text-sm font-bold text-foreground">6. 모바일에서 사용하기</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>오른쪽 위 메뉴(☰)를 엽니다.</li>
-                <li>게시판 선택, 내가 쓴 글/댓글, 알림 센터를 동일하게 사용할 수 있습니다.</li>
+                <li>모바일에서는 오른쪽 위 메뉴 버튼(☰)으로 메뉴를 엽니다.</li>
+                <li>게시판 이동, 내가 쓴 글/댓글, 알림 센터를 동일하게 사용할 수 있습니다.</li>
                 <li>글 읽기/댓글 작성 흐름은 PC와 동일합니다.</li>
               </ol>
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">7. iPhone(iOS) 알림 받기 - 처음부터 끝까지</p>
+              <p className="text-sm font-bold text-foreground">7. iPhone(iOS) 알림 설정</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
                 <li>
-                  iPhone
-                  {' '}
-                  <strong>Safari</strong>
-                  {' '}
-                  에서 포럼 주소를 엽니다.
+                  iOS는 Safari에서 <strong>홈 화면에 추가</strong>한 아이콘으로 실행해야 푸시를 받을 수 있습니다.
                 </li>
                 <li>
-                  Safari 하단
-                  {' '}
-                  <strong>공유 버튼</strong>
-                  {' '}
-                  →
-                  {' '}
-                  <strong>홈 화면에 추가</strong>
-                  {' '}
-                  를 눌러 앱 아이콘을 만듭니다.
+                  내 정보 → <strong>모바일 알림</strong>에서 모바일 알림을 켠 뒤 권한 팝업을 허용합니다.
                 </li>
                 <li>
-                  Safari 탭이 아니라
-                  {' '}
-                  <strong>홈 화면 아이콘으로 포럼을 실행</strong>
-                  {' '}
-                  합니다. (iOS 웹푸시는 이 방식에서만 수신됩니다)
-                </li>
-                <li>
-                  로그인 후 왼쪽
-                  {' '}
-                  <strong>내 정보 → 모바일 알림</strong>
-                  {' '}
-                  버튼을 눌러 설정 창을 엽니다.
-                </li>
-                <li>
-                  <strong>모바일 알림 켜기</strong>
-                  {' '}
-                  버튼을 누르고, iOS 권한 팝업이 뜨면
-                  {' '}
-                  <strong>허용</strong>
-                  {' '}
-                  을 선택합니다.
-                </li>
-                <li>
-                  같은 창에서 아래 3가지를 확인합니다:
-                  {' '}
-                  <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>
-                  .
-                </li>
-                <li>
-                  바로 아래
-                  {' '}
-                  <strong>게시판별 모바일 알림</strong>
-                  {' '}
-                  에서 받고 싶은 게시판만 켭니다.
-                </li>
-                <li>
-                  테스트:
-                  {' '}
-                  다른 계정에서 글/댓글/멘션을 보내고, 잠금 화면 또는 상단 배너로 알림이 오는지 확인합니다.
+                  상태가 <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>이면 정상입니다.
                 </li>
               </ol>
               <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
@@ -1669,54 +1554,16 @@ export function AppPageView({ vm }) {
             </section>
 
             <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">8. Android 알림 받기 - 처음부터 끝까지</p>
+              <p className="text-sm font-bold text-foreground">8. Android 알림 설정</p>
               <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
                 <li>
-                  Android
-                  {' '}
-                  <strong>Chrome</strong>
-                  {' '}
-                  에서 포럼 주소를 엽니다.
+                  Android Chrome에서 포럼 접속 후, 내 정보 → <strong>모바일 알림</strong>으로 이동합니다.
                 </li>
                 <li>
-                  로그인 후
-                  {' '}
-                  <strong>내 정보 → 모바일 알림</strong>
-                  {' '}
-                  설정 창으로 이동합니다.
+                  <strong>모바일 알림 켜기</strong>를 누르고 권한 요청을 허용합니다.
                 </li>
                 <li>
-                  <strong>모바일 알림 켜기</strong>
-                  {' '}
-                  를 누르고, 브라우저 알림 권한 요청이 뜨면
-                  {' '}
-                  <strong>허용</strong>
-                  {' '}
-                  을 선택합니다.
-                </li>
-                <li>
-                  상태 영역에서
-                  {' '}
-                  <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>
-                  {' '}
-                  을 확인합니다.
-                </li>
-                <li>
-                  <strong>게시판별 모바일 알림</strong>
-                  {' '}
-                  에서 받고 싶은 게시판만 켭니다.
-                </li>
-                <li>
-                  테스트:
-                  {' '}
-                  다른 계정으로 글/댓글/멘션을 보내서 알림이 도착하는지 확인합니다.
-                </li>
-                <li>
-                  안정성을 높이려면
-                  {' '}
-                  <strong>홈 화면에 추가(PWA)</strong>
-                  {' '}
-                  후 아이콘 실행 방식으로 사용하세요.
+                  상태가 <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>인지 확인합니다.
                 </li>
               </ol>
               <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
@@ -1739,6 +1586,7 @@ export function AppPageView({ vm }) {
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">게시판이 안 보임 → 권한 게시판일 수 있음</span>
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">알림이 안 옴 → 알림 센터 설정 확인</span>
+                <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">근무일정 캘린더가 안 보임 → 근무일정 게시판 선택 확인</span>
                 <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">문제 지속 → 로그아웃 후 재로그인</span>
               </div>
             </section>
