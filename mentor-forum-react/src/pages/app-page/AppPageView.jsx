@@ -179,6 +179,14 @@ const {
   normalizeWorkScheduleMemberText
 } = pageUtils;
 
+const GUIDE_SECTION_TABS = [
+  { key: 'all', label: '전체' },
+  { key: 'start', label: '시작/작성' },
+  { key: 'alert', label: '알림' },
+  { key: 'mobile', label: '모바일' },
+  { key: 'trouble', label: '문제해결' }
+];
+
 function ComposerDayPickerDropdown(props) {
   const {
     options = [],
@@ -538,6 +546,13 @@ export function AppPageView({ vm }) {
   const mobileHamburgerStyle = compactListMode && !boardDrawerOpen
     ? { display: 'inline-flex' }
     : undefined;
+  const [guideSectionTab, setGuideSectionTab] = React.useState('all');
+  const isGuideGroupVisible = React.useCallback((groupKey) => (
+    guideSectionTab === 'all' || guideSectionTab === groupKey
+  ), [guideSectionTab]);
+  React.useEffect(() => {
+    if (!guideModalOpen) setGuideSectionTab('all');
+  }, [guideModalOpen]);
 
   return (
     <>
@@ -1398,198 +1413,320 @@ export function AppPageView({ vm }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-1 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">0. 3분 빠른 시작</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                멘토스는 아래 순서로 쓰면 가장 빠릅니다.
-                {' '}<strong>게시판 선택 → 글 읽기 → 작성/댓글 → 알림 설정</strong>.
-              </p>
-              <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">1) 게시판 선택</span>
-                  : 왼쪽 목록에서 게시판을 먼저 고릅니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">2) 글 읽기</span>
-                  : 제목을 누르면 상세 화면으로 이동합니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">3) 작성/댓글</span>
-                  : 필요한 경우만 글쓰기/댓글 작성을 진행합니다.
-                </p>
-                <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
-                  <span className="font-bold text-foreground">4) 알림 설정</span>
-                  : 알림 센터/모바일 알림을 켜 두면 놓치지 않습니다.
-                </p>
-              </div>
-            </section>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {GUIDE_SECTION_TABS.map((tab) => {
+              const active = guideSectionTab === tab.key;
+              return (
+                <button
+                  key={`guide-tab-${tab.key}`}
+                  type="button"
+                  className={active ? 'btn-primary' : 'btn-muted'}
+                  style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}
+                  onClick={() => setGuideSectionTab(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">1. 화면 기본 사용법</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  왼쪽 게시판 목록에서 이동하고, 제목을 누르면 글 상세로 들어갑니다.
-                </li>
-                <li>
-                  상세 화면에서는
-                  {' '}
-                  <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
-                    목록으로
-                  </button>
-                  {' '}
-                  버튼으로 돌아옵니다.
-                </li>
-                <li>
-                  <strong>전체 게시글</strong>은 여러 게시판을 모아보는 화면입니다.
-                </li>
-                <li>
-                  목록 상단에서 <strong>최신/인기</strong> 탭으로 정렬 방식을 바꿀 수 있습니다.
-                </li>
-              </ol>
-            </section>
+          <div className="mt-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            {isGuideGroupVisible('start') ? (
+              <>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">0. 3분 빠른 시작</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    멘토스는 아래 순서로 쓰면 가장 빠릅니다.
+                    {' '}<strong>게시판 선택 → 글 읽기 → 작성/댓글 → 알림 설정</strong>.
+                  </p>
+                  <div className="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                    <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                      <span className="font-bold text-foreground">1) 게시판 선택</span>
+                      : 왼쪽 목록에서 게시판을 먼저 고릅니다.
+                    </p>
+                    <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                      <span className="font-bold text-foreground">2) 글 읽기</span>
+                      : 제목을 누르면 상세 화면으로 이동합니다.
+                    </p>
+                    <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                      <span className="font-bold text-foreground">3) 작성/댓글</span>
+                      : 필요한 경우만 글쓰기/댓글 작성을 진행합니다.
+                    </p>
+                    <p className="m-0 rounded-lg border border-border bg-background px-3 py-2">
+                      <span className="font-bold text-foreground">4) 알림 설정</span>
+                      : 알림 센터/모바일 알림을 켜 두면 놓치지 않습니다.
+                    </p>
+                  </div>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">2. 글쓰기/댓글/멘션</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  글 작성은 먼저 게시판을 선택한 뒤
-                  {' '}
-                  <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
-                    <PencilLine size={14} />
-                    글쓰기
-                  </button>
-                  버튼으로 시작합니다.
-                </li>
-                <li><strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.</li>
-                <li>
-                  대체근무 게시판은 날짜/시간/체험관을 입력해야 등록됩니다.
-                </li>
-                <li>
-                  댓글은 게시글 상세 하단에서 작성할 수 있고,
-                  {' '}
-                  <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@닉네임</span>
-                  {' '}
-                  멘션을 보내면 해당 사용자에게 알림이 전달됩니다.
-                </li>
-                <li><span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@all</span>은 관리자 전용 기능입니다.</li>
-              </ol>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">1. 화면 기본 사용법</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>왼쪽 게시판 목록에서 이동하고, 제목을 누르면 글 상세로 들어갑니다.</li>
+                    <li>
+                      상세 화면에서는
+                      {' '}
+                      <button type="button" className="btn-muted guide-static-btn" style={{ minHeight: '30px', padding: '0.2rem 0.55rem' }}>
+                        목록으로
+                      </button>
+                      {' '}
+                      버튼으로 돌아옵니다.
+                    </li>
+                    <li><strong>전체 게시글</strong>은 여러 게시판을 모아보는 화면입니다.</li>
+                    <li>목록 상단에서 <strong>최신/인기</strong> 탭으로 정렬 방식을 바꿀 수 있습니다.</li>
+                  </ol>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">3. 근무일정 게시판 사용법</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  <strong>근무일정</strong> 게시판을 열면 월간 캘린더가 함께 표시됩니다.
-                </li>
-                <li>
-                  날짜를 누르면 모달이 열리고 <strong>풀타임 / 파트1 / 파트2 / 파트3 / 교육</strong>이 각각 따로 표시됩니다.
-                </li>
-                <li>값이 없는 항목(예: 파트2 비어 있음)은 모달에서 자동으로 숨겨집니다.</li>
-                <li>본인 실명과 일치하는 근무가 있으면 캘린더 날짜 칸에 <strong>[근무 하는 날]</strong> 표시가 나타납니다.</li>
-                <li>근무일정 게시글이 등록/수정되면 캘린더도 자동으로 반영됩니다.</li>
-              </ol>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">2. 글쓰기/댓글/멘션</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>
+                      글 작성은 먼저 게시판을 선택한 뒤
+                      {' '}
+                      <button type="button" className="btn-primary guide-static-btn" style={{ minHeight: '30px', padding: '0.22rem 0.58rem' }}>
+                        <PencilLine size={14} />
+                        글쓰기
+                      </button>
+                      버튼으로 시작합니다.
+                    </li>
+                    <li><strong>전체 게시글</strong> 화면에서는 글을 작성할 수 없습니다.</li>
+                    <li>대체근무 게시판은 날짜/시간/체험관을 입력해야 등록됩니다.</li>
+                    <li>
+                      댓글은 게시글 상세 하단에서 작성할 수 있고,
+                      {' '}
+                      <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@닉네임</span>
+                      {' '}
+                      멘션을 보내면 해당 사용자에게 알림이 전달됩니다.
+                    </li>
+                    <li><span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold text-foreground">@all</span>은 관리자 전용 기능입니다.</li>
+                  </ol>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">4. 알림(알림 센터 + 모바일 푸시)</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>내 정보에서 알림 센터를 열어 새 글/댓글/멘션 알림을 확인할 수 있습니다.</li>
-                <li>댓글/멘션/게시판별 알림은 켜기/끄기가 가능합니다.</li>
-                <li>
-                  내 정보의 <strong>모바일 알림</strong>에서 기기 등록 후, 게시판별 푸시를 선택할 수 있습니다.
-                </li>
-                <li><strong>근무일정 전날/당일 푸시</strong> 토글을 켜면 근무 알림을 받을 수 있습니다.</li>
-              </ol>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">3. 근무일정 게시판 사용법</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li><strong>근무일정</strong> 게시판을 열면 월간 캘린더가 함께 표시됩니다.</li>
+                    <li>날짜를 누르면 모달이 열리고 <strong>풀타임 / 파트1 / 파트2 / 파트3 / 교육</strong>이 각각 따로 표시됩니다.</li>
+                    <li>값이 없는 항목(예: 파트2 비어 있음)은 모달에서 자동으로 숨겨집니다.</li>
+                    <li>본인 실명과 일치하는 근무가 있으면 캘린더 날짜 칸에 <strong>[근무 하는 날]</strong> 표시가 나타납니다.</li>
+                    <li>근무일정 게시글이 등록/수정되면 캘린더도 자동으로 반영됩니다.</li>
+                  </ol>
+                </section>
+              </>
+            ) : null}
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">5. 근무일정 푸시 발송 시간</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>기준 시간대는 <strong>Asia/Seoul</strong>입니다.</li>
-                <li>전날 알림: <strong>오후 9:00</strong></li>
-                <li>당일 알림: <strong>오전 8:30</strong></li>
-                <li>본인 실명이 해당 날짜 근무표에 매칭될 때만 발송됩니다.</li>
-              </ol>
-            </section>
+            {isGuideGroupVisible('alert') ? (
+              <>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">4. 알림 설정 먼저 하기 (처음 로그인 시 권장)</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>왼쪽 내 정보에서 <strong>알림 센터</strong> 버튼을 눌러 알림 창을 엽니다.</li>
+                    <li><strong>댓글 알림 설정</strong>에서 <strong>댓글 알림</strong>과 <strong>멘션 알림</strong>이 켜짐인지 확인합니다.</li>
+                    <li><strong>게시판 알림 설정</strong>에서 받고 싶은 게시판(예: 공지사항, 대체근무, 근무일정)을 켭니다.</li>
+                    <li>다시 내 정보에서 <strong>모바일 알림</strong> 버튼을 눌러 모바일 알림 설정 창을 엽니다.</li>
+                    <li><strong>모바일 알림 켜기</strong>를 누르고 브라우저 권한 팝업이 뜨면 반드시 <strong>허용</strong>을 선택합니다.</li>
+                    <li>
+                      설정 창 상단 상태가 아래처럼 보이면 정상입니다.
+                      {' '}
+                      <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>
+                    </li>
+                    <li><strong>게시판별 모바일 알림</strong>에서 모바일 푸시를 받을 게시판만 켭니다.</li>
+                    <li><strong>근무일정 푸시 알림</strong>에서 <strong>근무일정 전날/당일 푸시</strong>를 켭니다.</li>
+                    <li>마지막으로 <strong>상태 새로고침</strong>을 눌러 현재 기기 상태를 다시 확인합니다.</li>
+                  </ol>
+                  <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    위 3개 상태 중 하나라도 미충족이면 푸시가 오지 않습니다.
+                    {' '}
+                    <strong>미지원 / 권한 거부 / 활성 기기 없음</strong>
+                    {' '}
+                    상태를 먼저 해결하세요.
+                  </div>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">6. 모바일에서 사용하기</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>모바일에서는 오른쪽 위 메뉴 버튼(☰)으로 메뉴를 엽니다.</li>
-                <li>게시판 이동, 내가 쓴 글/댓글, 알림 센터를 동일하게 사용할 수 있습니다.</li>
-                <li>글 읽기/댓글 작성 흐름은 PC와 동일합니다.</li>
-              </ol>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">5. 알림 센터(앱 내부 알림) 상세 사용법</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li><strong>알림 센터</strong> 상단에서 현재 미확인 알림 건수를 확인합니다.</li>
+                    <li><strong>모두 읽음</strong> 버튼을 누르면 읽지 않은 알림을 한 번에 정리할 수 있습니다.</li>
+                    <li><strong>최근 알림</strong> 영역의 필터(<strong>전체 / 새 글 / 멘션 / 댓글</strong>)로 유형별 조회가 가능합니다.</li>
+                    <li>알림 항목을 누르면 자동 읽음 처리 후 해당 글/댓글 위치로 이동합니다.</li>
+                    <li><strong>댓글 알림 설정</strong>에서 댓글/멘션 알림을 켜고 끌 수 있습니다.</li>
+                    <li><strong>게시판 알림 설정</strong>에서 게시판별 알림을 켜고 끌 수 있습니다.</li>
+                  </ol>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">7. iPhone(iOS) 알림 설정</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  iOS는 Safari에서 <strong>홈 화면에 추가</strong>한 아이콘으로 실행해야 푸시를 받을 수 있습니다.
-                </li>
-                <li>
-                  내 정보 → <strong>모바일 알림</strong>에서 모바일 알림을 켠 뒤 권한 팝업을 허용합니다.
-                </li>
-                <li>
-                  상태가 <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>이면 정상입니다.
-                </li>
-              </ol>
-              <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-                iOS에서 알림이 안 오면:
-                {' '}
-                <strong>홈 화면 앱 완전 종료 후 재실행</strong>
-                ,
-                {' '}
-                <strong>설정 &gt; 알림에서 포럼 앱 허용</strong>
-                ,
-                {' '}
-                <strong>집중 모드/방해금지 해제</strong>
-                ,
-                {' '}
-                <strong>저전력 모드 해제</strong>
-                {' '}
-                순서로 점검하세요.
-              </div>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">6. 모바일 푸시 설정(공통) 상세 가이드</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li><strong>모바일 알림 켜기</strong>: 현재 기기를 푸시 수신 기기로 등록합니다.</li>
+                    <li><strong>모바일 알림 끄기</strong>: 현재 기기 토큰을 비활성화해 푸시 수신을 중단합니다.</li>
+                    <li><strong>상태 새로고침</strong>: 브라우저 권한/기기 등록 상태를 즉시 다시 읽어옵니다.</li>
+                    <li><strong>기기 지원</strong>: 브라우저/OS가 웹 푸시를 지원하는지 여부입니다.</li>
+                    <li><strong>알림 권한</strong>: 브라우저 권한이 허용되어야 푸시 표시가 가능합니다.</li>
+                    <li><strong>활성 기기</strong>: 서버에 등록된 현재 사용자의 활성 토큰 수입니다. 최소 1대 이상이어야 합니다.</li>
+                    <li><strong>게시판별 모바일 알림</strong>은 켜진 게시판만 모바일 푸시를 발송합니다.</li>
+                  </ol>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">8. Android 알림 설정</p>
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-                <li>
-                  Android Chrome에서 포럼 접속 후, 내 정보 → <strong>모바일 알림</strong>으로 이동합니다.
-                </li>
-                <li>
-                  <strong>모바일 알림 켜기</strong>를 누르고 권한 요청을 허용합니다.
-                </li>
-                <li>
-                  상태가 <strong>기기 지원=지원됨 / 알림 권한=허용 / 활성 기기=1대 이상</strong>인지 확인합니다.
-                </li>
-              </ol>
-              <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-                Android에서 알림이 안 오면:
-                {' '}
-                <strong>Chrome 사이트 권한(알림 허용)</strong>
-                ,
-                {' '}
-                <strong>OS 앱 알림 허용</strong>
-                ,
-                {' '}
-                <strong>배터리 최적화 예외</strong>
-                {' '}
-                순서로 확인하세요.
-              </div>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">7. 근무일정 푸시(전날/당일) 상세 규칙</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>기준 시간대는 <strong>Asia/Seoul</strong>입니다.</li>
+                    <li>전날 알림 발송 시각: <strong>오후 9:00</strong></li>
+                    <li>당일 알림 발송 시각: <strong>오전 8:30</strong></li>
+                    <li>근무표에서 <strong>본인 실명</strong>이 풀타임/파트/교육 항목과 매칭될 때만 발송됩니다.</li>
+                    <li><strong>근무일정 전날/당일 푸시</strong> 토글이 꺼져 있으면 발송되지 않습니다.</li>
+                    <li>모바일 알림이 꺼져 있거나, 게시판별 모바일 알림에서 근무일정이 꺼져 있어도 발송되지 않습니다.</li>
+                    <li>근무일정 게시글이 수정되면 캘린더 데이터가 다시 계산되고 이후 발송분부터 최신값이 반영됩니다.</li>
+                    <li>확장프로그램은 근무표 동기화만 담당하고, 푸시 발송 스케줄은 서버가 담당합니다.</li>
+                  </ol>
+                  <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    근무일정 푸시가 오지 않으면
+                    {' '}
+                    <strong>실명 매칭</strong>
+                    ,
+                    {' '}
+                    <strong>토글 상태</strong>
+                    ,
+                    {' '}
+                    <strong>모바일 알림 상태 3개</strong>
+                    {' '}
+                    를 순서대로 확인하세요.
+                  </div>
+                </section>
 
-            <section className="rounded-lg border border-border bg-card p-3">
-              <p className="text-sm font-bold text-foreground">9. 막힐 때 빠른 확인</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">게시판이 안 보임 → 권한 게시판일 수 있음</span>
-                <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">알림이 안 옴 → 알림 센터 설정 확인</span>
-                <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">근무일정 캘린더가 안 보임 → 근무일정 게시판 선택 확인</span>
-                <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">문제 지속 → 로그아웃 후 재로그인</span>
-              </div>
-            </section>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">10. 알림 테스트 방법 (실전 절차)</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>테스트 대상 계정 A에서 모바일 알림을 켜고 상태 3개(지원/허용/활성기기)를 확인합니다.</li>
+                    <li>계정 A에서 알림 센터의 댓글/멘션/게시판 알림이 켜져 있는지 확인합니다.</li>
+                    <li>계정 B(다른 계정)로 로그인해 A가 켠 게시판에 새 글 또는 댓글/멘션을 작성합니다.</li>
+                    <li>계정 A 기기에서 푸시 배너 수신 여부를 확인합니다.</li>
+                    <li>계정 A에서 알림 센터를 열어 해당 알림이 목록에 보이는지 확인합니다.</li>
+                    <li>알림 항목 클릭 시 해당 글/댓글 위치로 이동하면 정상입니다.</li>
+                  </ol>
+                </section>
+              </>
+            ) : null}
+
+            {isGuideGroupVisible('mobile') ? (
+              <>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">8. iPhone(iOS) 푸시 설정 (매우 상세)</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>iPhone <strong>Safari</strong>로 포럼 주소를 엽니다.</li>
+                    <li>Safari 하단 공유 버튼을 누른 뒤 <strong>홈 화면에 추가</strong>를 선택합니다.</li>
+                    <li>반드시 Safari 탭이 아니라 <strong>홈 화면 아이콘</strong>으로 앱을 실행합니다.</li>
+                    <li>로그인 후 내 정보에서 <strong>모바일 알림</strong> 버튼을 누릅니다.</li>
+                    <li><strong>모바일 알림 켜기</strong>를 누른 뒤 권한 팝업에서 <strong>허용</strong>을 선택합니다.</li>
+                    <li>상태가 <strong>지원됨 / 허용 / 1대 이상</strong>으로 표시되는지 확인합니다.</li>
+                    <li><strong>게시판별 모바일 알림</strong>에서 필요한 게시판을 켭니다.</li>
+                    <li><strong>근무일정 전날/당일 푸시</strong> 토글을 켭니다.</li>
+                    <li>마지막으로 <strong>상태 새로고침</strong>을 눌러 반영 상태를 확인합니다.</li>
+                    <li>테스트 시 홈 화면 앱을 백그라운드로 둔 상태에서 푸시 배너 도착 여부를 확인합니다.</li>
+                  </ol>
+                  <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    iOS에서 알림이 안 오면:
+                    {' '}
+                    <strong>홈 화면 앱 완전 종료 후 재실행</strong>
+                    ,
+                    {' '}
+                    <strong>설정 &gt; 알림에서 포럼 앱 허용</strong>
+                    ,
+                    {' '}
+                    <strong>집중 모드/방해금지 해제</strong>
+                    ,
+                    {' '}
+                    <strong>저전력 모드 해제</strong>
+                    {' '}
+                    순서로 점검하세요.
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">9. Android 푸시 설정 (매우 상세)</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>Android <strong>Chrome</strong>에서 포럼 접속 후, 내 정보 → <strong>모바일 알림</strong>으로 이동합니다.</li>
+                    <li><strong>모바일 알림 켜기</strong>를 누르고 권한 요청을 허용합니다.</li>
+                    <li>상태가 <strong>지원됨 / 허용 / 1대 이상</strong>인지 확인합니다.</li>
+                    <li><strong>게시판별 모바일 알림</strong>에서 필요한 게시판을 켭니다.</li>
+                    <li><strong>근무일정 전날/당일 푸시</strong> 토글을 켭니다.</li>
+                    <li><strong>상태 새로고침</strong>을 눌러 현재 상태를 다시 확인합니다.</li>
+                    <li>OS 설정에서 Chrome 알림 허용과 배터리 최적화 예외를 권장합니다.</li>
+                  </ol>
+                  <div className="mt-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    Android에서 알림이 안 오면:
+                    {' '}
+                    <strong>Chrome 사이트 권한(알림 허용)</strong>
+                    ,
+                    {' '}
+                    <strong>OS 앱 알림 허용</strong>
+                    ,
+                    {' '}
+                    <strong>배터리 최적화 예외</strong>
+                    {' '}
+                    순서로 확인하세요.
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">11. 모바일에서 기본 사용하기</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>모바일에서는 오른쪽 위 메뉴 버튼(☰)으로 메뉴를 엽니다.</li>
+                    <li>게시판 이동, 내가 쓴 글/댓글, 알림 센터를 동일하게 사용할 수 있습니다.</li>
+                    <li>글 읽기/댓글 작성 흐름은 PC와 동일합니다.</li>
+                  </ol>
+                </section>
+              </>
+            ) : null}
+
+            {isGuideGroupVisible('trouble') ? (
+              <>
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">12. 막힐 때 빠른 확인</p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">게시판이 안 보임 → 권한 게시판일 수 있음</span>
+                    <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">알림이 안 옴 → 알림 센터/모바일 알림 둘 다 확인</span>
+                    <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">근무일정 캘린더가 안 보임 → 근무일정 게시판 선택 확인</span>
+                    <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">기기 지원/권한/활성기기 중 하나라도 실패면 푸시 불가</span>
+                    <span className="inline-flex items-center rounded-lg border border-border bg-background px-2 py-1 font-bold text-foreground">문제 지속 → 로그아웃 후 재로그인</span>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm font-bold text-foreground">13. 자주 묻는 질문 (알림)</p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                    <li>
+                      <strong>Q.</strong>
+                      {' '}
+                      확장프로그램을 꺼도 푸시가 오나요?
+                      {' '}
+                      <strong>A.</strong>
+                      {' '}
+                      네. 확장프로그램은 근무표 동기화만 담당하고, 푸시 발송은 서버 스케줄이 담당합니다.
+                    </li>
+                    <li>
+                      <strong>Q.</strong>
+                      {' '}
+                      근무일정 푸시가 안 와요.
+                      {' '}
+                      <strong>A.</strong>
+                      {' '}
+                      (1) 근무표에 본인 실명 입력 여부, (2) 근무일정 전날/당일 토글, (3) 기기 지원/권한/활성기기 상태를 순서대로 확인하세요.
+                    </li>
+                    <li>
+                      <strong>Q.</strong>
+                      {' '}
+                      동일 알림이 반복해서 오지 않아요.
+                      {' '}
+                      <strong>A.</strong>
+                      {' '}
+                      중복 발송 방지 로직으로 이미 발송된 동일 이벤트는 재발송되지 않을 수 있습니다.
+                    </li>
+                  </ol>
+                </section>
+              </>
+            ) : null}
           </div>
 
           <div className="mt-3 flex justify-end">
