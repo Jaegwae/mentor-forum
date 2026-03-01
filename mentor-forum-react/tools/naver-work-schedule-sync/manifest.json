@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Mentor Forum Naver Work Schedule Sync",
+  "description": "네이버 카페 근무일정 글을 Mentor Forum work_schedule 게시판으로 주기 동기화합니다.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "115",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://cafe.naver.com/*",
+    "https://identitytoolkit.googleapis.com/*",
+    "https://securetoken.googleapis.com/*",
+    "https://firestore.googleapis.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html"
+}

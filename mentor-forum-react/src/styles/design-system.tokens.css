@@ -1,3 +1,5 @@
+/* Base token layer.
+   Defines semantic CSS variables for light/dark/excel themes consumed by components/pages. */
 @layer base {
   :root {
     --background: 0 0% 98%;

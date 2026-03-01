@@ -3,10 +3,11 @@
 // rendering helpers can be reasoned about and reused safely.
 import { db, doc } from '../../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
-import { renderRichDeltaToHtml, renderRichPayloadToHtml } from '../../legacy/rich-editor.js';
+import { renderRichDeltaToHtml, renderRichPayloadToHtml, sanitizeHttpUrl } from '../../legacy/rich-editor.js';
 import {
   ALL_BOARD_ID,
   COVER_FOR_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
   COVER_FOR_DEFAULT_END_TIME,
   COVER_FOR_DEFAULT_START_TIME,
   COVER_FOR_DEFAULT_VENUE,
@@ -17,6 +18,111 @@ import {
   NOTIFICATION_TYPE,
   ROLE_KEY_ALIASES
 } from './constants.js';
+
+const ALLOWED_STORED_HTML_TAGS = new Set([
+  'a',
+  'p',
+  'br',
+  'div',
+  'span',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  's',
+  'strike',
+  'ul',
+  'ol',
+  'li',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
+  'caption',
+  'colgroup',
+  'col'
+]);
+
+function sanitizeSpanAttr(value) {
+  const parsed = Number.parseInt(String(value || '').trim(), 10);
+  if (!Number.isFinite(parsed)) return '';
+  return String(Math.max(1, Math.min(40, parsed)));
+}
+
+function sanitizeStoredHtmlNode(node, ownerDocument) {
+  if (!node || !ownerDocument) return null;
+
+  if (node.nodeType === 3) {
+    return ownerDocument.createTextNode(String(node.textContent || ''));
+  }
+
+  if (node.nodeType !== 1) return null;
+
+  const tagName = String(node.nodeName || '').toLowerCase();
+  const sanitizedChildren = [];
+  Array.from(node.childNodes || []).forEach((child) => {
+    const next = sanitizeStoredHtmlNode(child, ownerDocument);
+    if (!next) return;
+    sanitizedChildren.push(next);
+  });
+
+  if (!ALLOWED_STORED_HTML_TAGS.has(tagName)) {
+    const fragment = ownerDocument.createDocumentFragment();
+    sanitizedChildren.forEach((child) => fragment.appendChild(child));
+    return fragment;
+  }
+
+  const safeEl = ownerDocument.createElement(tagName);
+  if (tagName === 'a') {
+    const safeHref = sanitizeHttpUrl(node.getAttribute('href') || '');
+    if (safeHref) {
+      safeEl.setAttribute('href', safeHref);
+      safeEl.setAttribute('target', '_blank');
+      safeEl.setAttribute('rel', 'noopener noreferrer');
+    }
+  }
+
+  if (tagName === 'td' || tagName === 'th') {
+    const colspan = sanitizeSpanAttr(node.getAttribute('colspan'));
+    const rowspan = sanitizeSpanAttr(node.getAttribute('rowspan'));
+    const scope = normalizeText(node.getAttribute('scope')).toLowerCase();
+    if (colspan) safeEl.setAttribute('colspan', colspan);
+    if (rowspan) safeEl.setAttribute('rowspan', rowspan);
+    if (scope === 'row' || scope === 'col') safeEl.setAttribute('scope', scope);
+  }
+
+  if (tagName === 'col') {
+    const span = sanitizeSpanAttr(node.getAttribute('span'));
+    if (span) safeEl.setAttribute('span', span);
+  }
+
+  sanitizedChildren.forEach((child) => safeEl.appendChild(child));
+  return safeEl;
+}
+
+export function sanitizeStoredContentHtml(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (typeof DOMParser !== 'function' || typeof document === 'undefined') return '';
+
+  try {
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(raw, 'text/html');
+    const host = document.createElement('div');
+    Array.from(parsed.body?.childNodes || []).forEach((node) => {
+      const sanitized = sanitizeStoredHtmlNode(node, document);
+      if (!sanitized) return;
+      host.appendChild(sanitized);
+    });
+    return String(host.innerHTML || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
 
 export function numberOrZero(value) {
   const n = Number(value);
@@ -29,12 +135,27 @@ export function normalizeText(value) {
 
 export function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const viewportWide = window.matchMedia('(min-width: 901px)').matches;
+  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const shortestScreen = Math.min(
+    Number(window.screen?.width || 0),
+    Number(window.screen?.height || 0)
+  );
+  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
+
   const hoverFine = window.matchMedia('(hover: hover)').matches;
   const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigator.userAgent || ''));
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
+  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
 
-  const desktopLike = viewportWide && hoverFine && pointerFine && !mobileUa;
+  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
+  if (touchLikeInput && screenLooksMobile) return true;
+
+  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
   return !desktopLike;
 }
 
@@ -144,7 +265,8 @@ export function writeLastBoardId(boardId) {
 }
 
 export function isCoverForBoardId(boardId) {
-  return normalizeText(boardId) === COVER_FOR_BOARD_ID;
+  const normalized = normalizeText(boardId);
+  return normalized === COVER_FOR_BOARD_ID || normalized === WORK_SCHEDULE_BOARD_ID;
 }
 
 export function toDateKey(value) {
@@ -185,6 +307,469 @@ export function normalizeDateKeyInput(value) {
   const parsed = fromDateKey(key);
   if (!parsed) return '';
   return toDateKey(parsed);
+}
+
+function normalizeWorkScheduleCellText(value) {
+  const text = String(value ?? '')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[，、]/g, ',')
+    .replace(/\s*\n+\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*[,;]\s*/g, ',')
+    .trim();
+  if (!text) return '';
+  return text
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .join(', ')
+    .replace(/[,;\s]+$/g, '');
+}
+
+function splitWorkScheduleEducationParts(value) {
+  const raw = normalizeWorkScheduleCellText(value);
+  if (!raw) return { member: '', education: '' };
+
+  const educationParts = [];
+  let memberRaw = raw;
+  memberRaw = memberRaw.replace(/[([]\s*교육\s*[:：]\s*([^\)\]]+)\s*[)\]]/gi, (_matched, captured) => {
+    educationParts.push(normalizeWorkScheduleCellText(captured));
+    return ' ';
+  });
+  memberRaw = memberRaw.replace(/(?:^|[\s,;])교육\s*[:：]\s*([^,;]+)/gi, (_matched, captured) => {
+    educationParts.push(normalizeWorkScheduleCellText(captured));
+    return ' ';
+  });
+
+  return {
+    member: normalizeWorkScheduleCellText(memberRaw),
+    education: normalizeWorkScheduleCellText(educationParts.join(', '))
+  };
+}
+
+function parseWorkScheduleYearMonthFromTitle(titleText) {
+  const match = String(titleText || '').match(/(20\d{2})\s*년\s*(\d{1,2})\s*월/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+  if (month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function buildDateKey(year, month, day) {
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+  return `${String(year)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function parseWorkScheduleDateKeyFromCell(rawValue, fallbackYearMonth) {
+  const text = normalizeWorkScheduleCellText(rawValue)
+    .replace(/[.]/g, '/')
+    .replace(/-/g, '/')
+    .replace(/\s+/g, '');
+  if (!text) return '';
+
+  let match = text.match(/(20\d{2})\/(\d{1,2})\/(\d{1,2})/);
+  if (match) return buildDateKey(Number(match[1]), Number(match[2]), Number(match[3]));
+
+  match = text.match(/(\d{1,2})\/(\d{1,2})/);
+  if (match) {
+    const year = Number(fallbackYearMonth?.year || new Date().getFullYear());
+    return buildDateKey(year, Number(match[1]), Number(match[2]));
+  }
+
+  match = text.match(/^(\d{1,2})$/);
+  if (match && fallbackYearMonth?.year && fallbackYearMonth?.month) {
+    return buildDateKey(Number(fallbackYearMonth.year), Number(fallbackYearMonth.month), Number(match[1]));
+  }
+
+  return '';
+}
+
+function expandWorkScheduleRowCells(rowEl) {
+  const cells = [];
+  Array.from(rowEl?.children || []).forEach((cellEl) => {
+    const text = normalizeWorkScheduleCellText(cellEl?.textContent || '');
+    const colSpanRaw = Number(cellEl?.getAttribute?.('colspan') || 1);
+    const colSpan = Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? Math.floor(colSpanRaw) : 1;
+    for (let idx = 0; idx < colSpan; idx += 1) cells.push(text);
+  });
+  return cells;
+}
+
+function findWorkScheduleColumnIndex(labels, candidates) {
+  const normalized = labels.map((label) => String(label || '').replace(/\s+/g, '').toLowerCase());
+  for (let idx = 0; idx < normalized.length; idx += 1) {
+    const label = normalized[idx];
+    if (!label) continue;
+    if (candidates.some((candidate) => label.includes(candidate))) return idx;
+  }
+  return -1;
+}
+
+function mergeWorkScheduleRowsByDate(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  const byDateKey = new Map();
+
+  source.forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    const dateKey = normalizeDateKeyInput(row.dateKey || '');
+    if (!dateKey) return;
+    const nextRow = {
+      dateKey,
+      dateLabel: normalizeWorkScheduleCellText(row.dateLabel || ''),
+      weekday: normalizeWorkScheduleCellText(row.weekday || ''),
+      fullTime: normalizeWorkScheduleCellText(row.fullTime || ''),
+      part1: normalizeWorkScheduleCellText(row.part1 || ''),
+      part2: normalizeWorkScheduleCellText(row.part2 || ''),
+      part3: normalizeWorkScheduleCellText(row.part3 || ''),
+      education: normalizeWorkScheduleCellText(row.education || '')
+    };
+
+    if (!byDateKey.has(dateKey)) {
+      byDateKey.set(dateKey, nextRow);
+      return;
+    }
+
+    const existing = byDateKey.get(dateKey);
+    byDateKey.set(dateKey, {
+      dateKey,
+      dateLabel: existing.dateLabel || nextRow.dateLabel,
+      weekday: existing.weekday || nextRow.weekday,
+      fullTime: existing.fullTime || nextRow.fullTime,
+      part1: existing.part1 || nextRow.part1,
+      part2: existing.part2 || nextRow.part2,
+      part3: existing.part3 || nextRow.part3,
+      education: existing.education || nextRow.education
+    });
+  });
+
+  return [...byDateKey.values()].sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey), 'ko'));
+}
+
+export function extractWorkScheduleRowsFromHtml(html, titleText = '') {
+  const sourceHtml = String(html || '').trim();
+  if (!sourceHtml) return { hasTable: false, rows: [] };
+  if (typeof DOMParser !== 'function') return { hasTable: /<table[\s>]/i.test(sourceHtml), rows: [] };
+
+  try {
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(sourceHtml, 'text/html');
+    const tables = Array.from(parsed.querySelectorAll('table'));
+    const hasTable = tables.length > 0;
+    if (!hasTable) return { hasTable: false, rows: [] };
+
+    const fallbackYearMonth = parseWorkScheduleYearMonthFromTitle(titleText);
+    for (const table of tables) {
+      const tableRows = Array.from(table.querySelectorAll('tr'));
+      if (tableRows.length < 2) continue;
+
+      let headerIndex = -1;
+      let dateCol = -1;
+      let weekdayCol = -1;
+      let fullTimeCol = -1;
+      let part1Col = -1;
+      let part2Col = -1;
+      let part3Col = -1;
+      let educationCol = -1;
+
+      for (let idx = 0; idx < Math.min(tableRows.length, 8); idx += 1) {
+        const labels = expandWorkScheduleRowCells(tableRows[idx]);
+        if (!labels.length) continue;
+        const maybeDateCol = findWorkScheduleColumnIndex(labels, ['날짜']);
+        const maybeFullTimeCol = findWorkScheduleColumnIndex(labels, ['풀타임']);
+        const maybePart1Col = findWorkScheduleColumnIndex(labels, ['파트1']);
+        const maybePart2Col = findWorkScheduleColumnIndex(labels, ['파트2']);
+        const maybePart3Col = findWorkScheduleColumnIndex(labels, ['파트3']);
+        const maybeEducationCol = findWorkScheduleColumnIndex(labels, ['교육']);
+        if (maybeDateCol < 0) continue;
+        if (maybeFullTimeCol < 0 && maybePart1Col < 0 && maybePart2Col < 0 && maybePart3Col < 0 && maybeEducationCol < 0) continue;
+
+        headerIndex = idx;
+        dateCol = maybeDateCol;
+        weekdayCol = findWorkScheduleColumnIndex(labels, ['요일']);
+        fullTimeCol = maybeFullTimeCol;
+        part1Col = maybePart1Col;
+        part2Col = maybePart2Col;
+        part3Col = maybePart3Col;
+        educationCol = maybeEducationCol;
+        break;
+      }
+
+      if (headerIndex < 0 || dateCol < 0) continue;
+
+      const rows = [];
+      for (let rowIdx = headerIndex + 1; rowIdx < tableRows.length; rowIdx += 1) {
+        const values = expandWorkScheduleRowCells(tableRows[rowIdx]);
+        if (!values.length) continue;
+
+        const dateRaw = values[dateCol] || '';
+        const dateKey = parseWorkScheduleDateKeyFromCell(dateRaw, fallbackYearMonth);
+        if (!dateKey) continue;
+
+        const fullTimeParts = splitWorkScheduleEducationParts(fullTimeCol >= 0 ? values[fullTimeCol] || '' : '');
+        const part1Parts = splitWorkScheduleEducationParts(part1Col >= 0 ? values[part1Col] || '' : '');
+        const part2Parts = splitWorkScheduleEducationParts(part2Col >= 0 ? values[part2Col] || '' : '');
+        const part3Parts = splitWorkScheduleEducationParts(part3Col >= 0 ? values[part3Col] || '' : '');
+        const educationRaw = educationCol >= 0 ? values[educationCol] || '' : '';
+        const educationParts = splitWorkScheduleEducationParts(educationRaw);
+
+        const row = {
+          dateKey,
+          dateLabel: normalizeWorkScheduleCellText(dateRaw),
+          weekday: weekdayCol >= 0 ? normalizeWorkScheduleCellText(values[weekdayCol] || '') : '',
+          fullTime: fullTimeParts.member,
+          part1: part1Parts.member,
+          part2: part2Parts.member,
+          part3: part3Parts.member,
+          education: normalizeWorkScheduleCellText([
+            educationParts.member,
+            educationParts.education,
+            fullTimeParts.education,
+            part1Parts.education,
+            part2Parts.education,
+            part3Parts.education
+          ].join(', '))
+        };
+
+        if (!row.fullTime && !row.part1 && !row.part2 && !row.part3 && !row.education) continue;
+        rows.push(row);
+      }
+
+      const merged = mergeWorkScheduleRowsByDate(rows);
+      if (merged.length) return { hasTable: true, rows: merged };
+    }
+
+    return { hasTable: true, rows: [] };
+  } catch (_) {
+    return { hasTable: /<table[\s>]/i.test(sourceHtml), rows: [] };
+  }
+}
+
+function escapeWorkScheduleHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function weekdayKoFromDateKey(dateKey) {
+  const parsed = fromDateKey(dateKey);
+  if (!parsed) return '';
+  const labels = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  return labels[parsed.getDay()] || '';
+}
+
+export function normalizeEditableWorkScheduleRows(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  const normalizedRows = source
+    .map((row) => {
+      const dateKey = normalizeDateKeyInput(row?.dateKey || row?.date || row?.dayKey || '');
+      if (!dateKey) return null;
+      const parsed = fromDateKey(dateKey);
+      const weekdayAuto = weekdayKoFromDateKey(dateKey);
+      const dateLabelAuto = parsed ? `${parsed.getMonth() + 1}/${parsed.getDate()}` : '';
+      return {
+        dateKey,
+        dateLabel: normalizeWorkScheduleCellText(row?.dateLabel || row?.dateText || '') || dateLabelAuto,
+        weekday: normalizeWorkScheduleCellText(row?.weekday || row?.dayOfWeek || row?.day || '') || weekdayAuto,
+        fullTime: normalizeWorkScheduleCellText(row?.fullTime || row?.fulltime || row?.full || ''),
+        part1: normalizeWorkScheduleCellText(row?.part1 || ''),
+        part2: normalizeWorkScheduleCellText(row?.part2 || ''),
+        part3: normalizeWorkScheduleCellText(row?.part3 || ''),
+        education: normalizeWorkScheduleCellText(row?.education || '')
+      };
+    })
+    .filter(Boolean);
+
+  return mergeWorkScheduleRowsByDate(normalizedRows);
+}
+
+export function buildWorkScheduleTableHtml(rows) {
+  const normalizedRows = normalizeEditableWorkScheduleRows(rows);
+  if (!normalizedRows.length) return '';
+
+  const hasEducation = normalizedRows.some((row) => normalizeWorkScheduleCellText(row.education));
+  const headCells = [
+    '<th>날짜</th>',
+    '<th>요일</th>',
+    '<th>풀타임</th>',
+    '<th>파트1</th>',
+    '<th>파트2</th>',
+    '<th>파트3</th>'
+  ];
+  if (hasEducation) headCells.push('<th>교육</th>');
+
+  const bodyRows = normalizedRows.map((row) => {
+    const cells = [
+      `<td>${escapeWorkScheduleHtml(row.dateLabel || row.dateKey)}</td>`,
+      `<td>${escapeWorkScheduleHtml(row.weekday || weekdayKoFromDateKey(row.dateKey))}</td>`,
+      `<td>${escapeWorkScheduleHtml(row.fullTime || '')}</td>`,
+      `<td>${escapeWorkScheduleHtml(row.part1 || '')}</td>`,
+      `<td>${escapeWorkScheduleHtml(row.part2 || '')}</td>`,
+      `<td>${escapeWorkScheduleHtml(row.part3 || '')}</td>`
+    ];
+    if (hasEducation) cells.push(`<td>${escapeWorkScheduleHtml(row.education || '')}</td>`);
+    return `<tr>${cells.join('')}</tr>`;
+  });
+
+  return [
+    '<table>',
+    `<thead><tr>${headCells.join('')}</tr></thead>`,
+    `<tbody>${bodyRows.join('')}</tbody>`,
+    '</table>'
+  ].join('');
+}
+
+export function replaceWorkScheduleTableInHtml(baseHtml, rows) {
+  const tableHtml = buildWorkScheduleTableHtml(rows);
+  if (!tableHtml) return '';
+  const base = String(baseHtml || '').trim();
+
+  if (typeof DOMParser !== 'function') {
+    return base ? `${base}\n${tableHtml}` : tableHtml;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const parsedBase = parser.parseFromString(base || '<div></div>', 'text/html');
+    const parsedTable = parser.parseFromString(tableHtml, 'text/html');
+    const nextTable = parsedTable.querySelector('table');
+    if (!nextTable) return base || tableHtml;
+
+    const currentTable = parsedBase.querySelector('table');
+    if (currentTable) {
+      currentTable.outerHTML = nextTable.outerHTML;
+    } else {
+      parsedBase.body.insertAdjacentHTML('beforeend', nextTable.outerHTML);
+    }
+    return String(parsedBase.body?.innerHTML || '').trim();
+  } catch (_) {
+    return base ? `${base}\n${tableHtml}` : tableHtml;
+  }
+}
+
+function normalizeEditableTableCell(value) {
+  // Normalization goal: keep user-visible value stable while preventing
+  // accidental diff noise from invisible chars/newline formatting.
+  return String(value ?? '')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function expandEditableTableRowCells(rowEl) {
+  // Expand colspan into virtual cells so the editor can treat rows as a
+  // rectangular matrix when loading arbitrary HTML tables.
+  const cells = [];
+  Array.from(rowEl?.children || []).forEach((cellEl) => {
+    const text = normalizeEditableTableCell(cellEl?.textContent || '');
+    const colSpanRaw = Number(cellEl?.getAttribute?.('colspan') || 1);
+    const colSpan = Number.isFinite(colSpanRaw) && colSpanRaw > 0 ? Math.floor(colSpanRaw) : 1;
+    for (let idx = 0; idx < colSpan; idx += 1) cells.push(text);
+  });
+  return cells;
+}
+
+export function normalizeEditableTableGrid(rows) {
+  // Guarantee a rectangular 2D array. This simplifies edit operations
+  // (add/remove column, drag row reorder, direct cell updates).
+  const source = Array.isArray(rows) ? rows : [];
+  const normalizedRows = source
+    .map((row) => {
+      if (!Array.isArray(row)) return null;
+      return row.map((cell) => normalizeEditableTableCell(cell));
+    })
+    .filter(Boolean);
+
+  const maxColumns = Math.max(1, ...normalizedRows.map((row) => row.length || 0));
+  if (!normalizedRows.length) return [['']];
+
+  return normalizedRows.map((row) => {
+    const cells = [...row];
+    while (cells.length < maxColumns) cells.push('');
+    return cells.slice(0, Math.max(1, maxColumns));
+  });
+}
+
+export function extractEditableTableGridFromHtml(html) {
+  // Extract only the first visible table shape into editable grid rows.
+  // Parsing failure should never block editor open; caller can show fallback.
+  const sourceHtml = String(html || '').trim();
+  if (!sourceHtml) return { hasTable: false, rows: [] };
+  if (typeof DOMParser !== 'function') return { hasTable: /<table[\s>]/i.test(sourceHtml), rows: [] };
+
+  try {
+    const parser = new DOMParser();
+    const parsed = parser.parseFromString(sourceHtml, 'text/html');
+    const table = parsed.querySelector('table');
+    if (!table) return { hasTable: false, rows: [] };
+
+    const rows = Array.from(table.querySelectorAll('tr'))
+      .map((rowEl) => expandEditableTableRowCells(rowEl))
+      .filter((row) => row.length > 0);
+
+    return {
+      hasTable: true,
+      rows: normalizeEditableTableGrid(rows)
+    };
+  } catch (_) {
+    return { hasTable: /<table[\s>]/i.test(sourceHtml), rows: [] };
+  }
+}
+
+export function buildEditableTableHtmlFromGrid(rows) {
+  // row[0] is persisted as <thead>, row[1..] as <tbody>.
+  const grid = normalizeEditableTableGrid(rows);
+  if (!grid.length) return '';
+
+  const head = grid[0] || [''];
+  const body = grid.slice(1);
+  const headerHtml = `<thead><tr>${head.map((cell) => `<th>${escapeWorkScheduleHtml(cell)}</th>`).join('')}</tr></thead>`;
+  const bodyHtml = body.length
+    ? `<tbody>${body.map((row) => `<tr>${row.map((cell) => `<td>${escapeWorkScheduleHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>`
+    : '<tbody></tbody>';
+
+  return `<table>${headerHtml}${bodyHtml}</table>`;
+}
+
+export function replaceFirstTableInHtml(baseHtml, rows) {
+  // Replace first table only to preserve non-table prose before/after table.
+  const tableHtml = buildEditableTableHtmlFromGrid(rows);
+  if (!tableHtml) return String(baseHtml || '').trim();
+  const base = String(baseHtml || '').trim();
+
+  if (typeof DOMParser !== 'function') {
+    return base ? `${base}\n${tableHtml}` : tableHtml;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const parsedBase = parser.parseFromString(base || '<div></div>', 'text/html');
+    const parsedTable = parser.parseFromString(tableHtml, 'text/html');
+    const nextTable = parsedTable.querySelector('table');
+    if (!nextTable) return base || tableHtml;
+
+    const currentTable = parsedBase.querySelector('table');
+    if (currentTable) {
+      currentTable.outerHTML = nextTable.outerHTML;
+    } else {
+      parsedBase.body.insertAdjacentHTML('beforeend', nextTable.outerHTML);
+    }
+    return String(parsedBase.body?.innerHTML || '').trim();
+  } catch (_) {
+    return base ? `${base}\n${tableHtml}` : tableHtml;
+  }
 }
 
 export function notificationDocRef(uid, notificationId) {
@@ -490,6 +1075,9 @@ export function plainRichPayload(text) {
 }
 
 export function renderStoredContentHtml(source) {
+  const storedHtml = sanitizeStoredContentHtml(source?.contentHtml || '');
+  if (storedHtml) return `<div class="stored-html-content">${storedHtml}</div>`;
+
   const deltaHtml = renderRichDeltaToHtml(source?.contentDelta || null);
   if (deltaHtml) return deltaHtml;
   return renderRichPayloadToHtml(source?.contentRich || plainRichPayload(source?.contentText || ''));

@@ -1,3 +1,5 @@
+/* Component layer styles.
+   Centralized utility composition for shared UI blocks (cards, table, editor, modal, etc.). */
 @layer components {
   .page { @apply mx-auto w-full max-w-[1180px] px-4 pb-12 pt-7; }
   body.admin-page .page { @apply max-w-[1540px] px-5; }
@@ -801,12 +803,22 @@
   .cover-calendar-modal-backdrop { @apply absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]; }
   .cover-calendar-modal-panel { @apply relative z-10 w-[min(680px,96vw)] max-h-[84vh] overflow-y-auto rounded-xl border border-border/80 bg-white p-4 shadow-soft-xl; }
   .cover-calendar-modal-list { @apply flex flex-col gap-2; }
-  .cover-calendar-modal-item { @apply w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.03]; }
+  .cover-calendar-modal-item { @apply flex w-full flex-col items-start rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.03]; }
   .cover-calendar-modal-item-author { @apply inline-flex max-w-full items-center rounded-md border px-1.5 py-0.5 text-xs font-semibold; }
   .cover-calendar-modal-item-title {
     @apply mt-1 block text-sm font-bold leading-5 text-gray-900; word-break: break-word;
   }
   .cover-calendar-modal-item-meta { @apply mt-1 block text-xs font-medium text-gray-600; }
+  .work-schedule-role-list { @apply flex w-full flex-col gap-1; }
+  .work-schedule-role-chip { @apply flex w-full items-start gap-2 rounded-md border px-2 py-1 text-xs font-semibold; }
+  .work-schedule-role-label { @apply shrink-0; }
+  .work-schedule-role-value { @apply min-w-0 whitespace-pre-wrap break-words; }
+  .work-schedule-role-chip.is-fulltime { border-color: #86efac; background: #dcfce7; color: #166534; }
+  .work-schedule-role-chip.is-part1 { border-color: #93c5fd; background: #dbeafe; color: #1d4ed8; }
+  .work-schedule-role-chip.is-part2 { border-color: #fcd34d; background: #fef3c7; color: #92400e; }
+  .work-schedule-role-chip.is-part3 { border-color: #d8b4fe; background: #f3e8ff; color: #7e22ce; }
+  .work-schedule-role-chip.is-education { border-color: #fda4af; background: #ffe4e6; color: #be123c; }
+  .work-schedule-role-chip.is-empty { border-color: #cbd5e1; background: #f8fafc; color: #475569; }
   .mobile-hamburger-btn { @apply hidden h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:border-primary/30 hover:bg-primary/5 hover:text-primary; }
   .login-remember-box { @apply rounded-lg border border-border/80 bg-secondary/35 p-3.5; }
   .login-remember-row { @apply flex items-start gap-3.5; }
@@ -1198,6 +1210,28 @@
   .comment-body .ql-editor p { margin: 0 0 0.24rem; }
   .post-body .ql-editor p:last-child,
   .comment-body .ql-editor p:last-child { margin-bottom: 0; }
+  .post-body .stored-html-content,
+  .comment-body .stored-html-content {
+    white-space: normal; overflow-x: auto;
+  }
+  .post-body .stored-html-content p { margin: 0 0 0.45rem; }
+  .comment-body .stored-html-content p { margin: 0 0 0.24rem; }
+  .post-body .stored-html-content p:last-child,
+  .comment-body .stored-html-content p:last-child { margin-bottom: 0; }
+  .post-body .stored-html-content table,
+  .comment-body .stored-html-content table {
+    width: 100%; border-collapse: collapse; table-layout: auto; min-width: 680px; margin: 0.4rem 0;
+  }
+  .post-body .stored-html-content th,
+  .post-body .stored-html-content td,
+  .comment-body .stored-html-content th,
+  .comment-body .stored-html-content td {
+    border: 1px solid var(--table-border); padding: 0.44rem 0.5rem; vertical-align: top;
+  }
+  .post-body .stored-html-content th,
+  .comment-body .stored-html-content th {
+    background: var(--table-head-bg); color: var(--table-head-text); font-weight: 700; text-align: center;
+  }
   .post-title-block,
   .post-author-block,
   .post-content-block { @apply rounded-lg border px-4 py-3; }
@@ -3148,6 +3182,42 @@
 
   html.theme-dark body.app-page .cover-calendar-modal-item-meta {
     color: #99aac8;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-fulltime {
+    border-color: rgba(52, 211, 153, 0.52);
+    background: rgba(6, 78, 59, 0.78);
+    color: #a7f3d0;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-part1 {
+    border-color: rgba(96, 165, 250, 0.55);
+    background: rgba(30, 58, 138, 0.74);
+    color: #bfdbfe;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-part2 {
+    border-color: rgba(250, 204, 21, 0.52);
+    background: rgba(120, 53, 15, 0.74);
+    color: #fde68a;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-part3 {
+    border-color: rgba(192, 132, 252, 0.55);
+    background: rgba(88, 28, 135, 0.74);
+    color: #e9d5ff;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-education {
+    border-color: rgba(251, 113, 133, 0.56);
+    background: rgba(136, 19, 55, 0.74);
+    color: #fecdd3;
+  }
+
+  html.theme-dark body.app-page .work-schedule-role-chip.is-empty {
+    border-color: rgba(100, 116, 139, 0.68);
+    background: rgba(30, 41, 59, 0.74);
+    color: #cbd5e1;
   }
 
   html.theme-dark body.app-page .mobile-post-item {

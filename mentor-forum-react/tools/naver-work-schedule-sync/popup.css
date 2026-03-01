@@ -1,0 +1,46 @@
+/* Extension popup styles.
+   Compact layout optimized for quick status checks. */
+body {
+  margin: 0;
+  width: 300px;
+  background: linear-gradient(160deg, #edf5f0 0%, #f7faf8 100%);
+  color: #22382d;
+  font-family: "Pretendard", "Noto Sans KR", sans-serif;
+}
+
+.wrap {
+  padding: 14px;
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #3f5549;
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(180deg, #0f7a45 0%, #0a5c34 100%);
+  cursor: pointer;
+}
+
+button.muted {
+  background: #5a6d62;
+}

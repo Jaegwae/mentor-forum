@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, FileText, LogOut, MessageSquare, ShieldCheck, Users2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, FileText, GripVertical, LogOut, MessageSquare, ShieldCheck, Users2 } from 'lucide-react';
 import { usePageMeta } from '../../hooks/usePageMeta.js';
 import {
   auth,
@@ -241,6 +241,13 @@ export function PostPageView({ vm }) {
     setEditModalOpen,
     editTitle,
     setEditTitle,
+    editWorkScheduleTableRows,
+    addEditWorkScheduleRow,
+    addEditWorkScheduleColumn,
+    updateEditWorkScheduleCell,
+    removeEditWorkScheduleRow,
+    reorderEditWorkScheduleRow,
+    removeEditWorkScheduleColumn,
     editSubmitting,
     setEditSubmitting,
     editMessage,
@@ -265,6 +272,7 @@ export function PostPageView({ vm }) {
     hasPotentialWriteRole,
     canAttemptCommentWrite,
     isCoverForPost,
+    isWorkSchedulePost,
     isAdminOrSuper,
     canChangeCoverStatus,
     canResetCoverToSeeking,
@@ -322,6 +330,59 @@ export function PostPageView({ vm }) {
     handleExcelSelectCell,
     handleExcelAction
   } = vm;
+
+  const editWorkScheduleColumnCount = useMemo(() => {
+    const rows = Array.isArray(editWorkScheduleTableRows) ? editWorkScheduleTableRows : [];
+    return Math.max(1, ...rows.map((row) => (Array.isArray(row) ? row.length : 0)));
+  }, [editWorkScheduleTableRows]);
+
+  const editWorkScheduleColumnIndexes = useMemo(() => (
+    Array.from({ length: editWorkScheduleColumnCount }, (_, idx) => idx)
+  ), [editWorkScheduleColumnCount]);
+  // Transient drag state for row reorder in the generic table editor.
+  const dragWorkScheduleRowIndexRef = useRef(-1);
+  const [dragOverWorkScheduleRowIndex, setDragOverWorkScheduleRowIndex] = useState(-1);
+
+  const startWorkScheduleRowDrag = useCallback((rowIndex, event) => {
+    // Row 0 is header and intentionally fixed.
+    if (rowIndex <= 0) {
+      event.preventDefault();
+      return;
+    }
+    dragWorkScheduleRowIndexRef.current = rowIndex;
+    if (event?.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      try {
+        event.dataTransfer.setData('text/plain', String(rowIndex));
+      } catch (_) {
+        // Ignore drag payload errors.
+      }
+    }
+  }, []);
+
+  const endWorkScheduleRowDrag = useCallback(() => {
+    dragWorkScheduleRowIndexRef.current = -1;
+    setDragOverWorkScheduleRowIndex(-1);
+  }, []);
+
+  const dragOverWorkScheduleRow = useCallback((rowIndex, event) => {
+    const fromIndex = dragWorkScheduleRowIndexRef.current;
+    if (fromIndex <= 0 || rowIndex <= 0) return;
+    event.preventDefault();
+    if (event?.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (dragOverWorkScheduleRowIndex !== rowIndex) setDragOverWorkScheduleRowIndex(rowIndex);
+  }, [dragOverWorkScheduleRowIndex]);
+
+  const dropWorkScheduleRow = useCallback((rowIndex, event) => {
+    event.preventDefault();
+    const fromIndex = dragWorkScheduleRowIndexRef.current;
+    // Both source/target are restricted to data rows (>= 1).
+    if (fromIndex > 0 && rowIndex > 0 && fromIndex !== rowIndex) {
+      reorderEditWorkScheduleRow(fromIndex, rowIndex);
+    }
+    dragWorkScheduleRowIndexRef.current = -1;
+    setDragOverWorkScheduleRowIndex(-1);
+  }, [reorderEditWorkScheduleRow]);
 
   return (
     <>
@@ -423,7 +484,7 @@ export function PostPageView({ vm }) {
         </div>
         </section>
 
-        <section className="post-detail-content-layout">
+        <section className="post-detail-content-layout" style={{ marginTop: '10px' }}>
           <aside className="board-rail post-detail-side-rail" aria-label="게시글 상세 내 정보">
             <section className="board-rail-profile post-detail-side-profile">
             <div className="board-profile-head-row">
@@ -785,7 +846,7 @@ export function PostPageView({ vm }) {
 
                 {isCoverForPost ? (
                   <div className="cover-for-date-box cover-for-date-readonly-box">
-                    <p className="meta" style={{ margin: 0, fontWeight: 700 }}>대체근무 요청 날짜</p>
+                    <p className="meta" style={{ margin: 0, fontWeight: 700 }}>{`${boardLabel || '캘린더'} 날짜`}</p>
                     <div className="cover-for-date-list" style={{ marginTop: '8px' }}>
                       {currentPostCoverDateEntries.map((entry) => (
                         <div key={`edit-cover-date-${entry.dateKey}`} className="cover-for-date-row">
@@ -798,37 +859,131 @@ export function PostPageView({ vm }) {
                 ) : null}
 
                 <div>
-                  <p style={{ margin: '0 0 8px', fontWeight: 700 }}>내용</p>
-                  <div className="editor-shell with-mention-menu">
-                    <RichEditorToolbar editorRef={editEditorRef} fontSizeLabelRef={editFontSizeLabelRef} />
-                    <div className="editor-mention-wrap">
-                      <div
-                        id="editPostEditor"
-                        className="editor-content post-edit-content"
-                        ref={editEditorElRef}
-                      />
-                      <div
-                        className={editMentionMenu.open ? 'mention-menu mention-menu-anchor' : 'mention-menu mention-menu-anchor hidden'}
-                        style={{ left: `${editMentionMenu.anchorLeft}px`, top: `${editMentionMenu.anchorTop}px` }}
-                      >
-                        {editMentionCandidates.length ? editMentionCandidates.map((candidate, idx) => (
-                          <button
-                            key={`edit-mention-candidate-${candidate.uid}`}
-                            type="button"
-                            className={idx === editMentionActiveIndex ? 'mention-menu-item is-active' : 'mention-menu-item'}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              applyMentionCandidate('edit', candidate);
-                            }}
-                          >
-                            <span className="mention-menu-nickname">@{candidate.nickname}</span>
-                          </button>
-                        )) : (
-                          <p className="mention-menu-empty">일치하는 닉네임이 없습니다.</p>
-                        )}
+                  <p style={{ margin: '0 0 8px', fontWeight: 700 }}>
+                    {isWorkSchedulePost ? '내용 (근무일정 표 편집)' : '내용'}
+                  </p>
+                  {isWorkSchedulePost ? (
+                    <>
+                      <p className="meta" style={{ margin: '0 0 8px' }}>
+                        일반 표 편집 모드입니다. 헤더 이름/열 개수/행 개수를 자유롭게 수정할 수 있습니다.
+                        오른쪽 핸들(세 줄)을 드래그하면 데이터 행 순서를 바로 바꿀 수 있습니다.
+                      </p>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="app-table" style={{ minWidth: `${Math.max(640, editWorkScheduleColumnCount * 150)}px` }}>
+                          <thead>
+                            <tr>
+                              {editWorkScheduleColumnIndexes.map((columnIndex) => (
+                                <th key={`edit-work-schedule-header-${columnIndex}`} style={{ minWidth: '120px' }}>
+                                  {`열 ${columnIndex + 1}`}
+                                </th>
+                              ))}
+                              <th style={{ width: '190px' }}>행 작업</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {editWorkScheduleTableRows.map((row, rowIndex) => (
+                              <tr
+                                key={`edit-work-schedule-row-${rowIndex}`}
+                                onDragOver={(event) => dragOverWorkScheduleRow(rowIndex, event)}
+                                onDrop={(event) => dropWorkScheduleRow(rowIndex, event)}
+                                style={dragOverWorkScheduleRowIndex === rowIndex ? {
+                                  outline: '2px solid rgba(59, 130, 246, 0.6)',
+                                  outlineOffset: '-2px'
+                                } : undefined}
+                              >
+                                {editWorkScheduleColumnIndexes.map((columnIndex) => (
+                                  <td key={`edit-work-schedule-cell-${rowIndex}-${columnIndex}`}>
+                                    <input
+                                      type="text"
+                                      value={normalizeText(Array.isArray(row) ? row[columnIndex] : '')}
+                                      onChange={(event) => updateEditWorkScheduleCell(rowIndex, columnIndex, event.target.value)}
+                                      placeholder={rowIndex === 0 ? `헤더 ${columnIndex + 1}` : '내용'}
+                                    />
+                                  </td>
+                                ))}
+                                <td>
+                                  <div className="row" style={{ gap: '6px', flexWrap: 'nowrap' }}>
+                                    <button
+                                      type="button"
+                                      className="btn-muted"
+                                      draggable={rowIndex > 0}
+                                      onDragStart={(event) => startWorkScheduleRowDrag(rowIndex, event)}
+                                      onDragEnd={endWorkScheduleRowDrag}
+                                      disabled={rowIndex === 0}
+                                      title={rowIndex === 0 ? '헤더 행은 이동할 수 없습니다.' : '드래그해서 행 이동'}
+                                    >
+                                      <GripVertical size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-danger"
+                                      onClick={() => removeEditWorkScheduleRow(rowIndex)}
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="row" style={{ marginTop: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn-muted"
+                          onClick={addEditWorkScheduleRow}
+                        >
+                          행 추가
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-muted"
+                          onClick={addEditWorkScheduleColumn}
+                        >
+                          열 추가
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-muted"
+                          onClick={() => removeEditWorkScheduleColumn(editWorkScheduleColumnCount - 1)}
+                        >
+                          마지막 열 삭제
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="editor-shell with-mention-menu">
+                      <RichEditorToolbar editorRef={editEditorRef} fontSizeLabelRef={editFontSizeLabelRef} />
+                      <div className="editor-mention-wrap">
+                        <div
+                          id="editPostEditor"
+                          className="editor-content post-edit-content"
+                          ref={editEditorElRef}
+                        />
+                        <div
+                          className={editMentionMenu.open ? 'mention-menu mention-menu-anchor' : 'mention-menu mention-menu-anchor hidden'}
+                          style={{ left: `${editMentionMenu.anchorLeft}px`, top: `${editMentionMenu.anchorTop}px` }}
+                        >
+                          {editMentionCandidates.length ? editMentionCandidates.map((candidate, idx) => (
+                            <button
+                              key={`edit-mention-candidate-${candidate.uid}`}
+                              type="button"
+                              className={idx === editMentionActiveIndex ? 'mention-menu-item is-active' : 'mention-menu-item'}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                applyMentionCandidate('edit', candidate);
+                              }}
+                            >
+                              <span className="mention-menu-nickname">@{candidate.nickname}</span>
+                            </button>
+                          )) : (
+                            <p className="mention-menu-empty">일치하는 닉네임이 없습니다.</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="row" style={{ justifyContent: 'flex-end' }}>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <!--
+    Extension options document.
+    - Firebase auth/config input
+    - Naver source target setup
+    - Schedule setup + manual sync trigger
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naver Work Schedule Sync Options</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>Naver 근무일정 동기화 설정</h1>
+
+    <section class="card">
+      <h2>1) Firebase 연결</h2>
+      <label>
+        Firebase API Key
+        <input id="firebaseApiKey" type="text" />
+      </label>
+      <label>
+        Firebase Project ID
+        <input id="firebaseProjectId" type="text" />
+      </label>
+
+      <div class="row split">
+        <label>
+          로그인 이메일
+          <input id="loginEmail" type="email" autocomplete="username" />
+        </label>
+        <label>
+          로그인 비밀번호
+          <input id="loginPassword" type="password" autocomplete="current-password" />
+        </label>
+      </div>
+
+      <div class="row">
+        <button id="loginBtn" type="button">Firebase 로그인 연결</button>
+        <button id="clearAuthBtn" type="button" class="muted">연결 해제</button>
+      </div>
+      <p id="authInfo" class="meta"></p>
+    </section>
+
+    <section class="card">
+      <h2>2) 수집 대상</h2>
+      <label>
+        네이버 메뉴 URL
+        <input id="menuUrl" type="text" />
+      </label>
+      <label>
+        대상 게시글 링크(선택, 줄바꿈 구분)
+        <textarea id="targetArticleUrls" rows="4" placeholder="https://cafe.naver.com/ca-fe/cafes/31673399/articles/6"></textarea>
+      </label>
+      <p class="meta">여기에 링크를 넣으면 메뉴 자동탐색 대신 이 링크들만 수집합니다.</p>
+      <div class="row split">
+        <label>
+          카페 ID
+          <input id="cafeId" type="text" />
+        </label>
+        <label>
+          메뉴 ID
+          <input id="menuId" type="text" />
+        </label>
+      </div>
+      <label>
+        1회 최대 수집 게시글 수 (1~20)
+        <input id="maxArticles" type="number" min="1" max="20" />
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>3) 스케줄</h2>
+      <label>
+        자동 동기화
+        <input id="autoEnabled" type="checkbox" />
+      </label>
+      <label>
+        실행 시각(Asia/Seoul, 24h, 콤마 구분)
+        <input id="scheduleHours" type="text" placeholder="0,6,12,18" />
+      </label>
+      <p class="meta">확장프로그램은 15분마다 확인하고, 설정 시각의 00~09분 사이 1회 실행합니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>4) 저장/실행</h2>
+      <div class="row">
+        <button id="saveBtn" type="button">설정 저장</button>
+        <button id="syncNowBtn" type="button">지금 동기화 실행</button>
+      </div>
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <!--
+    Lightweight operator popup.
+    - Shows account/status snapshot
+    - Exposes manual sync and options shortcut
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Naver Sync</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="wrap">
+    <h1>근무일정 Sync</h1>
+    <p id="summary" class="summary">상태 조회 중...</p>
+
+    <div class="actions">
+      <button id="syncNowBtn" type="button">지금 동기화</button>
+      <button id="openOptionsBtn" type="button" class="muted">설정 열기</button>
+    </div>
+  </main>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

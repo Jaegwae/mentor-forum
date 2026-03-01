@@ -43,6 +43,9 @@ const {
   NOTICE_BOARD_ID,
   ALL_BOARD_ID,
   COVER_FOR_BOARD_ID,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_NAME,
+  WORK_SCHEDULE_WRITE_ROLES,
   COVER_FOR_STATUS,
   COVER_FOR_DEFAULT_START_TIME,
   COVER_FOR_DEFAULT_END_TIME,
@@ -78,7 +81,6 @@ const {
   boardAccessDebugText,
   readLastBoardId,
   writeLastBoardId,
-  isCoverForBoardId,
   toDateKey,
   fromDateKey,
   formatDateKeyLabel,
@@ -109,6 +111,11 @@ const {
   toMillis,
   commentAuthorName,
   plainRichPayload,
+  sanitizeStoredContentHtml,
+  extractWorkScheduleRowsFromHtml,
+  extractEditableTableGridFromHtml,
+  normalizeEditableTableGrid,
+  replaceFirstTableInHtml,
   renderStoredContentHtml,
   createRoleDefMap,
   normalizeRoleKey,
@@ -190,6 +197,12 @@ export function usePostPageController() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  // Work-schedule edit keeps the original HTML snapshot so non-table sections
+  // (intro paragraphs, notices, links) survive table-only edits.
+  const [editHtmlContent, setEditHtmlContent] = useState('');
+  // Generic 2D grid model used by the work-schedule table editor.
+  // row[0] is treated as the header row in the view layer.
+  const [editWorkScheduleTableRows, setEditWorkScheduleTableRows] = useState([]);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
   const [sessionRemainingMs, setSessionRemainingMs] = useState(null);
@@ -262,7 +275,8 @@ export function usePostPageController() {
   const rawRoleForWrite = normalizeText(currentUserProfile?.rawRole || currentUserProfile?.role);
   const hasPotentialWriteRole = normalizedRoleForWrite !== 'Newbie' || !isExplicitNewbieRole(rawRoleForWrite);
   const canAttemptCommentWrite = !!currentPost && (currentPostCanWrite || hasPotentialWriteRole);
-  const isCoverForPost = !!currentPost && isCoverForBoardId(currentPost.boardId);
+  const isCoverForPost = !!currentPost && normalizeText(currentPost.boardId) === COVER_FOR_BOARD_ID;
+  const isWorkSchedulePost = !!currentPost && normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID;
   const isAdminOrSuper = normalizeText(currentUserProfile?.role) === 'Admin' || normalizeText(currentUserProfile?.role) === 'Super_Admin';
   const canChangeCoverStatus = isCoverForPost && canModerateCurrentPost;
   const canResetCoverToSeeking = isCoverForPost && isAdminOrSuper;
@@ -610,7 +624,7 @@ export function usePostPageController() {
   }, [closeMentionMenu, commentComposerMountKey, editorElMounted, syncMentionMenu]);
 
   useEffect(() => {
-    if (!editModalOpen || !editEditorElRef.current || !editFontSizeLabelRef.current) {
+    if (!editModalOpen || isWorkSchedulePost || !editEditorElRef.current || !editFontSizeLabelRef.current) {
       editEditorRef.current = null;
       return undefined;
     }
@@ -634,7 +648,7 @@ export function usePostPageController() {
       closeMentionMenu('edit');
       editEditorRef.current = null;
     };
-  }, [closeMentionMenu, currentPost, editModalOpen, syncMentionMenu]);
+  }, [closeMentionMenu, currentPost, editModalOpen, isWorkSchedulePost, syncMentionMenu]);
 
   const handleExtendSession = useCallback(() => {
     const remainingMs = getTemporaryLoginRemainingMs();
@@ -661,10 +675,17 @@ export function usePostPageController() {
   }, [navigate]);
 
   const canUseBoardData = useCallback((boardId, boardData) => {
-    if (!boardData || !currentUserProfile) return false;
+    if (!currentUserProfile) return false;
 
+    const normalizedBoardId = normalizeText(boardId);
     const roleKey = normalizeRoleKey(currentUserProfile.role, roleDefMap);
     const rawRole = normalizeText(currentUserProfile.rawRole || currentUserProfile.role);
+
+    if (normalizedBoardId === WORK_SCHEDULE_BOARD_ID) {
+      return roleKey !== 'Newbie' && !isExplicitNewbieRole(rawRole);
+    }
+
+    if (!boardData) return false;
     if (isPrivilegedBoardRole(roleKey)) return true;
 
     const allowedRoles = Array.isArray(boardData.allowedRoles) ? boardData.allowedRoles : [];
@@ -683,8 +704,15 @@ export function usePostPageController() {
   const canWriteBoardData = useCallback((boardId, boardData) => {
     if (!currentUserProfile) return false;
 
+    const normalizedBoardId = normalizeText(boardId);
     const roleKey = normalizeRoleKey(currentUserProfile.role, roleDefMap);
     const rawRole = normalizeText(currentUserProfile.rawRole || currentUserProfile.role);
+
+    if (normalizedBoardId === WORK_SCHEDULE_BOARD_ID) {
+      return WORK_SCHEDULE_WRITE_ROLES.includes(roleKey);
+    }
+
+    if (!boardData) return false;
 
     if (roleKey === 'Newbie') {
       if (isExplicitNewbieRole(rawRole)) return false;
@@ -714,6 +742,16 @@ export function usePostPageController() {
     try {
       const snap = await postFirestore.fetchBoardDoc(boardId);
       if (!snap.exists()) {
+        const allowed = canUseBoardData(boardId, null);
+        const canWrite = canWriteBoardData(boardId, null);
+        if (normalizeText(boardId) === WORK_SCHEDULE_BOARD_ID) {
+          return {
+            ...fallback,
+            boardName: WORK_SCHEDULE_BOARD_NAME,
+            allowed,
+            canWrite
+          };
+        }
         return fallback;
       }
 
@@ -1473,10 +1511,152 @@ export function usePostPageController() {
     writeUserNotification
   ]);
 
+  // Generic table editor actions for work_schedule posts.
+  const addEditWorkScheduleRow = useCallback(() => {
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      const columnCount = Math.max(1, source[0]?.length || 1);
+      return [...source, new Array(columnCount).fill('')];
+    });
+  }, []);
+
+  const addEditWorkScheduleColumn = useCallback(() => {
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      return source.map((row) => [...row, '']);
+    });
+  }, []);
+
+  const updateEditWorkScheduleCell = useCallback((rowIndex, columnIndex, value) => {
+    const safeRowIndex = Number(rowIndex);
+    const safeColumnIndex = Number(columnIndex);
+    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
+    if (!Number.isFinite(safeColumnIndex) || safeColumnIndex < 0) return;
+
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      if (!source[safeRowIndex]) return source;
+      return source.map((row, rowIdx) => {
+        if (rowIdx !== safeRowIndex) return row;
+        const nextRow = [...row];
+        if (safeColumnIndex >= nextRow.length) {
+          while (nextRow.length <= safeColumnIndex) nextRow.push('');
+        }
+        nextRow[safeColumnIndex] = String(value ?? '');
+        return nextRow;
+      });
+    });
+  }, []);
+
+  const removeEditWorkScheduleRow = useCallback((rowIndex) => {
+    const safeRowIndex = Number(rowIndex);
+    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      const next = source.filter((_, idx) => idx !== safeRowIndex);
+      return normalizeEditableTableGrid(next);
+    });
+  }, []);
+
+  const moveEditWorkScheduleRow = useCallback((rowIndex, direction) => {
+    const safeRowIndex = Number(rowIndex);
+    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
+
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      if (!source[safeRowIndex]) return source;
+
+      const maxIndex = Math.max(0, source.length - 1);
+      let targetIndex = safeRowIndex;
+      if (direction === 'up') targetIndex = safeRowIndex - 1;
+      else if (direction === 'down') targetIndex = safeRowIndex + 1;
+      else if (direction === 'up5') targetIndex = safeRowIndex - 5;
+      else if (direction === 'down5') targetIndex = safeRowIndex + 5;
+      else if (direction === 'top') targetIndex = 0;
+      else if (direction === 'bottom') targetIndex = maxIndex;
+      else return source;
+
+      targetIndex = Math.max(0, Math.min(maxIndex, targetIndex));
+      if (targetIndex === safeRowIndex) return source;
+
+      const next = [...source];
+      const [picked] = next.splice(safeRowIndex, 1);
+      next.splice(targetIndex, 0, picked);
+      return next;
+    });
+  }, []);
+
+  const reorderEditWorkScheduleRow = useCallback((fromIndexRaw, toIndexRaw) => {
+    const fromIndex = Number(fromIndexRaw);
+    const toIndex = Number(toIndexRaw);
+    if (!Number.isFinite(fromIndex) || !Number.isFinite(toIndex)) return;
+
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      const maxIndex = source.length - 1;
+      if (maxIndex < 1) return source;
+
+      // Keep header row(0) fixed and reorder data rows only.
+      const safeFrom = Math.max(1, Math.min(maxIndex, Math.floor(fromIndex)));
+      const safeTo = Math.max(1, Math.min(maxIndex, Math.floor(toIndex)));
+      if (safeFrom === safeTo) return source;
+
+      const next = [...source];
+      const [picked] = next.splice(safeFrom, 1);
+      next.splice(safeTo, 0, picked);
+      return next;
+    });
+  }, []);
+
+  const removeEditWorkScheduleColumn = useCallback((columnIndex) => {
+    const safeColumnIndex = Number(columnIndex);
+    if (!Number.isFinite(safeColumnIndex) || safeColumnIndex < 0) return;
+    setEditWorkScheduleTableRows((prev) => {
+      const source = normalizeEditableTableGrid(prev);
+      const columnCount = source[0]?.length || 1;
+      if (columnCount <= 1) return source;
+      const next = source.map((row) => row.filter((_, idx) => idx !== safeColumnIndex));
+      return normalizeEditableTableGrid(next);
+    });
+  }, []);
+
   const openEditModal = useCallback(() => {
     if (!currentPost || !canModerateCurrentPost) return;
 
     setEditTitle(currentPost.title || '');
+    if (normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID) {
+      const storedHtml = sanitizeStoredContentHtml(currentPost.contentHtml || '');
+      const parsedTable = extractEditableTableGridFromHtml(storedHtml);
+      const fallbackRows = Array.isArray(currentPost?.workScheduleRows) ? currentPost.workScheduleRows : [];
+      let nextTableRows = parsedTable.rows;
+      // Migration fallback: old documents may have parsed rows but missing/invalid HTML table.
+      if (!nextTableRows.length && fallbackRows.length) {
+        nextTableRows = [
+          ['날짜', '요일', '풀타임', '파트1', '파트2', '파트3', '교육'],
+          ...fallbackRows.map((row) => ([
+            normalizeText(row?.dateLabel || row?.dateKey),
+            normalizeText(row?.weekday),
+            normalizeText(row?.fullTime),
+            normalizeText(row?.part1),
+            normalizeText(row?.part2),
+            normalizeText(row?.part3),
+            normalizeText(row?.education)
+          ]))
+        ];
+      }
+      if (!nextTableRows.length) {
+        // Last-resort starter table for first-time edits.
+        nextTableRows = [
+          ['날짜', '요일', '풀타임', '파트1', '파트2', '파트3', '교육'],
+          ['', '', '', '', '', '', '']
+        ];
+      }
+      setEditHtmlContent(storedHtml);
+      setEditWorkScheduleTableRows(normalizeEditableTableGrid(nextTableRows));
+    } else {
+      setEditHtmlContent('');
+      setEditWorkScheduleTableRows([]);
+    }
     setEditMessage({ type: '', text: '' });
     setEditModalOpen(true);
   }, [canModerateCurrentPost, currentPost]);
@@ -1486,9 +1666,46 @@ export function usePostPageController() {
     if (!currentPost || !canModerateCurrentPost) return;
 
     const title = normalizeText(editTitle);
-    const rich = editEditorRef.current?.getPayload() || plainRichPayload('');
-    const delta = editEditorRef.current?.getDelta?.() || { ops: [{ insert: '\n' }] };
-    const body = normalizeText(rich.text);
+    const useTableHtmlEditor = normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID;
+
+    let body = '';
+    let rich = plainRichPayload('');
+    let delta = { ops: [{ insert: '\n' }] };
+    let contentHtml = '';
+    let workScheduleRows = Array.isArray(currentPost?.workScheduleRows) ? currentPost.workScheduleRows : [];
+    let workScheduleDateKeys = Array.isArray(currentPost?.workScheduleDateKeys) ? currentPost.workScheduleDateKeys : [];
+    let workScheduleCalendarNotice = '';
+
+    if (useTableHtmlEditor) {
+      const normalizedTableRows = normalizeEditableTableGrid(editWorkScheduleTableRows);
+      const hasAnyCellText = normalizedTableRows.some((row) => row.some((cell) => normalizeText(cell)));
+      if (!hasAnyCellText) {
+        setEditMessage({ type: 'error', text: '표가 비어 있습니다. 최소 한 칸 이상 입력해주세요.' });
+        return;
+      }
+      // Replace only the first table in the original content HTML so narrative
+      // blocks around the table are preserved.
+      const mergedHtml = replaceFirstTableInHtml(editHtmlContent || currentPost.contentHtml || '', normalizedTableRows);
+      contentHtml = sanitizeStoredContentHtml(mergedHtml);
+      body = normalizeText(stripHtmlToText(contentHtml));
+      // Calendar derives from semantic columns. If users renamed headers beyond
+      // recognition, save still succeeds but we surface a clear notice.
+      const parsedSchedule = extractWorkScheduleRowsFromHtml(contentHtml, title);
+      workScheduleRows = parsedSchedule.rows;
+      workScheduleDateKeys = parsedSchedule.rows.map((row) => row.dateKey);
+      if (parsedSchedule.hasTable && !parsedSchedule.rows.length) {
+        workScheduleCalendarNotice = '표는 저장됐지만 캘린더 반영용 열(날짜/풀타임/파트)이 감지되지 않았습니다.';
+      }
+      rich = plainRichPayload(body);
+      delta = { ops: [{ insert: body ? `${body}\n` : '\n' }] };
+    } else {
+      rich = editEditorRef.current?.getPayload() || plainRichPayload('');
+      delta = editEditorRef.current?.getDelta?.() || { ops: [{ insert: '\n' }] };
+      body = normalizeText(rich.text);
+      // Quill 편집 저장 시에는 기존 외부 HTML 스냅샷을 제거해 stale 렌더를 막는다.
+      contentHtml = '';
+    }
+
     if (!title || !body) {
       setEditMessage({ type: 'error', text: '제목과 본문을 모두 입력해주세요.' });
       return;
@@ -1502,6 +1719,9 @@ export function usePostPageController() {
         contentDelta: delta,
         contentText: rich.text,
         contentRich: rich,
+        contentHtml,
+        workScheduleRows,
+        workScheduleDateKeys,
         updatedAt: serverTimestamp()
       });
 
@@ -1512,11 +1732,19 @@ export function usePostPageController() {
           title,
           contentDelta: delta,
           contentText: rich.text,
-          contentRich: rich
+          contentRich: rich,
+          contentHtml,
+          workScheduleRows,
+          workScheduleDateKeys
         };
       });
 
-      setMessage({ type: 'notice', text: '게시글을 수정했습니다.' });
+      setMessage({
+        type: 'notice',
+        text: workScheduleCalendarNotice
+          ? `게시글을 수정했습니다. ${workScheduleCalendarNotice}`
+          : '게시글을 수정했습니다.'
+      });
       setEditModalOpen(false);
     } catch (err) {
       if (isPermissionDeniedError(err)) {
@@ -1603,6 +1831,8 @@ export function usePostPageController() {
     currentPost,
     currentUser,
     currentUserProfile,
+    editHtmlContent,
+    editWorkScheduleTableRows,
     editTitle,
     permissions
   ]);
@@ -1694,7 +1924,7 @@ export function usePostPageController() {
 
   const updateCoverForDateStatus = useCallback(async (targetIndexRaw, nextStatusRaw) => {
     if (!currentPost || !canChangeCoverStatus) return;
-    if (!isCoverForBoardId(currentPost.boardId)) return;
+    if (normalizeText(currentPost.boardId) !== COVER_FOR_BOARD_ID) return;
 
     const entries = coverForDateEntriesFromPost(currentPost);
     const targetIndex = Number.isFinite(Number(targetIndexRaw)) ? Number(targetIndexRaw) : -1;
@@ -2185,6 +2415,17 @@ export function usePostPageController() {
     setEditModalOpen,
     editTitle,
     setEditTitle,
+    editHtmlContent,
+    setEditHtmlContent,
+    editWorkScheduleTableRows,
+    setEditWorkScheduleTableRows,
+    addEditWorkScheduleRow,
+    addEditWorkScheduleColumn,
+    updateEditWorkScheduleCell,
+    removeEditWorkScheduleRow,
+    moveEditWorkScheduleRow,
+    reorderEditWorkScheduleRow,
+    removeEditWorkScheduleColumn,
     editSubmitting,
     setEditSubmitting,
     editMessage,
@@ -2209,6 +2450,7 @@ export function usePostPageController() {
     hasPotentialWriteRole,
     canAttemptCommentWrite,
     isCoverForPost,
+    isWorkSchedulePost,
     isAdminOrSuper,
     canChangeCoverStatus,
     canResetCoverToSeeking,
