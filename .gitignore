@@ -1,0 +1,6 @@
+.DS_Store
+
+# mentor-forum-react local debug artifacts
+mentor-forum-react/firestore-debug.log
+mentor-forum-react/test-results/
+mentor-forum-react/tmp-*.png
