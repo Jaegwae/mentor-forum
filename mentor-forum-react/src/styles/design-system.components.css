@@ -745,6 +745,7 @@
     text-decoration: line-through; color: var(--text-muted-custom);
   }
   .cover-calendar-modal { @apply fixed inset-0 z-[200] flex items-center justify-center p-4; }
+  .cover-calendar-modal.composer-date-picker-modal { z-index: 260; }
   .notification-center-modal { @apply fixed inset-0 z-[200] flex items-center justify-center p-4; }
   .notification-center-backdrop { @apply absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]; }
   .notification-center-panel { @apply relative z-10 w-[min(980px,96vw)] max-h-[88vh] overflow-hidden rounded-xl border border-border/80 bg-white p-4 shadow-soft-xl; }
