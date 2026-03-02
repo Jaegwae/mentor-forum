@@ -282,6 +282,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const composerDatePickerOpenedAtRef = useRef(0);
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationPrefs, setNotificationPrefs] = useState({});
@@ -1777,12 +1778,19 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     const selectedDate = fromDateKey(selectedKey) || todayDate;
     setComposerDatePickerTargetIndex(normalizedIndex);
     setComposerDatePickerCursor(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    composerDatePickerOpenedAtRef.current = Date.now();
     setComposerDatePickerOpen(true);
   }, [composerCoverDateKeys, todayDate]);
 
-  const closeComposerDatePicker = useCallback(() => {
+  const closeComposerDatePicker = useCallback((options = {}) => {
+    const source = normalizeText(options?.source);
+    if (source === 'backdrop') {
+      const openedAt = Number(composerDatePickerOpenedAtRef.current) || 0;
+      if (Date.now() - openedAt < 320) return;
+    }
     setComposerDatePickerOpen(false);
     setComposerDatePickerTargetIndex(-1);
+    composerDatePickerOpenedAtRef.current = 0;
   }, []);
 
   const submitPost = useCallback(async (event) => {

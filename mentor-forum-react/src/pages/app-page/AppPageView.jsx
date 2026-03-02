@@ -2152,7 +2152,7 @@ export function AppPageView({ vm }) {
           <div className="cover-calendar-modal composer-date-picker-modal" aria-hidden={!composerDatePickerOpen}>
             <motion.div
               className="cover-calendar-modal-backdrop"
-              onClick={closeComposerDatePicker}
+              onClick={() => closeComposerDatePicker({ source: 'backdrop' })}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2167,7 +2167,13 @@ export function AppPageView({ vm }) {
             >
               <div className="row space-between">
                 <h3 style={{ margin: 0 }}>요청 날짜 선택</h3>
-                <button type="button" className="panel-close-btn" onClick={closeComposerDatePicker}>닫기</button>
+                <button
+                  type="button"
+                  className="panel-close-btn"
+                  onClick={() => closeComposerDatePicker({ source: 'button' })}
+                >
+                  닫기
+                </button>
               </div>
 
               <div className="composer-day-picker-wrap">
@@ -2194,7 +2200,7 @@ export function AppPageView({ vm }) {
                     if (!(nextDate instanceof Date) || Number.isNaN(nextDate.getTime())) return;
                     if (composerDatePickerTargetIndex < 0) return;
                     updateComposerCoverDate(composerDatePickerTargetIndex, toDateKey(nextDate));
-                    closeComposerDatePicker();
+                    closeComposerDatePicker({ source: 'select' });
                   }}
                 />
               </div>
@@ -2279,7 +2285,7 @@ export function AppPageView({ vm }) {
                             <button
                               type="button"
                               className="cover-for-date-select-btn"
-                              onPointerDown={(event) => {
+                              onTouchEnd={(event) => {
                                 event.preventDefault();
                                 event.stopPropagation();
                                 openComposerDatePicker(idx);
