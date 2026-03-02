@@ -546,6 +546,15 @@ export function AppPageView({ vm }) {
   const mobileHamburgerStyle = compactListMode && !boardDrawerOpen
     ? { display: 'inline-flex' }
     : undefined;
+  const mobilePostListStyle = compactListMode
+    ? {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      width: '100%',
+      gap: '0.5rem'
+    }
+    : undefined;
   const [guideSectionTab, setGuideSectionTab] = React.useState('all');
   const isGuideGroupVisible = React.useCallback((groupKey) => (
     guideSectionTab === 'all' || guideSectionTab === groupKey
@@ -1098,7 +1107,11 @@ export function AppPageView({ vm }) {
                   </table>
                 ) : null}
 
-                <div className={compactListMode ? 'mobile-post-list' : 'mobile-post-list hidden'} aria-label="모바일 게시글 목록">
+                <div
+                  className={compactListMode ? 'mobile-post-list' : 'mobile-post-list hidden'}
+                  style={mobilePostListStyle}
+                  aria-label="모바일 게시글 목록"
+                >
                   {loadingPosts ? (
                     <button type="button" className="mobile-post-item" disabled>
                       <span className="mobile-post-title">
