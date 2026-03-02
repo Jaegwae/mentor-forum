@@ -607,7 +607,7 @@
     width: 100%; max-width: 360px;
   }
   .composer-day-picker .rdp-month_caption {
-    justify-content: center; align-items: center; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px;
   }
   .composer-day-picker .rdp-dropdowns {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -615,7 +615,7 @@
   .composer-day-picker .rdp-years_dropdown { min-width: 102px; }
   .composer-day-picker .rdp-months_dropdown { min-width: 78px; }
   .composer-day-picker .rdp-nav {
-    justify-content: space-between; padding: 0 2px;
+    position: static; display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 0; margin-left: 2px;
   }
   .composer-day-picker .rdp-button_previous,
   .composer-day-picker .rdp-button_next {
