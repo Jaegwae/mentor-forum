@@ -587,7 +587,7 @@
     border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   .composer-day-picker-select-content {
-    z-index: 230; border-radius: 8px; border-color: #d1d5db; background: var(--surface-overlay); color: var(--text-body);
+    z-index: 320 !important; border-radius: 8px; border-color: #d1d5db; background: var(--surface-overlay); color: var(--text-body);
   }
   .composer-day-picker-select-item {
     color: var(--text-body); font-size: 0.82rem; font-weight: 600;
