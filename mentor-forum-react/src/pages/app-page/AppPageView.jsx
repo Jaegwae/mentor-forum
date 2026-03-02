@@ -7,7 +7,6 @@ import {
   Bell,
   BellOff,
   BookOpen,
-  CalendarDays,
   FileText,
   Inbox,
   LogOut,
@@ -130,7 +129,6 @@ const {
   detectCompactListMode,
   toDateKey,
   fromDateKey,
-  formatDateKeyLabel,
   normalizeDateKeyInput,
   normalizeTimeInput,
   timeValueToMinutes,
@@ -483,7 +481,6 @@ export function AppPageView({ vm }) {
     updateComposerCoverVenue,
     setComposerCoverVenueCustomMode,
     updateComposerCoverVenueSelect,
-    openComposerDatePicker,
     closeComposerDatePicker,
     submitPost,
     handleExtendSession,
@@ -2277,14 +2274,13 @@ export function AppPageView({ vm }) {
 
                         return (
                           <div key={`cover-date-${idx}`} className="cover-for-date-row composer-date-row">
-                            <button
-                              type="button"
-                              className="cover-for-date-select-btn"
-                              onClick={() => openComposerDatePicker(idx)}
-                            >
-                              <span>{formatDateKeyLabel(dateKey)}</span>
-                              <CalendarDays size={15} />
-                            </button>
+                            <input
+                              type="date"
+                              className="cover-for-date-native-input"
+                              value={normalizeDateKeyInput(dateKey)}
+                              onChange={(event) => updateComposerCoverDate(idx, event.target.value)}
+                              aria-label={`대체근무 날짜 선택 ${idx + 1}`}
+                            />
 
                             <Select
                               value={venueSelectValue}

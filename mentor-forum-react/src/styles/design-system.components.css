@@ -528,6 +528,23 @@
   .cover-for-date-row { @apply flex items-center gap-2; }
   .cover-for-date-row input[type='date'] { @apply h-10 min-w-0 flex-1; }
   .composer-date-row { @apply items-stretch; }
+  .cover-for-date-native-input {
+    @apply h-10 min-w-0 flex-1 rounded-lg border px-3 text-sm font-medium;
+    border-color: var(--panel-border);
+    background: var(--surface-panel);
+    color: var(--text-body);
+    min-width: 180px;
+  }
+  .cover-for-date-native-input:hover {
+    border-color: rgba(59, 130, 246, 0.45);
+    background: var(--table-row-hover);
+    color: var(--mention-hover-text);
+  }
+  .cover-for-date-native-input:focus-visible {
+    border-color: rgba(59, 130, 246, 0.55);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+    outline: none;
+  }
   .cover-for-date-select-btn {
     @apply h-10 min-w-0 flex-1 rounded-lg border px-3 text-sm font-medium transition-colors; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
     border-color: var(--panel-border);
@@ -3320,6 +3337,7 @@
   }
 
   html.theme-dark body.app-page .composer-panel .cover-for-date-select-btn,
+  html.theme-dark body.app-page .composer-panel .cover-for-date-native-input,
   html.theme-dark body.app-page .composer-panel .cover-for-venue-select,
   html.theme-dark body.app-page .composer-panel .cover-for-time-select,
   html.theme-dark body.app-page .composer-panel .cover-for-venue-custom-input,
@@ -3331,6 +3349,7 @@
   }
 
   html.theme-dark body.app-page .composer-panel .cover-for-date-select-btn:hover,
+  html.theme-dark body.app-page .composer-panel .cover-for-date-native-input:hover,
   html.theme-dark body.app-page .composer-panel .cover-for-add-date-btn:hover:not(:disabled),
   html.theme-dark body.app-page .composer-panel .cover-for-date-remove-btn:hover {
     border-color: rgba(96, 126, 183, 0.84);
@@ -3709,6 +3728,7 @@
   html.theme-excel body:is(.app-page, .admin-page) select,
   html.theme-excel body:is(.app-page, .admin-page) textarea,
   html.theme-excel body:is(.app-page, .admin-page) .cover-for-date-select-btn,
+  html.theme-excel body:is(.app-page, .admin-page) .cover-for-date-native-input,
   html.theme-excel body:is(.app-page, .admin-page) .cover-for-venue-select,
   html.theme-excel body:is(.app-page, .admin-page) .cover-for-time-select,
   html.theme-excel body:is(.app-page, .admin-page) .cover-for-venue-custom-input,
@@ -6456,6 +6476,7 @@
   .cover-calendar-selected-item-top { @apply flex-col items-start; }
   .cover-for-date-row { @apply flex-col items-stretch; }
   .cover-for-date-select-btn,
+  .cover-for-date-native-input,
   .cover-for-venue-select,
   .cover-for-venue-custom-input,
   .cover-for-time-select,
