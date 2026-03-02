@@ -426,9 +426,15 @@ export function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
   const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+  const viewportWidth = Math.max(
+    Number(window.innerWidth || 0),
+    Number(document?.documentElement?.clientWidth || 0)
+  );
+  // Wide layouts should always prefer desktop composition, even on touch devices.
+  if (viewportWidth >= 1200) return false;
   const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
   const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
-  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
+  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || viewportWidth <= 900;
   const shortestScreen = Math.min(
     Number(window.screen?.width || 0),
     Number(window.screen?.height || 0)

@@ -760,29 +760,28 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
     };
 
     syncMode();
+    const addMediaListener = (media) => {
+      if (typeof media.addEventListener === 'function') {
+        media.addEventListener('change', syncMode);
+        return () => media.removeEventListener('change', syncMode);
+      }
+      media.addListener(syncMode);
+      return () => media.removeListener(syncMode);
+    };
 
-    if (
-      typeof wideMedia.addEventListener === 'function'
-      && typeof hoverMedia.addEventListener === 'function'
-      && typeof pointerMedia.addEventListener === 'function'
-    ) {
-      wideMedia.addEventListener('change', syncMode);
-      hoverMedia.addEventListener('change', syncMode);
-      pointerMedia.addEventListener('change', syncMode);
-      return () => {
-        wideMedia.removeEventListener('change', syncMode);
-        hoverMedia.removeEventListener('change', syncMode);
-        pointerMedia.removeEventListener('change', syncMode);
-      };
-    }
+    const cleanups = [
+      addMediaListener(wideMedia),
+      addMediaListener(hoverMedia),
+      addMediaListener(pointerMedia)
+    ];
 
-    wideMedia.addListener(syncMode);
-    hoverMedia.addListener(syncMode);
-    pointerMedia.addListener(syncMode);
+    window.addEventListener('resize', syncMode);
+    window.addEventListener('orientationchange', syncMode);
+
     return () => {
-      wideMedia.removeListener(syncMode);
-      hoverMedia.removeListener(syncMode);
-      pointerMedia.removeListener(syncMode);
+      cleanups.forEach((cleanup) => cleanup());
+      window.removeEventListener('resize', syncMode);
+      window.removeEventListener('orientationchange', syncMode);
     };
   }, []);
 
