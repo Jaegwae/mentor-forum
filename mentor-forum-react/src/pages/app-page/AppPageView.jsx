@@ -2187,7 +2187,7 @@ export function AppPageView({ vm }) {
                   }}
                   selected={composerDatePickerSelectedDate}
                   captionLayout="dropdown"
-                  navLayout="after"
+                  hideNavigation
                   showOutsideDays
                   fixedWeeks
                   startMonth={composerDatePickerStartMonth}
