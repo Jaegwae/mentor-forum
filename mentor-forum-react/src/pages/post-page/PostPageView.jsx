@@ -339,6 +339,45 @@ export function PostPageView({ vm }) {
   const editWorkScheduleColumnIndexes = useMemo(() => (
     Array.from({ length: editWorkScheduleColumnCount }, (_, idx) => idx)
   ), [editWorkScheduleColumnCount]);
+  const postDetailCompactMode = useMemo(() => {
+    if (compactListMode) return true;
+    if (typeof window === 'undefined') return false;
+    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+    const viewportWidth = Math.max(
+      Number(window.innerWidth || 0),
+      Number(document?.documentElement?.clientWidth || 0)
+    );
+    const touchLikePointer = typeof window.matchMedia === 'function'
+      && (
+        window.matchMedia('(any-pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches
+        || window.matchMedia('(any-hover: none)').matches
+      );
+    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
+  }, [compactListMode]);
+  const postDetailContentLayoutStyle = postDetailCompactMode
+    ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', width: '100%', minWidth: 0, gap: '10px', marginTop: '10px' }
+    : { marginTop: '10px' };
+  const postDetailSideRailStyle = postDetailCompactMode
+    ? { display: 'none' }
+    : undefined;
+  const postDetailMainColumnStyle = postDetailCompactMode
+    ? { display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, gridColumn: '1 / -1', gap: '10px' }
+    : undefined;
+  const postDetailNavRowStyle = postDetailCompactMode
+    ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', alignItems: 'stretch', gap: '10px' }
+    : undefined;
+  const postDetailBackButtonStyle = postDetailCompactMode
+    ? { gridColumn: '1 / -1', width: '100%', justifyContent: 'center' }
+    : undefined;
+  const postDetailActionWrapStyle = postDetailCompactMode
+    ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridColumn: '1 / -1', width: '100%', minWidth: 0, marginLeft: 0, gap: '10px' }
+    : { marginLeft: 'auto' };
+  const postDetailActionButtonStyle = postDetailCompactMode
+    ? { width: '100%', minWidth: 0, justifyContent: 'center' }
+    : undefined;
   // Transient drag state for row reorder in the generic table editor.
   const dragWorkScheduleRowIndexRef = useRef(-1);
   const [dragOverWorkScheduleRowIndex, setDragOverWorkScheduleRowIndex] = useState(-1);
@@ -484,8 +523,8 @@ export function PostPageView({ vm }) {
         </div>
         </section>
 
-        <section className="post-detail-content-layout" style={{ marginTop: '10px' }}>
-          <aside className="board-rail post-detail-side-rail" aria-label="게시글 상세 내 정보">
+        <section className="post-detail-content-layout" style={postDetailContentLayoutStyle}>
+          <aside className="board-rail post-detail-side-rail" aria-label="게시글 상세 내 정보" style={postDetailSideRailStyle}>
             <section className="board-rail-profile post-detail-side-profile">
             <div className="board-profile-head-row">
               <p className="board-rail-profile-kicker">내 정보</p>
@@ -524,19 +563,20 @@ export function PostPageView({ vm }) {
             </section>
           </aside>
 
-          <div className="post-detail-main-column">
+          <div className="post-detail-main-column" style={postDetailMainColumnStyle}>
             <section className="card post-detail-card">
-        <div className="row space-between mobile-col post-detail-nav-row">
-          <button id="backToListLink" className="btn-muted" type="button" onClick={handleBackToList}>
+        <div className="row space-between mobile-col post-detail-nav-row" style={postDetailNavRowStyle}>
+          <button id="backToListLink" className="btn-muted" type="button" onClick={handleBackToList} style={postDetailBackButtonStyle}>
             <ArrowLeft size={16} />
             목록으로
           </button>
 
-          <div className="row mobile-wrap" style={{ marginLeft: 'auto' }}>
+          <div className="row mobile-wrap" style={postDetailActionWrapStyle}>
             <button
               id="editPostBtn"
               type="button"
               className={canModerateCurrentPost ? 'btn-muted post-action-btn' : 'btn-muted post-action-btn hidden'}
+              style={postDetailActionButtonStyle}
               onClick={openEditModal}
             >
               수정
@@ -545,6 +585,7 @@ export function PostPageView({ vm }) {
               id="deletePostBtn"
               type="button"
               className={canModerateCurrentPost ? 'btn-danger post-action-btn' : 'btn-danger post-action-btn hidden'}
+              style={postDetailActionButtonStyle}
               onClick={() => deletePost().catch(() => {})}
             >
               삭제

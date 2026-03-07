@@ -554,13 +554,31 @@ export function AppPageView({ vm }) {
       gap: '0.5rem'
     }
     : undefined;
-  const notificationCenterLayoutStyle = compactListMode
+  const notificationCenterCompactMode = React.useMemo(() => {
+    if (compactListMode) return true;
+    if (typeof window === 'undefined') return false;
+    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+    const viewportWidth = Math.max(
+      Number(window.innerWidth || 0),
+      Number(document?.documentElement?.clientWidth || 0)
+    );
+    const touchLikePointer = typeof window.matchMedia === 'function'
+      && (
+        window.matchMedia('(any-pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches
+        || window.matchMedia('(any-hover: none)').matches
+      );
+    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
+  }, [compactListMode]);
+  const notificationCenterLayoutStyle = notificationCenterCompactMode
     ? { display: 'flex', flexDirection: 'column', gap: '0.65rem' }
     : undefined;
-  const notificationCenterPanelStyle = compactListMode
+  const notificationCenterPanelStyle = notificationCenterCompactMode
     ? { width: '100%', minWidth: 0, flex: '1 1 auto' }
     : undefined;
-  const notificationCenterFilterRowStyle = compactListMode
+  const notificationCenterFilterRowStyle = notificationCenterCompactMode
     ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', alignItems: 'stretch' }
     : undefined;
   const [guideSectionTab, setGuideSectionTab] = React.useState('all');
