@@ -6445,10 +6445,19 @@
     @apply text-[9px]; padding-left: 3px; padding-right: 3px; letter-spacing: -0.01em;
   }
   .cover-calendar-event { @apply text-[10px]; }
-  .notification-center-modal { @apply items-end p-0; }
+  .notification-center-modal {
+    @apply items-end p-0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
   .notification-center-panel {
-    width: 100vw; max-height: 92vh; border-radius: 14px 14px 0 0; padding: 0.9rem;
+    width: 100vw; max-height: 92dvh; border-radius: 14px 14px 0 0; padding: 0.9rem;
     overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    display: flex; flex-direction: column; flex: 0 0 auto; margin-top: auto;
     padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
   }
   .notification-center-layout { @apply flex-col gap-2.5; }
