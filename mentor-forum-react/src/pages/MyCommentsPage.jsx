@@ -204,6 +204,33 @@ export default function MyCommentsPage() {
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
+  const activityCompactMode = useMemo(() => {
+    if (compactListMode) return true;
+    if (typeof window === 'undefined') return false;
+    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
+    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
+    const viewportWidth = Math.max(
+      Number(window.innerWidth || 0),
+      Number(document?.documentElement?.clientWidth || 0)
+    );
+    const touchLikePointer = typeof window.matchMedia === 'function'
+      && (
+        window.matchMedia('(any-pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches
+        || window.matchMedia('(any-hover: none)').matches
+      );
+    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
+    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
+  }, [compactListMode]);
+  const activityContentLayoutStyle = activityCompactMode
+    ? { marginTop: '10px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', width: '100%', minWidth: 0, gap: '10px' }
+    : { marginTop: '10px' };
+  const activitySideRailStyle = activityCompactMode
+    ? { display: 'none' }
+    : undefined;
+  const activityListCardStyle = activityCompactMode
+    ? { width: '100%', minWidth: 0 }
+    : undefined;
 
   useEffect(() => {
     boardNameMapRef.current = boardNameMap;
@@ -636,8 +663,8 @@ export default function MyCommentsPage() {
         </div>
       </section>
 
-      <section className="my-activity-content-layout" style={{ marginTop: '10px' }}>
-        <aside className="board-rail my-activity-side-rail" aria-label="내 정보">
+      <section className="my-activity-content-layout" style={activityContentLayoutStyle}>
+        <aside className="board-rail my-activity-side-rail" aria-label="내 정보" style={activitySideRailStyle}>
           <section className="board-rail-profile my-activity-side-profile">
             <div className="board-profile-head-row">
               <p className="board-rail-profile-kicker">내 정보</p>
@@ -666,7 +693,7 @@ export default function MyCommentsPage() {
           </section>
         </aside>
 
-        <section className="card my-activity-list-card">
+        <section className="card my-activity-list-card" style={activityListCardStyle}>
           <div className="row space-between mobile-col">
             <h2 className="section-title"><MessageSquare size={18} /> 작성한 댓글 목록</h2>
             <span className="badge">{comments.length}건</span>
