@@ -6512,6 +6512,112 @@
   }
 }
 
+@media (max-width: 640px) {
+  .post-detail-card {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .post-title-block,
+  .post-author-block,
+  .post-content-block,
+  .cover-date-status-box {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .post-detail-nav-row.mobile-col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .post-detail-nav-row #backToListLink {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .post-detail-nav-row .mobile-wrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    gap: 10px;
+  }
+
+  .post-detail-nav-row .post-action-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .post-title-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .post-title-head h2 {
+    width: 100%;
+    font-size: 1.35rem;
+    line-height: 1.35;
+  }
+
+  .post-title-head .badge,
+  .post-title-head .cover-status-chip {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .post-author-main {
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .post-author-main .meta {
+    display: block;
+  }
+
+  .post-content-block .post-body {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .cover-date-status-box > .row.space-between.mobile-col {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cover-date-status-row {
+    padding: 10px 12px;
+  }
+
+  .cover-date-status-meta {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .cover-date-status-date {
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .cover-date-status-sub {
+    white-space: normal;
+  }
+
+  .cover-date-status-actions {
+    width: 100%;
+  }
+}
+
 @media (min-width: 769px) and (max-width: 900px) {
   .guide-help-btn-text { display: inline; }
   .theme-toggle-text { display: inline; }
