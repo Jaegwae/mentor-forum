@@ -37,6 +37,7 @@ import {
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
 import { getRoleBadgePalette } from '../legacy/rbac.js';
+import { toUserErrorMessage } from '../lib/user-error.js';
 
 const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
 const MY_POSTS_PAGE_SIZE = 30;
@@ -242,7 +243,7 @@ export default function MyPostsPage() {
         setMessage({ type: 'notice', text: '아직 작성한 게시글이 없습니다.' });
       }
     } catch (err) {
-      setMessage({ type: 'error', text: err?.message || '내 게시글 목록을 불러오지 못했습니다.' });
+      setMessage({ type: 'error', text: toUserErrorMessage(err, '내 게시글 목록을 불러오지 못했습니다.') });
       if (!append) {
         setPosts([]);
         setPostsCursor(null);
@@ -265,7 +266,7 @@ export default function MyPostsPage() {
       ensureFirebaseConfigured();
     } catch (err) {
       if (active) {
-        setMessage({ type: 'error', text: err?.message || 'Firebase 설정 오류' });
+        setMessage({ type: 'error', text: toUserErrorMessage(err, 'Firebase 설정 오류') });
         setReady(true);
       }
       return () => {
@@ -313,7 +314,7 @@ export default function MyPostsPage() {
         await loadMyPosts(user.uid);
       } catch (err) {
         if (!active) return;
-        setMessage({ type: 'error', text: err?.message || '초기화 실패' });
+        setMessage({ type: 'error', text: toUserErrorMessage(err, '초기화 실패') });
       } finally {
         if (active) setReady(true);
       }

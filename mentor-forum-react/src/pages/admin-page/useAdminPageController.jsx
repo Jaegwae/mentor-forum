@@ -90,7 +90,8 @@ const {
   initRoleFlags,
   buildRoleFlagsFromDoc,
   buildManageState,
-  roleSummaryText
+  roleSummaryText,
+  normalizeErrMessage
 } = pageUtils;
 
 const {
@@ -215,8 +216,11 @@ export function useAdminPageController() {
   }, []);
 
   const pushMessage = useCallback((text, type = 'notice') => {
-    setMessage({ type, text: String(text || '') });
-  }, []);
+    const nextText = type === 'error'
+      ? normalizeErrMessage(text, '문제가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      : String(text || '');
+    setMessage({ type, text: nextText });
+  }, [normalizeErrMessage]);
 
   const showAppliedPopup = useCallback((text = '반영되었습니다.', tone = 'ok') => {
     if (appliedPopupTimerRef.current) {

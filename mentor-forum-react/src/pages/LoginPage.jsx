@@ -37,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../components/ui/dialog.jsx';
+import { toUserErrorMessage } from '../lib/user-error.js';
 const autoLogoutMessage = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다. 다시 로그인해주세요.';
 const resetPasswordNotice = '비밀번호 재설정 요청이 접수되었습니다. 가입된 이메일이면 재설정 메일이 발송되며, 받은편지함과 스팸함을 확인해주세요.';
 
@@ -76,14 +77,6 @@ async function syncEmailVerifiedProfile(user) {
       updatedAt: serverTimestamp()
     });
   }
-}
-
-function normalizeErrMessage(err, fallback) {
-  const code = err && err.code ? String(err.code) : '';
-  if (code.includes('permission-denied')) {
-    return '권한 오류입니다. 현재 등급에서 허용되지 않은 작업입니다.';
-  }
-  return (err && err.message) ? err.message : fallback;
 }
 
 export default function LoginPage() {
@@ -146,7 +139,7 @@ export default function LoginPage() {
     try {
       ensureFirebaseConfigured();
     } catch (err) {
-      if (active) setMessage({ type: 'error', text: err.message || 'Firebase 설정 오류' });
+      if (active) setMessage({ type: 'error', text: toUserErrorMessage(err, 'Firebase 설정 오류') });
       return () => {
         active = false;
       };
@@ -223,7 +216,7 @@ export default function LoginPage() {
       if (!auth.currentUser) {
         clearTemporaryLoginExpiry();
       }
-      setMessage({ type: 'error', text: normalizeErrMessage(err, '로그인에 실패했습니다.') });
+      setMessage({ type: 'error', text: toUserErrorMessage(err, '로그인에 실패했습니다.') });
     } finally {
       setSubmitting(false);
     }

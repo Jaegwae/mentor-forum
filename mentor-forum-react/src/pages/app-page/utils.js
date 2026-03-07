@@ -4,6 +4,7 @@
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
 import { getRoleBadgePalette } from '../../legacy/rbac.js';
 import { db, collection, doc } from '../../legacy/firebase-app.js';
+import { toUserErrorMessage } from '../../lib/user-error.js';
 import {
   ALL_BOARD_ID,
   NOTICE_BOARD_ID,
@@ -94,11 +95,7 @@ export function isDeletedPost(post) {
 }
 
 export function normalizeErrMessage(err, fallback) {
-  const code = err && err.code ? String(err.code) : '';
-  if (code.includes('permission-denied')) {
-    return '권한 오류입니다. 현재 등급에서 허용되지 않은 작업입니다.';
-  }
-  return (err && err.message) ? err.message : fallback;
+  return toUserErrorMessage(err, fallback);
 }
 
 export function isPermissionDeniedError(err) {

@@ -2,6 +2,7 @@
 // Includes role normalization, manage-state derivation, and board/user sorting
 // rules to keep controller code focused on workflows.
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
+import { toUserErrorMessage } from '../../lib/user-error.js';
 import {
   CORE_ROLE_SET,
   ROLE_KEY_ALIASES,
@@ -52,6 +53,10 @@ export function shouldLogDebugPayload() {
 export function isPermissionDeniedError(err) {
   const code = err && err.code ? String(err.code) : '';
   return code.includes('permission-denied');
+}
+
+export function normalizeErrMessage(err, fallback) {
+  return toUserErrorMessage(err, fallback);
 }
 
 export function joinDebugParts(parts) {

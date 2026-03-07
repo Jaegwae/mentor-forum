@@ -1033,7 +1033,7 @@ export function usePostPageController() {
       ensureFirebaseConfigured();
     } catch (err) {
       if (active) {
-        setMessage({ type: 'error', text: err.message || 'Firebase 설정 오류' });
+        setMessage({ type: 'error', text: normalizeErrMessage(err, 'Firebase 설정 오류') });
         setReady(true);
       }
       return () => {

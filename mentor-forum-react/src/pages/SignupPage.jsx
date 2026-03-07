@@ -19,6 +19,7 @@ import {
   signOut
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
+import { toUserErrorMessage } from '../lib/user-error.js';
 import { cn } from '../lib/utils.js';
 import { Button } from '../components/ui/button.jsx';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card.jsx';
@@ -136,7 +137,7 @@ export default function SignupPage() {
       setReady(true);
     } catch (err) {
       setReady(false);
-      setMessage({ type: 'error', text: err.message || 'Firebase 설정 오류' });
+      setMessage({ type: 'error', text: toUserErrorMessage(err, 'Firebase 설정 오류') });
     }
   }, []);
 
@@ -350,7 +351,7 @@ export default function SignupPage() {
         setEmailError('이미 가입된 이메일이 있습니다.');
         return;
       }
-      setMessage({ type: 'error', text: (err && err.message) ? err.message : '회원가입에 실패했습니다.' });
+      setMessage({ type: 'error', text: toUserErrorMessage(err, '회원가입에 실패했습니다.') });
     } finally {
       setSubmitting(false);
     }

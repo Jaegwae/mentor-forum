@@ -853,7 +853,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       ensureFirebaseConfigured();
     } catch (err) {
       if (active) {
-        setPageMessage({ type: 'error', text: err.message || 'Firebase 설정 오류' });
+        setPageMessage({ type: 'error', text: normalizeErrMessage(err, 'Firebase 설정 오류') });
         setReady(true);
       }
       return () => {
