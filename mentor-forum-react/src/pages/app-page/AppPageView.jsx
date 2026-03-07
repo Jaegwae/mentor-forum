@@ -554,6 +554,15 @@ export function AppPageView({ vm }) {
       gap: '0.5rem'
     }
     : undefined;
+  const notificationCenterLayoutStyle = compactListMode
+    ? { display: 'flex', flexDirection: 'column', gap: '0.65rem' }
+    : undefined;
+  const notificationCenterPanelStyle = compactListMode
+    ? { width: '100%', minWidth: 0, flex: '1 1 auto' }
+    : undefined;
+  const notificationCenterFilterRowStyle = compactListMode
+    ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', alignItems: 'stretch' }
+    : undefined;
   const [guideSectionTab, setGuideSectionTab] = React.useState('all');
   const isGuideGroupVisible = React.useCallback((groupKey) => (
     guideSectionTab === 'all' || guideSectionTab === groupKey
@@ -1934,8 +1943,8 @@ export function AppPageView({ vm }) {
                 </div>
               </div>
 
-              <div className="notification-center-layout">
-                <section className="notification-pref-panel">
+              <div className="notification-center-layout" style={notificationCenterLayoutStyle}>
+                <section className="notification-pref-panel" style={notificationCenterPanelStyle}>
                   <div className="notification-pref-group">
                     <p className="meta" style={{ margin: 0, fontWeight: 700 }}>댓글 알림 설정</p>
                     <div className="notification-pref-list notification-pref-list-compact">
@@ -1990,9 +1999,9 @@ export function AppPageView({ vm }) {
                   </div>
                 </section>
 
-                <section className="notification-feed-panel">
+                <section className="notification-feed-panel" style={notificationCenterPanelStyle}>
                   <p className="meta" style={{ margin: 0, fontWeight: 700 }}>최근 알림</p>
-                  <div className="notification-feed-filter-row">
+                  <div className="notification-feed-filter-row" style={notificationCenterFilterRowStyle}>
                     {[
                       { key: NOTIFICATION_FEED_FILTER.ALL, label: '전체' },
                       { key: NOTIFICATION_FEED_FILTER.POST, label: '새 글' },
