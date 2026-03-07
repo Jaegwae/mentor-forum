@@ -6513,6 +6513,27 @@
 }
 
 @media (max-width: 640px) {
+  .post-detail-content-layout {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .post-detail-side-rail {
+    display: none !important;
+  }
+
+  .post-detail-main-column {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .post-detail-main-column > * {
+    width: 100%;
+    min-width: 0;
+  }
+
   .post-detail-card {
     width: 100%;
     min-width: 0;
