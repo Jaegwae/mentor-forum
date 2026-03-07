@@ -6325,6 +6325,15 @@
     padding: 0.62rem 0.68rem;
     font-size: 12px;
   }
+  .notification-center-layout { @apply flex-col gap-2.5; }
+  .notification-pref-panel,
+  .notification-feed-panel {
+    width: 100%; min-width: 0; flex: 1 1 auto;
+  }
+  .notification-feed-filter-row {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch;
+  }
+  .notification-filter-btn { width: 100%; }
   .forum-side-column { display: none; }
   .board-rail { @apply hidden; }
   .forum-list-main { @apply rounded-lg p-3; }
