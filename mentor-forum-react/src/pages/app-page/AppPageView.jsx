@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ThemeToggle } from '../../components/ui/theme-toggle.jsx';
 import { ExcelChrome } from '../../components/ui/excel-chrome.jsx';
 import { AppExcelWorkbook } from '../../components/excel/AppExcelWorkbook.jsx';
+import { useMobileLayoutMode } from '../../lib/mobile-layout.js';
 import {
   APP_EXCEL_COL_COUNT,
   APP_EXCEL_ROW_COUNT
@@ -554,24 +555,7 @@ export function AppPageView({ vm }) {
       gap: '0.5rem'
     }
     : undefined;
-  const notificationCenterCompactMode = React.useMemo(() => {
-    if (compactListMode) return true;
-    if (typeof window === 'undefined') return false;
-    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
-    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
-    const viewportWidth = Math.max(
-      Number(window.innerWidth || 0),
-      Number(document?.documentElement?.clientWidth || 0)
-    );
-    const touchLikePointer = typeof window.matchMedia === 'function'
-      && (
-        window.matchMedia('(any-pointer: coarse)').matches
-        || window.matchMedia('(hover: none)').matches
-        || window.matchMedia('(any-hover: none)').matches
-      );
-    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
-    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
-  }, [compactListMode]);
+  const notificationCenterCompactMode = useMobileLayoutMode(compactListMode);
   const notificationCenterLayoutStyle = notificationCenterCompactMode
     ? { display: 'flex', flexDirection: 'column', gap: '0.65rem' }
     : undefined;

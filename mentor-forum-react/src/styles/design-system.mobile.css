@@ -1,0 +1,229 @@
+/* Mobile-only layout layer.
+   This file is imported last so handheld layouts can be adjusted without
+   touching the larger desktop-oriented component stylesheet. */
+
+@media (max-width: 900px) {
+  body.app-page .page,
+  body.app-page .my-activity-shell,
+  body.app-page .post-detail-shell,
+  body.admin-page .page {
+    max-width: 100%;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  body.app-page .hero-card,
+  body.app-page .post-detail-shell .hero-card,
+  body.app-page .my-activity-hero {
+    padding: 16px;
+  }
+
+  body.app-page .hero-card .row.space-between.mobile-col,
+  body.app-page .post-detail-shell .hero-card .row.space-between.mobile-col,
+  body.app-page .my-activity-hero .row.space-between.mobile-col {
+    align-items: stretch;
+  }
+
+  body.app-page .top-action-row,
+  body.app-page .post-detail-shell .top-action-row,
+  body.app-page .my-activity-top-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  body.app-page .guide-help-btn,
+  body.app-page .theme-toggle-btn,
+  body.app-page .post-detail-shell .guide-help-btn,
+  body.app-page .post-detail-shell .theme-toggle-btn,
+  body.app-page .my-activity-top-actions .btn-muted {
+    min-height: 40px;
+  }
+
+  body.app-page .forum-list-layout,
+  body.app-page .post-detail-content-layout,
+  body.app-page .my-activity-content-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  body.app-page .post-detail-main-column,
+  body.app-page .my-activity-list-card,
+  body.app-page .post-detail-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.app-page .post-detail-card,
+  body.app-page .my-activity-list-card,
+  body.app-page .forum-list-main {
+    padding: 12px;
+  }
+
+  body.app-page .post-title-block,
+  body.app-page .post-author-block,
+  body.app-page .post-content-block,
+  body.app-page .cover-date-status-box {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  body.app-page .post-title-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  body.app-page .post-title-head h2,
+  body.app-page .post-body,
+  body.app-page .post-author-main,
+  body.app-page .post-author-main .meta {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  body.app-page .post-detail-nav-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  body.app-page .post-detail-nav-row #backToListLink {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.app-page .post-detail-nav-row .mobile-wrap {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-left: 0 !important;
+  }
+
+  body.app-page .post-detail-nav-row .post-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.app-page .notification-center-panel {
+    width: calc(100vw - 12px);
+    max-width: calc(100vw - 12px);
+    max-height: 92dvh;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  body.app-page .notification-center-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  body.app-page .notification-pref-panel,
+  body.app-page .notification-feed-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  body.app-page .notification-feed-filter-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  body.app-page .notification-filter-btn,
+  body.app-page .notification-pref-item,
+  body.app-page .notification-feed-item {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.app-page .notification-feed-head,
+  body.app-page .notification-feed-title,
+  body.app-page .notification-feed-meta {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  body.app-page .board-drawer {
+    width: min(360px, 92vw);
+  }
+}
+
+@media (max-width: 640px) {
+  body.app-page .hero-card,
+  body.app-page .post-detail-shell .hero-card,
+  body.app-page .my-activity-hero {
+    padding: 14px;
+  }
+
+  body.app-page .hero-copy,
+  body.app-page .post-detail-shell .hero-copy,
+  body.app-page .my-activity-hero .hero-copy {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  body.app-page .forum-brand-title,
+  body.app-page .post-detail-shell .forum-brand-title,
+  body.app-page .my-activity-hero .forum-brand-title {
+    font-size: 1.85rem;
+    line-height: 0.98;
+  }
+
+  body.app-page .guide-help-btn-text,
+  body.app-page .theme-toggle-text,
+  body.app-page .post-detail-shell .guide-help-btn-text,
+  body.app-page .post-detail-shell .theme-toggle-text {
+    display: none;
+  }
+
+  body.app-page .notification-center-modal,
+  body.app-page .cover-calendar-modal,
+  body.app-page .admin-modal,
+  body.app-page .composer-modal,
+  body.app-page .post-detail-shell .composer-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  body.app-page .notification-center-panel,
+  body.app-page .cover-calendar-modal-panel,
+  body.app-page .admin-modal-panel,
+  body.app-page .composer-panel,
+  body.app-page .post-detail-shell .composer-panel,
+  body.app-page .post-detail-shell .post-edit-panel {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  body.app-page .my-activity-mobile-list {
+    display: flex;
+  }
+
+  body.app-page .my-activity-table,
+  body.app-page .my-activity-side-rail,
+  body.app-page .post-detail-side-rail {
+    display: none !important;
+  }
+
+  body.app-page .my-activity-mobile-item,
+  body.app-page .mobile-post-item {
+    width: 100%;
+    min-width: 0;
+  }
+}

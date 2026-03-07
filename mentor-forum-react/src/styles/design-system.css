@@ -3,6 +3,7 @@
 @import './design-system.tokens.css';
 @import './design-system.components.css';
 @import './design-system.pages.css';
+@import './design-system.mobile.css';
 
 @tailwind base;
 @tailwind components;

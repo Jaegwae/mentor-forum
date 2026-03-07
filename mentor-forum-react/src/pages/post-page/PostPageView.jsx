@@ -43,6 +43,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { ThemeToggle } from '../../components/ui/theme-toggle.jsx';
 import { ExcelChrome } from '../../components/ui/excel-chrome.jsx';
 import { AppExcelWorkbook } from '../../components/excel/AppExcelWorkbook.jsx';
+import { useMobileLayoutMode } from '../../lib/mobile-layout.js';
 import {
   EXCEL_STANDARD_COL_COUNT,
   EXCEL_STANDARD_ROW_COUNT,
@@ -339,24 +340,7 @@ export function PostPageView({ vm }) {
   const editWorkScheduleColumnIndexes = useMemo(() => (
     Array.from({ length: editWorkScheduleColumnCount }, (_, idx) => idx)
   ), [editWorkScheduleColumnCount]);
-  const postDetailCompactMode = useMemo(() => {
-    if (compactListMode) return true;
-    if (typeof window === 'undefined') return false;
-    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
-    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
-    const viewportWidth = Math.max(
-      Number(window.innerWidth || 0),
-      Number(document?.documentElement?.clientWidth || 0)
-    );
-    const touchLikePointer = typeof window.matchMedia === 'function'
-      && (
-        window.matchMedia('(any-pointer: coarse)').matches
-        || window.matchMedia('(hover: none)').matches
-        || window.matchMedia('(any-hover: none)').matches
-      );
-    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
-    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
-  }, [compactListMode]);
+  const postDetailCompactMode = useMobileLayoutMode(compactListMode);
   const postDetailContentLayoutStyle = postDetailCompactMode
     ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', width: '100%', minWidth: 0, gap: '10px', marginTop: '10px' }
     : { marginTop: '10px' };

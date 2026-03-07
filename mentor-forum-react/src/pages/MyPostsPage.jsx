@@ -17,6 +17,7 @@ import {
   buildMyPostsExcelSheetModel
 } from '../components/excel/secondary-excel-sheet-models.js';
 import { useTheme } from '../hooks/useTheme.js';
+import { useMobileLayoutMode } from '../lib/mobile-layout.js';
 import {
   auth,
   db,
@@ -192,24 +193,7 @@ export default function MyPostsPage() {
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
-  const activityCompactMode = useMemo(() => {
-    if (compactListMode) return true;
-    if (typeof window === 'undefined') return false;
-    const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
-    const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
-    const viewportWidth = Math.max(
-      Number(window.innerWidth || 0),
-      Number(document?.documentElement?.clientWidth || 0)
-    );
-    const touchLikePointer = typeof window.matchMedia === 'function'
-      && (
-        window.matchMedia('(any-pointer: coarse)').matches
-        || window.matchMedia('(hover: none)').matches
-        || window.matchMedia('(any-hover: none)').matches
-      );
-    const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
-    return viewportWidth <= 900 || mobileUa || maxTouchPoints > 0 || touchLikePointer;
-  }, [compactListMode]);
+  const activityCompactMode = useMobileLayoutMode(compactListMode);
   const activityContentLayoutStyle = activityCompactMode
     ? { marginTop: '10px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', width: '100%', minWidth: 0, gap: '10px' }
     : { marginTop: '10px' };
