@@ -2186,7 +2186,7 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
       if (!active) return;
       setMobilePushCapability({
         supported: false,
-        reason: err?.message || '모바일 알림 지원 여부를 확인하지 못했습니다.',
+        reason: normalizeErrMessage(err, '모바일 알림 지원 여부를 확인하지 못했습니다.'),
         reasonCode: 'check-failed'
       });
     });

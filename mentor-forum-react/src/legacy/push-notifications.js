@@ -5,6 +5,7 @@
  */
 import { app } from './firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from './config.js';
+import { toUserErrorMessage } from '../lib/user-error.js';
 
 export const WEB_PUSH_SW_PATH = '/firebase-messaging-sw.js';
 
@@ -91,7 +92,7 @@ export async function getWebPushCapability() {
     return {
       supported: false,
       reasonCode: 'messaging-check-failed',
-      reason: err?.message || '푸시 지원 여부를 확인하지 못했습니다.'
+      reason: toUserErrorMessage(err, '푸시 지원 여부를 확인하지 못했습니다.')
     };
   }
 
