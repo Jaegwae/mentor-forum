@@ -6514,9 +6514,11 @@
 
 @media (max-width: 640px) {
   .post-detail-content-layout {
-    display: block;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     width: 100%;
     min-width: 0;
+    gap: 10px;
   }
 
   .post-detail-side-rail {
@@ -6525,6 +6527,7 @@
 
   .post-detail-main-column {
     display: flex;
+    grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
   }
@@ -6565,6 +6568,7 @@
   .post-detail-nav-row .mobile-wrap {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
     margin-left: 0;
