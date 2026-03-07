@@ -556,14 +556,78 @@ export function AppPageView({ vm }) {
     }
     : undefined;
   const notificationCenterCompactMode = useMobileLayoutMode(compactListMode);
+  const notificationCenterModalStyle = notificationCenterCompactMode
+    ? {
+      alignItems: 'flex-end',
+      justifyContent: 'stretch',
+      padding: 0,
+      overflowY: 'auto',
+      overscrollBehaviorY: 'contain',
+      WebkitOverflowScrolling: 'touch',
+      touchAction: 'pan-y'
+    }
+    : undefined;
+  const notificationCenterContainerStyle = notificationCenterCompactMode
+    ? {
+      width: '100vw',
+      maxWidth: '100vw',
+      maxHeight: '92dvh',
+      marginTop: 'auto',
+      borderRadius: '16px 16px 0 0',
+      padding: '12px 12px calc(12px + env(safe-area-inset-bottom))',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.75rem',
+      WebkitOverflowScrolling: 'touch',
+      overscrollBehaviorY: 'contain',
+      touchAction: 'pan-y'
+    }
+    : undefined;
+  const notificationCenterHeaderStyle = notificationCenterCompactMode
+    ? { alignItems: 'stretch', gap: '0.75rem' }
+    : undefined;
+  const notificationCenterActionStyle = notificationCenterCompactMode
+    ? {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      width: '100%',
+      gap: '8px'
+    }
+    : undefined;
   const notificationCenterLayoutStyle = notificationCenterCompactMode
-    ? { display: 'flex', flexDirection: 'column', gap: '0.65rem' }
+    ? { display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%', alignItems: 'stretch', flexWrap: 'nowrap' }
     : undefined;
   const notificationCenterPanelStyle = notificationCenterCompactMode
-    ? { width: '100%', minWidth: 0, flex: '1 1 auto' }
+    ? { width: '100%', minWidth: 0, flex: '1 1 auto', overflow: 'visible' }
     : undefined;
   const notificationCenterFilterRowStyle = notificationCenterCompactMode
     ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', alignItems: 'stretch' }
+    : undefined;
+  const notificationPrefListStyle = notificationCenterCompactMode
+    ? { maxHeight: 'none', overflow: 'visible' }
+    : undefined;
+  const notificationFeedListStyle = notificationCenterCompactMode
+    ? { maxHeight: 'none', overflow: 'visible' }
+    : undefined;
+  const notificationFeedItemStyle = notificationCenterCompactMode
+    ? { whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }
+    : undefined;
+  const notificationFeedHeadStyle = notificationCenterCompactMode
+    ? { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }
+    : undefined;
+  const notificationFeedBoardStyle = notificationCenterCompactMode
+    ? { maxWidth: '100%', whiteSpace: 'normal' }
+    : undefined;
+  const notificationFeedTitleClassName = notificationCenterCompactMode
+    ? 'notification-feed-title'
+    : 'notification-feed-title text-ellipsis-1';
+  const notificationFeedTitleStyle = notificationCenterCompactMode
+    ? { whiteSpace: 'normal', overflow: 'visible', wordBreak: 'break-word' }
+    : undefined;
+  const notificationFeedMetaStyle = notificationCenterCompactMode
+    ? { flexWrap: 'wrap', rowGap: '4px' }
     : undefined;
   const [guideSectionTab, setGuideSectionTab] = React.useState('all');
   const isGuideGroupVisible = React.useCallback((groupKey) => (
@@ -1904,7 +1968,11 @@ export function AppPageView({ vm }) {
 
       <AnimatePresence>
         {notificationCenterOpen ? (
-          <div className="notification-center-modal" aria-hidden={!notificationCenterOpen}>
+          <div
+            className="notification-center-modal"
+            aria-hidden={!notificationCenterOpen}
+            style={notificationCenterModalStyle}
+          >
             <motion.div
               className="notification-center-backdrop"
               onClick={() => setNotificationCenterOpen(false)}
@@ -1915,19 +1983,20 @@ export function AppPageView({ vm }) {
             />
             <motion.section
               className="card notification-center-panel"
+              style={notificationCenterContainerStyle}
               initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 14, scale: 0.98 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
-              <div className="row space-between mobile-col">
+              <div className="row space-between mobile-col" style={notificationCenterHeaderStyle}>
                 <div>
                   <h3 style={{ margin: 0 }}>알림 센터</h3>
                   <p className="meta" style={{ margin: '6px 0 0' }}>
                     미확인 알림 {unreadNotificationCount}건
                   </p>
                 </div>
-                <div className="row notification-center-actions">
+                <div className="row notification-center-actions" style={notificationCenterActionStyle}>
                   <button
                     type="button"
                     className="btn-muted notification-mark-read-btn"
@@ -1949,7 +2018,7 @@ export function AppPageView({ vm }) {
                 <section className="notification-pref-panel" style={notificationCenterPanelStyle}>
                   <div className="notification-pref-group">
                     <p className="meta" style={{ margin: 0, fontWeight: 700 }}>댓글 알림 설정</p>
-                    <div className="notification-pref-list notification-pref-list-compact">
+                    <div className="notification-pref-list notification-pref-list-compact" style={notificationPrefListStyle}>
                       {[
                         { key: NOTIFICATION_PREF_KEY.COMMENT, label: '댓글 알림' },
                         { key: NOTIFICATION_PREF_KEY.MENTION, label: '멘션 알림' }
@@ -1975,7 +2044,7 @@ export function AppPageView({ vm }) {
 
                   <div className="notification-pref-group">
                     <p className="meta" style={{ margin: 0, fontWeight: 700 }}>게시판 알림 설정</p>
-                    <div className="notification-pref-list">
+                    <div className="notification-pref-list" style={notificationPrefListStyle}>
                       {notificationBoardItems.length ? notificationBoardItems.map((board) => {
                         const boardId = normalizeText(board?.id);
                         const boardName = normalizeText(board?.name) || boardId;
@@ -2020,31 +2089,38 @@ export function AppPageView({ vm }) {
                       </button>
                     ))}
                   </div>
-                  <div className="notification-feed-list">
+                  <div className="notification-feed-list" style={notificationFeedListStyle}>
                     {filteredNotifications.length ? filteredNotifications.map((item) => {
                       const isUnread = !(Number(item?.readAtMs) > 0);
+                      const notificationDescription = normalizeText(item?.body) || normalizeText(item?.title);
                       return (
                         <button
                           key={item.id}
                           type="button"
                           className={isUnread ? 'notification-feed-item unread' : 'notification-feed-item'}
+                          style={notificationFeedItemStyle}
                           onClick={() => {
                             markNotificationRead(item.id);
                             setNotificationCenterOpen(false);
                             handleMovePost(item.postId, item.boardId, item.commentId);
                           }}
                         >
-                          <div className="notification-feed-head">
-                            <span className="notification-feed-board">[{item.boardName || item.boardId}]</span>
+                          <div className="notification-feed-head" style={notificationFeedHeadStyle}>
+                            <span className="notification-feed-board" style={notificationFeedBoardStyle}>[{item.boardName || item.boardId}]</span>
                             <span className="notification-feed-date">{formatNotificationDate(item.createdAtMs)}</span>
                           </div>
-                          <p className="notification-feed-title text-ellipsis-1">
+                          <p className={notificationFeedTitleClassName} style={notificationFeedTitleStyle}>
                             {notificationHeadline(item)}
                           </p>
-                          <p className="notification-feed-meta">
+                          <p className="notification-feed-meta" style={notificationFeedMetaStyle}>
                             {notificationCategoryLabel(item)}
                             {isUnread ? <span className="notification-feed-new">New</span> : null}
                           </p>
+                          {notificationDescription ? (
+                            <p className="notification-feed-desc" style={notificationFeedTitleStyle}>
+                              {notificationDescription}
+                            </p>
+                          ) : null}
                         </button>
                       );
                     }) : (

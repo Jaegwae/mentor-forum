@@ -120,12 +120,24 @@
     max-height: 92dvh;
     padding: 12px;
     border-radius: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 
   body.app-page .notification-center-layout {
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    flex-wrap: nowrap !important;
   }
 
   body.app-page .notification-pref-panel,
@@ -133,6 +145,7 @@
     width: 100% !important;
     min-width: 0 !important;
     flex: 1 1 auto !important;
+    overflow: visible !important;
   }
 
   body.app-page .notification-feed-filter-row {
@@ -148,6 +161,12 @@
     min-width: 0;
   }
 
+  body.app-page .notification-pref-list,
+  body.app-page .notification-feed-list {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   body.app-page .notification-feed-head,
   body.app-page .notification-feed-title,
   body.app-page .notification-feed-meta {
@@ -156,8 +175,150 @@
     word-break: break-word;
   }
 
+  body.app-page .notification-feed-head {
+    align-items: flex-start;
+  }
+
+  body.app-page .notification-feed-board {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  body.app-page .notification-center-modal {
+    align-items: flex-end;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
   body.app-page .board-drawer {
     width: min(360px, 92vw);
+  }
+
+  body.admin-page .admin-shell {
+    overflow-x: hidden;
+  }
+
+  body.admin-page .admin-content-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  body.admin-page .admin-side-rail,
+  body.admin-page .admin-main-column,
+  body.admin-page .admin-panel,
+  body.admin-page .admin-side-profile {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.admin-page .admin-side-rail {
+    position: static;
+    top: auto;
+    overflow: hidden;
+  }
+
+  body.admin-page .admin-side-actions,
+  body.admin-page .admin-panel .row.mobile-wrap,
+  body.admin-page .admin-venue-create-row,
+  body.admin-page .user-search-row,
+  body.admin-page .board-edit-toolbar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  body.admin-page .admin-side-actions > *,
+  body.admin-page .admin-panel .row.mobile-wrap > *,
+  body.admin-page .admin-venue-create-row > *,
+  body.admin-page .user-search-row > *,
+  body.admin-page .board-edit-toolbar > * {
+    min-width: 0;
+  }
+
+  body.admin-page .admin-user-search-input,
+  body.admin-page .admin-venue-create-input {
+    flex: 1 1 240px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  body.admin-page .admin-panel,
+  body.admin-page .admin-panel * {
+    min-width: 0;
+  }
+
+  body.admin-page .admin-panel h1,
+  body.admin-page .admin-panel h2,
+  body.admin-page .admin-panel h3,
+  body.admin-page .admin-panel p,
+  body.admin-page .admin-panel span,
+  body.admin-page .admin-panel strong,
+  body.admin-page .admin-panel td,
+  body.admin-page .admin-panel th,
+  body.admin-page .board-role-option span,
+  body.admin-page .user-name-cell {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  body.admin-page .badge,
+  body.admin-page .user-state-badge,
+  body.admin-page .role-badge,
+  body.admin-page .meta {
+    white-space: normal;
+  }
+
+  body.admin-page .table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.admin-page .admin-panel .table {
+    min-width: max(680px, 100%);
+    table-layout: auto;
+  }
+
+  body.admin-page .admin-board-table,
+  body.admin-page .admin-role-table {
+    min-width: 760px;
+  }
+
+  body.admin-page .user-role-table {
+    min-width: 980px;
+  }
+
+  body.admin-page .board-edit-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  body.admin-page .board-edit-list-wrap,
+  body.admin-page .board-edit-list,
+  body.admin-page .board-role-list,
+  body.admin-page .role-color-palette,
+  body.admin-page #editRolePermissionFlags,
+  body.admin-page #rolePermissionFlags {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.admin-page .board-role-list,
+  body.admin-page #editRolePermissionFlags,
+  body.admin-page #rolePermissionFlags {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.admin-page .role-color-palette {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -200,7 +361,6 @@
 
   body.app-page .notification-center-panel,
   body.app-page .cover-calendar-modal-panel,
-  body.app-page .admin-modal-panel,
   body.app-page .composer-panel,
   body.app-page .post-detail-shell .composer-panel,
   body.app-page .post-detail-shell .post-edit-panel {
@@ -225,5 +385,34 @@
   body.app-page .mobile-post-item {
     width: 100%;
     min-width: 0;
+  }
+
+  body.admin-page .admin-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  body.admin-page .admin-modal-panel {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    margin: 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  body.admin-page .admin-side-actions > *,
+  body.admin-page .admin-panel .row.mobile-wrap > button,
+  body.admin-page .admin-venue-create-row > button,
+  body.admin-page .user-search-row > button,
+  body.admin-page .board-edit-toolbar > button {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  body.admin-page .admin-user-search-input,
+  body.admin-page .admin-venue-create-input {
+    flex-basis: 100%;
   }
 }
