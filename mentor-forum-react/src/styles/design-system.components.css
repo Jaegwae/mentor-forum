@@ -750,10 +750,18 @@
   .notification-center-backdrop { @apply absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]; }
   .notification-center-panel { @apply relative z-10 w-[min(980px,96vw)] max-h-[88vh] overflow-hidden rounded-xl border border-border/80 bg-white p-4 shadow-soft-xl; }
   .notification-center-layout {
-    @apply mt-3 grid gap-3; grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); min-height: 0;
+    @apply mt-3 flex flex-wrap items-start gap-3; min-height: 0;
   }
   .notification-pref-panel,
   .notification-feed-panel { @apply rounded-lg border border-gray-200 bg-gray-50/75 p-3; }
+  .notification-pref-panel {
+    flex: 0 1 280px;
+    min-width: min(100%, 280px);
+  }
+  .notification-feed-panel {
+    flex: 1 1 420px;
+    min-width: min(100%, 340px);
+  }
   .notification-pref-group + .notification-pref-group { @apply mt-3; }
   .notification-pref-list,
   .notification-feed-list {
@@ -6443,8 +6451,10 @@
     overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
     padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
   }
-  .notification-center-layout {
-    grid-template-columns: minmax(0, 1fr); gap: 0.65rem;
+  .notification-center-layout { @apply flex-col gap-2.5; }
+  .notification-pref-panel,
+  .notification-feed-panel {
+    width: 100%; min-width: 0; flex: 1 1 auto;
   }
   .mobile-push-status-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -6454,6 +6464,10 @@
   }
   .notification-pref-list,
   .notification-feed-list { max-height: none; overflow: visible; }
+  .notification-feed-filter-row {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch;
+  }
+  .notification-filter-btn { width: 100%; }
   .cover-calendar-selected-item-top { @apply flex-col items-start; }
   .cover-for-date-row { @apply flex-col items-stretch; }
   .cover-for-date-select-btn,
