@@ -2474,61 +2474,63 @@ export function AppPageView({ vm }) {
                               />
                             ) : null}
 
-                            <Select
-                              value={normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME}
-                              onValueChange={(nextValue) => updateComposerCoverStartTime(idx, nextValue)}
-                            >
-                              <SelectTrigger
-                                className="cover-for-time-select"
-                                aria-label={`요청 시작 시간 ${idx + 1}`}
+                            <div className="cover-for-time-range-row">
+                              <Select
+                                value={normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME}
+                                onValueChange={(nextValue) => updateComposerCoverStartTime(idx, nextValue)}
                               >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="cover-for-time-select-content" position="popper">
-                                {COVER_FOR_START_TIME_OPTIONS.map((timeValue) => (
-                                  <SelectItem
-                                    key={`cover-start-time-option-${idx}-${timeValue}`}
-                                    value={timeValue}
-                                    className="cover-for-time-select-item"
-                                  >
-                                    {timeValue}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span className="cover-for-time-range-sep" aria-hidden="true">~</span>
-                            <Select
-                              value={(() => {
-                                const startTimeValue = normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME;
-                                const startMinutes = timeValueToMinutes(startTimeValue);
-                                const options = COVER_FOR_TIME_OPTIONS.filter((timeValue) => timeValueToMinutes(timeValue) > startMinutes);
-                                const selected = normalizeTimeInput(composerCoverEndTimeValues[idx]) || COVER_FOR_DEFAULT_END_TIME;
-                                return options.includes(selected) ? selected : (options[0] || suggestEndTime(startTimeValue));
-                              })()}
-                              onValueChange={(nextValue) => updateComposerCoverEndTime(idx, nextValue)}
-                            >
-                              <SelectTrigger
-                                className="cover-for-time-select"
-                                aria-label={`요청 종료 시간 ${idx + 1}`}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="cover-for-time-select-content" position="popper">
-                                {(() => {
+                                <SelectTrigger
+                                  className="cover-for-time-select"
+                                  aria-label={`요청 시작 시간 ${idx + 1}`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="cover-for-time-select-content" position="popper">
+                                  {COVER_FOR_START_TIME_OPTIONS.map((timeValue) => (
+                                    <SelectItem
+                                      key={`cover-start-time-option-${idx}-${timeValue}`}
+                                      value={timeValue}
+                                      className="cover-for-time-select-item"
+                                    >
+                                      {timeValue}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span className="cover-for-time-range-sep" aria-hidden="true">~</span>
+                              <Select
+                                value={(() => {
                                   const startTimeValue = normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME;
                                   const startMinutes = timeValueToMinutes(startTimeValue);
-                                  return COVER_FOR_TIME_OPTIONS.filter((timeValue) => timeValueToMinutes(timeValue) > startMinutes);
-                                })().map((timeValue) => (
-                                  <SelectItem
-                                    key={`cover-end-time-option-${idx}-${timeValue}`}
-                                    value={timeValue}
-                                    className="cover-for-time-select-item"
-                                  >
-                                    {timeValue}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                  const options = COVER_FOR_TIME_OPTIONS.filter((timeValue) => timeValueToMinutes(timeValue) > startMinutes);
+                                  const selected = normalizeTimeInput(composerCoverEndTimeValues[idx]) || COVER_FOR_DEFAULT_END_TIME;
+                                  return options.includes(selected) ? selected : (options[0] || suggestEndTime(startTimeValue));
+                                })()}
+                                onValueChange={(nextValue) => updateComposerCoverEndTime(idx, nextValue)}
+                              >
+                                <SelectTrigger
+                                  className="cover-for-time-select"
+                                  aria-label={`요청 종료 시간 ${idx + 1}`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="cover-for-time-select-content" position="popper">
+                                  {(() => {
+                                    const startTimeValue = normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME;
+                                    const startMinutes = timeValueToMinutes(startTimeValue);
+                                    return COVER_FOR_TIME_OPTIONS.filter((timeValue) => timeValueToMinutes(timeValue) > startMinutes);
+                                  })().map((timeValue) => (
+                                    <SelectItem
+                                      key={`cover-end-time-option-${idx}-${timeValue}`}
+                                      value={timeValue}
+                                      className="cover-for-time-select-item"
+                                    >
+                                      {timeValue}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                             <button
                               type="button"
                               className={composerCoverDateKeys.length > 1 ? 'cover-for-date-remove-btn' : 'cover-for-date-remove-btn hidden'}

@@ -557,6 +557,11 @@
   .cover-for-time-select-item {
     font-size: 0.82rem; font-weight: 600;
   }
+  .cover-for-time-range-row {
+    @apply flex items-center gap-2;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
   .cover-for-time-range-sep {
     @apply inline-flex h-10 shrink-0 items-center justify-center text-sm font-bold; width: 16px; color: var(--text-muted-custom);
   }
@@ -6494,12 +6499,22 @@
   .cover-for-venue-select,
   .cover-for-venue-custom-input,
   .cover-for-time-select,
-  .cover-for-date-remove-btn { @apply w-full; }
+  .cover-for-date-remove-btn {
+    @apply w-full;
+    flex: 0 0 auto;
+  }
+  .cover-for-time-range-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
   .cover-for-time-range-sep { display: none; }
   .cover-for-time-select,
   .cover-for-venue-select,
   .cover-for-venue-custom-input {
-    width: 100%; min-width: 0; max-width: none; flex: 1 1 auto;
+    width: 100%; min-width: 0; max-width: none; flex: 0 0 auto;
   }
   .cover-for-add-date-btn {
     width: 100%; margin-right: 0; height: 32px; min-height: 32px; font-size: 1rem;
