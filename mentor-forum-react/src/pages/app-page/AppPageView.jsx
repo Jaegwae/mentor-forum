@@ -573,11 +573,22 @@ export function AppPageView({ vm }) {
   const composerMobileTimeRowStyle = mobileLayoutMode
     ? {
       display: 'grid',
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
       width: '100%',
       minWidth: 0,
       gap: '8px',
       alignItems: 'stretch'
+    }
+    : undefined;
+  const composerMobileTimeSeparatorStyle = mobileLayoutMode
+    ? {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '16px',
+      minWidth: '16px',
+      height: '40px',
+      margin: 0
     }
     : undefined;
   const notificationCenterModalStyle = notificationCenterCompactMode
@@ -2541,7 +2552,13 @@ export function AppPageView({ vm }) {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {mobileLayoutMode ? null : <span className="cover-for-time-range-sep" aria-hidden="true">~</span>}
+                              <span
+                                className="cover-for-time-range-sep"
+                                aria-hidden="true"
+                                style={composerMobileTimeSeparatorStyle}
+                              >
+                                ~
+                              </span>
                               <Select
                                 value={(() => {
                                   const startTimeValue = normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME;
