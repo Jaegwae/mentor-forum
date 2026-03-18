@@ -2387,45 +2387,61 @@ export function AppPageView({ vm }) {
                               <CalendarDays size={15} />
                             </button>
 
-                            <Select
-                              value={venueSelectValue}
-                              onValueChange={(nextValue) => updateComposerCoverVenueSelect(idx, nextValue)}
-                              onOpenChange={(open) => {
-                                logCoverVenueDebug('select-open-change', {
-                                  index: idx,
-                                  open
-                                });
-                              }}
-                            >
-                              <SelectTrigger
+                            {notificationCenterCompactMode ? (
+                              <select
                                 className="cover-for-venue-select"
                                 aria-label={`체험관 선택 ${idx + 1}`}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent
-                                className="cover-for-time-select-content"
-                                position="popper"
-                                onCloseAutoFocus={(event) => event.preventDefault()}
+                                value={venueSelectValue}
+                                onChange={(event) => updateComposerCoverVenueSelect(idx, event.target.value)}
                               >
                                 {coverVenueOptions.map((venue) => (
+                                  <option key={`cover-venue-option-${idx}-${venue}`} value={venue}>
+                                    {venue}
+                                  </option>
+                                ))}
+                                <option value={COVER_FOR_CUSTOM_VENUE_VALUE}>직접작성</option>
+                              </select>
+                            ) : (
+                              <Select
+                                value={venueSelectValue}
+                                onValueChange={(nextValue) => updateComposerCoverVenueSelect(idx, nextValue)}
+                                onOpenChange={(open) => {
+                                  logCoverVenueDebug('select-open-change', {
+                                    index: idx,
+                                    open
+                                  });
+                                }}
+                              >
+                                <SelectTrigger
+                                  className="cover-for-venue-select"
+                                  aria-label={`체험관 선택 ${idx + 1}`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="cover-for-time-select-content"
+                                  position="popper"
+                                  onCloseAutoFocus={(event) => event.preventDefault()}
+                                >
+                                  {coverVenueOptions.map((venue) => (
+                                    <SelectItem
+                                      key={`cover-venue-option-${idx}-${venue}`}
+                                      value={venue}
+                                      className="cover-for-time-select-item"
+                                    >
+                                      {venue}
+                                    </SelectItem>
+                                  ))}
                                   <SelectItem
-                                    key={`cover-venue-option-${idx}-${venue}`}
-                                    value={venue}
+                                    key={`cover-venue-option-${idx}-custom`}
+                                    value={COVER_FOR_CUSTOM_VENUE_VALUE}
                                     className="cover-for-time-select-item"
                                   >
-                                    {venue}
+                                    직접작성
                                   </SelectItem>
-                                ))}
-                                <SelectItem
-                                  key={`cover-venue-option-${idx}-custom`}
-                                  value={COVER_FOR_CUSTOM_VENUE_VALUE}
-                                  className="cover-for-time-select-item"
-                                >
-                                  직접작성
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                                </SelectContent>
+                              </Select>
+                            )}
 
                             {usingCustom ? (
                               <input
