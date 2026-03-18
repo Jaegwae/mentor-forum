@@ -555,7 +555,31 @@ export function AppPageView({ vm }) {
       gap: '0.5rem'
     }
     : undefined;
-  const notificationCenterCompactMode = useMobileLayoutMode(compactListMode);
+  const mobileLayoutMode = useMobileLayoutMode(compactListMode);
+  const notificationCenterCompactMode = mobileLayoutMode;
+  const composerMobileFieldStyle = mobileLayoutMode
+    ? {
+      width: '100%',
+      minWidth: 0,
+      maxWidth: 'none',
+      height: '40px',
+      minHeight: '40px',
+      alignSelf: 'stretch',
+      boxSizing: 'border-box',
+      flex: '0 0 auto',
+      margin: 0
+    }
+    : undefined;
+  const composerMobileTimeRowStyle = mobileLayoutMode
+    ? {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      width: '100%',
+      minWidth: 0,
+      gap: '8px',
+      alignItems: 'stretch'
+    }
+    : undefined;
   const notificationCenterModalStyle = notificationCenterCompactMode
     ? {
       alignItems: 'flex-end',
@@ -2387,11 +2411,12 @@ export function AppPageView({ vm }) {
                               <CalendarDays size={15} />
                             </button>
 
-                            {notificationCenterCompactMode ? (
+                            {mobileLayoutMode ? (
                               <select
                                 className="cover-for-venue-select"
                                 aria-label={`체험관 선택 ${idx + 1}`}
                                 value={venueSelectValue}
+                                style={composerMobileFieldStyle}
                                 onChange={(event) => updateComposerCoverVenueSelect(idx, event.target.value)}
                               >
                                 {coverVenueOptions.map((venue) => (
@@ -2415,6 +2440,7 @@ export function AppPageView({ vm }) {
                                 <SelectTrigger
                                   className="cover-for-venue-select"
                                   aria-label={`체험관 선택 ${idx + 1}`}
+                                  style={composerMobileFieldStyle}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
@@ -2450,6 +2476,7 @@ export function AppPageView({ vm }) {
                                 placeholder="체험관 직접 입력"
                                 maxLength={30}
                                 value={currentVenueRaw}
+                                style={composerMobileFieldStyle}
                                 ref={(node) => {
                                   composerVenueInputRefs.current[idx] = node;
                                 }}
@@ -2490,7 +2517,7 @@ export function AppPageView({ vm }) {
                               />
                             ) : null}
 
-                            <div className="cover-for-time-range-row">
+                            <div className="cover-for-time-range-row" style={composerMobileTimeRowStyle}>
                               <Select
                                 value={normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME}
                                 onValueChange={(nextValue) => updateComposerCoverStartTime(idx, nextValue)}
@@ -2498,6 +2525,7 @@ export function AppPageView({ vm }) {
                                 <SelectTrigger
                                   className="cover-for-time-select"
                                   aria-label={`요청 시작 시간 ${idx + 1}`}
+                                  style={composerMobileFieldStyle}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
@@ -2513,7 +2541,7 @@ export function AppPageView({ vm }) {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <span className="cover-for-time-range-sep" aria-hidden="true">~</span>
+                              {mobileLayoutMode ? null : <span className="cover-for-time-range-sep" aria-hidden="true">~</span>}
                               <Select
                                 value={(() => {
                                   const startTimeValue = normalizeTimeInput(composerCoverStartTimeValues[idx]) || COVER_FOR_DEFAULT_START_TIME;
@@ -2527,6 +2555,7 @@ export function AppPageView({ vm }) {
                                 <SelectTrigger
                                   className="cover-for-time-select"
                                   aria-label={`요청 종료 시간 ${idx + 1}`}
+                                  style={composerMobileFieldStyle}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
