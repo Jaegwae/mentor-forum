@@ -2,6 +2,8 @@
 
 레포지토리: [Jaegwae/mentor-forum](https://github.com/Jaegwae/mentor-forum)
 
+- 현재 웹앱 기준 버전: `mentor-forum-react v0.2`
+
 이 저장소는 **2개 운영 영역**을 함께 관리합니다.
 
 | 영역 | 경로 | 역할 | 현재 운영 기준 |
@@ -22,6 +24,17 @@
 ---
 
 ## 1. 최근 주요 변경(요약)
+
+### 버전 정보
+- 현재 버전: `0.2`
+
+### v0.2
+- React 앱 구조 정리 및 split hook 기반 리팩터링
+- App/Post/Admin 안정화
+- 테스트/문서/AI 안내 문서(`README_AI.md`) 강화
+
+### v0.1
+- 멘토스 React 앱 및 GAS 운영 화면 초기 운영 버전
 
 ### UI/테마
 - 테마 3단계 순환: `라이트 → 다크 → 엑셀 → 라이트`

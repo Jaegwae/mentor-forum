@@ -2,10 +2,27 @@
 
 멘토스의 **실서비스용 React + Firebase 커뮤니티 앱**입니다.
 
+- 현재 버전: `0.2`
 - 운영 URL: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
 - Firebase 프로젝트: `guro-mentor-forum`
 - 주요 라우트: `/app`, `/post`, `/admin`, `/me/posts`, `/me/comments`
 - 기준 문서 업데이트 시점: `2026-03-01`
+
+---
+
+## 버전별 업데이트
+
+### v0.2
+- App/Post/Admin 대형 controller를 split hook 기준으로 분해
+- profile bootstrap / forum constants / role badge 공통화
+- App/Post/Admin 렌더 안정화 및 wiring 누락 회귀 수정
+- controller wiring / thin wrapper / view fallback / route smoke 테스트 추가
+- `README_AI.md` 추가 및 AI/개발 진입 문서 강화
+- 코드 전반에 AI 친화적 주석/섹션 설명 대폭 보강
+
+### v0.1
+- React + Firebase 기반 멘토스 커뮤니티 초기 운영 버전
+- `/app`, `/post`, `/admin`, `/me/posts`, `/me/comments` 기본 기능 제공
 
 ---
 
