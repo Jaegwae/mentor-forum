@@ -1,6 +1,7 @@
 // Push relay client for GAS webhook integration.
 import { MENTOR_FORUM_CONFIG } from './config.js';
 
+// ---- endpoint / platform helpers ----------------------------------------
 function normalizeText(value) {
   return String(value || '').trim();
 }
@@ -102,6 +103,7 @@ async function postToRelayEndpoint(body = {}) {
   return { ok: response ? response.ok !== false : true, skipped: false };
 }
 
+// ---- public relay entrypoints --------------------------------------------
 export async function sendPushRelayNotification(payload = {}) {
   const body = {
     idToken: normalizeText(payload.idToken),

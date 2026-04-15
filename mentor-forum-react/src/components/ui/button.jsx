@@ -32,6 +32,7 @@ const buttonVariants = cva(
   }
 );
 
+// ---- button primitive -----------------------------------------------------
 const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
   // asChild=true면 Radix Slot으로 교체해 DOM 중첩(button inside a)을 피한다.
   const Comp = asChild ? Slot : 'button';

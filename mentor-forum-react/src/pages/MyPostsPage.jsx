@@ -37,18 +37,18 @@ import {
   getDocs
 } from '../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../legacy/config.js';
-import { getRoleBadgePalette } from '../legacy/rbac.js';
 import { toUserErrorMessage } from '../lib/user-error.js';
+import {
+  ACTIVITY_AUTO_LOGOUT_MESSAGE,
+  AuthorWithRole,
+  createRoleDefMap,
+  detectActivityCompactListMode,
+  formatActivityDate,
+  loadActivityRoleDefinitions,
+  loadBoardNameMap as loadActivityBoardNameMap
+} from './my-activity/shared.jsx';
 
-const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
 const MY_POSTS_PAGE_SIZE = 30;
-const FALLBACK_ROLE_DEFINITIONS = [
-  { role: 'Newbie', labelKo: '새싹', badgeBgColor: '#ffffff', badgeTextColor: '#334155' },
-  { role: 'Mentor', labelKo: '멘토', badgeBgColor: '#dcfce7', badgeTextColor: '#166534' },
-  { role: 'Staff', labelKo: '운영진', badgeBgColor: '#fde68a', badgeTextColor: '#92400e' },
-  { role: 'Admin', labelKo: '관리자', badgeBgColor: '#dbeafe', badgeTextColor: '#1d4ed8' },
-  { role: 'Super_Admin', labelKo: '개발자', badgeBgColor: '#f3e8ff', badgeTextColor: '#7e22ce' }
-];
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -57,112 +57,6 @@ function normalizeText(value) {
 function numberOrZero(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-}
-
-function toMillis(value) {
-  if (!value) return 0;
-  if (typeof value.toMillis === 'function') return value.toMillis();
-  if (typeof value.toDate === 'function') return value.toDate().getTime();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-}
-
-function formatDate(value) {
-  if (!value) return '-';
-  const d = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
-  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '-';
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${y}. ${m}. ${day}. ${hh}:${mm}`;
-}
-
-function detectCompactListMode() {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
-  const maxTouchPoints = typeof navigator !== 'undefined' ? Number(navigator.maxTouchPoints || 0) : 0;
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|Opera Mini|IEMobile/i.test(userAgent);
-  const desktopIpadUa = /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
-  const viewportNarrow = window.matchMedia('(max-width: 900px)').matches || window.innerWidth <= 900;
-  const shortestScreen = Math.min(
-    Number(window.screen?.width || 0),
-    Number(window.screen?.height || 0)
-  );
-  const screenLooksMobile = shortestScreen > 0 && shortestScreen <= 1024;
-
-  const hoverFine = window.matchMedia('(hover: hover)').matches;
-  const pointerFine = window.matchMedia('(pointer: fine)').matches;
-  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
-  const hoverNone = window.matchMedia('(hover: none)').matches || window.matchMedia('(any-hover: none)').matches;
-  const touchLikeInput = maxTouchPoints > 0 || anyCoarse || hoverNone;
-
-  if (mobileUa || desktopIpadUa || viewportNarrow) return true;
-  if (touchLikeInput && screenLooksMobile) return true;
-
-  const desktopLike = hoverFine && pointerFine && !touchLikeInput;
-  return !desktopLike;
-}
-
-function createRoleDefMap(roleDefinitions) {
-  const map = new Map();
-  roleDefinitions.forEach((item) => {
-    const key = normalizeText(item?.role);
-    if (!key) return;
-    map.set(key, item);
-  });
-  return map;
-}
-
-function RoleBadge({ role, roleDefMap }) {
-  const roleKey = normalizeText(role) || 'Newbie';
-  const roleDef = roleDefMap.get(roleKey) || null;
-  const palette = getRoleBadgePalette(roleKey, roleDef);
-  const label = roleDef?.labelKo || roleKey;
-
-  return (
-    <span
-      className="role-badge"
-      style={{
-        background: palette.bgColor,
-        color: palette.textColor,
-        borderColor: palette.borderColor
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function AuthorWithRole({ name, role, roleDefMap }) {
-  return (
-    <span className="author-role-wrap">
-      <span className="author-name">{name || '-'}</span>
-      <RoleBadge role={role} roleDefMap={roleDefMap} />
-    </span>
-  );
-}
-
-async function loadRoleDefinitions() {
-  // role_definitions + fallback을 병합해 누락 role에도 배지/라벨을 보장한다.
-  const snap = await getDocs(collection(db, 'role_definitions'));
-  const definitions = snap.docs.map((d) => ({ role: d.id, ...d.data() }));
-  const mergedByRole = new Map();
-
-  FALLBACK_ROLE_DEFINITIONS.forEach((item) => {
-    const key = normalizeText(item?.role);
-    if (!key) return;
-    mergedByRole.set(key, { ...item, role: key });
-  });
-
-  definitions.forEach((item) => {
-    const key = normalizeText(item?.role);
-    if (!key) return;
-    mergedByRole.set(key, { ...(mergedByRole.get(key) || {}), ...item, role: key });
-  });
-
-  return [...mergedByRole.values()];
 }
 
 export default function MyPostsPage() {
@@ -192,7 +86,7 @@ export default function MyPostsPage() {
   const userDisplayName = currentUserProfile
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUserProfile.email || '사용자')
     : '사용자';
-  const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
+  const [compactListMode, setCompactListMode] = useState(detectActivityCompactListMode);
   const activityCompactMode = useMobileLayoutMode(compactListMode);
   const activityContentLayoutStyle = activityCompactMode
     ? { marginTop: '10px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', width: '100%', minWidth: 0, gap: '10px' }
@@ -205,13 +99,7 @@ export default function MyPostsPage() {
     : undefined;
 
   const loadBoardNameMap = useCallback(async () => {
-    const boardSnap = await getDocs(collection(db, 'boards'));
-    const nextBoardNameMap = {};
-    boardSnap.docs.forEach((row) => {
-      const data = row.data() || {};
-      if (data.isDivider === true) return;
-      nextBoardNameMap[row.id] = data.name || row.id;
-    });
+    const nextBoardNameMap = await loadActivityBoardNameMap();
     setBoardNameMap(nextBoardNameMap);
   }, []);
 
@@ -296,7 +184,7 @@ export default function MyPostsPage() {
       if (!active) return;
       if (sessionState.expired) {
         clearTemporaryLoginExpiry();
-        alert(AUTO_LOGOUT_MESSAGE);
+        alert(ACTIVITY_AUTO_LOGOUT_MESSAGE);
         navigate(MENTOR_FORUM_CONFIG.app.loginPage, { replace: true });
         return;
       }
@@ -304,7 +192,7 @@ export default function MyPostsPage() {
       try {
         // 권한/프로필/보드명을 먼저 준비한 뒤 목록을 로드한다.
         const [loadedRoleDefinitions, profileSnap] = await Promise.all([
-          loadRoleDefinitions(),
+          loadActivityRoleDefinitions(),
           getDoc(doc(db, 'users', user.uid))
         ]);
         if (!active) return;
@@ -343,7 +231,7 @@ export default function MyPostsPage() {
     const hoverMedia = window.matchMedia('(hover: hover)');
     const pointerMedia = window.matchMedia('(pointer: fine)');
 
-    const syncMode = () => setCompactListMode(detectCompactListMode());
+    const syncMode = () => setCompactListMode(detectActivityCompactListMode());
     syncMode();
 
     if (
@@ -424,7 +312,7 @@ export default function MyPostsPage() {
       no: posts.length - idx,
       title: post.title || '(제목 없음)',
       boardLabel: boardNameMap[post.boardId] || post.boardId || '-',
-      dateText: formatDate(post.createdAt),
+      dateText: formatActivityDate(post.createdAt),
       views: numberOrZero(post.views)
     }));
   }, [boardNameMap, posts]);
@@ -620,7 +508,7 @@ export default function MyPostsPage() {
                       <td>{no}</td>
                       <td><span className="text-ellipsis-1" title={post.title || '(제목 없음)'}>{post.title || '(제목 없음)'}</span></td>
                       <td><span className="text-ellipsis-1" title={boardLabel}>{boardLabel}</span></td>
-                      <td>{formatDate(post.createdAt)}</td>
+                      <td>{formatActivityDate(post.createdAt)}</td>
                       <td>{numberOrZero(post.views)}</td>
                     </tr>
                   );
@@ -660,7 +548,7 @@ export default function MyPostsPage() {
                     <span className="my-activity-mobile-board text-ellipsis-1">{boardLabel}</span>
                   </div>
                   <p className="my-activity-mobile-title text-ellipsis-2">{post.title || '(제목 없음)'}</p>
-                  <p className="my-activity-mobile-meta">{formatDate(post.createdAt)} · 조회 {numberOrZero(post.views)}</p>
+                  <p className="my-activity-mobile-meta">{formatActivityDate(post.createdAt)} · 조회 {numberOrZero(post.views)}</p>
                 </button>
               );
             }) : null}

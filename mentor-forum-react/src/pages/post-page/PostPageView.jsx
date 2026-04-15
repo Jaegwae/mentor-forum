@@ -1,45 +1,14 @@
 // PostPage presentation component.
 // Receives controller-owned state/handlers via `vm` and focuses on rendering
 // post detail UI, keeping mutation logic in the controller layer.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, FileText, GripVertical, LogOut, MessageSquare, ShieldCheck, Users2 } from 'lucide-react';
-import { usePageMeta } from '../../hooks/usePageMeta.js';
-import {
-  auth,
-  db,
-  ensureFirebaseConfigured,
-  onAuthStateChanged,
-  getTemporaryLoginRemainingMs,
-  setTemporaryLoginExpiry,
-  TEMP_LOGIN_TTL_MS,
-  clearTemporaryLoginExpiry,
-  enforceTemporaryLoginExpiry,
-  signOut,
-  serverTimestamp,
-  runTransaction,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  addDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  onSnapshot,
-  deleteDoc,
-  toDateText
-} from '../../legacy/firebase-app.js';
+import { toDateText } from '../../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
-import { buildPermissions, getRoleBadgePalette } from '../../legacy/rbac.js';
-import { createRichEditor, renderRichDeltaToHtml, renderRichPayloadToHtml } from '../../legacy/rich-editor.js';
-import { pushRelayConfigured, sendPushRelayNotification } from '../../legacy/push-relay.js';
 import { RichEditorToolbar } from '../../components/editor/RichEditorToolbar.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog.jsx';
+import { AuthorWithRole } from '../../components/ui/role-badge.jsx';
 import { ThemeToggle } from '../../components/ui/theme-toggle.jsx';
 import { ExcelChrome } from '../../components/ui/excel-chrome.jsx';
 import { AppExcelWorkbook } from '../../components/excel/AppExcelWorkbook.jsx';
@@ -49,195 +18,60 @@ import {
   EXCEL_STANDARD_ROW_COUNT,
   buildPostDetailExcelSheetModel
 } from '../../components/excel/secondary-excel-sheet-models.js';
-import { useTheme } from '../../hooks/useTheme.js';
 import * as pageConstants from './constants.js';
 import * as pageUtils from './utils.js';
 
 const {
-  NOTICE_BOARD_ID,
-  ALL_BOARD_ID,
-  COVER_FOR_BOARD_ID,
   COVER_FOR_STATUS,
   COVER_FOR_DEFAULT_START_TIME,
   COVER_FOR_DEFAULT_END_TIME,
-  DEFAULT_COVER_FOR_VENUE_OPTIONS,
   COVER_FOR_DEFAULT_VENUE,
-  AUTO_LOGOUT_MESSAGE,
-  LAST_BOARD_STORAGE_KEY,
-  NOTIFICATION_TYPE,
-  NOTIFICATION_SUBTYPE,
-  MENTION_ALL_TOKEN,
-  MENTION_MAX_ITEMS,
-  MENTION_MENU_ESTIMATED_WIDTH,
-  MENTION_MENU_INITIAL,
-  CORE_ROLE_LEVELS,
-  ROLE_KEY_ALIASES,
   FALLBACK_ROLE_DEFINITIONS
 } = pageConstants;
 
 const {
   numberOrZero,
   normalizeText,
-  detectCompactListMode,
-  stripHtmlToText,
-  isTruthyLegacyValue,
-  isDeletedPost,
-  normalizeErrMessage,
-  isPermissionDeniedError,
-  shouldLogDebugPayload,
-  logErrorWithOptionalDebug,
-  debugValueList,
-  debugCodePoints,
-  joinDebugParts,
-  boardAccessDebugText,
-  readLastBoardId,
-  writeLastBoardId,
-  isCoverForBoardId,
-  toDateKey,
-  fromDateKey,
   formatDateKeyLabel,
-  normalizeDateKeyInput,
-  notificationDocRef,
-  viewedPostDocRef,
-  normalizeNotificationType,
-  normalizeNickname,
-  buildNicknameKey,
-  extractMentionNicknames,
-  hasAllMentionCommand,
-  detectMentionContext,
-  notificationIdForEvent,
-  toNotificationBodySnippet,
   normalizeCoverForVenue,
   normalizeTimeInput,
-  timeValueToMinutes,
-  isValidTimeRange,
-  suggestEndTime,
   normalizeCoverForStatus,
   coverForStatusLabel,
   isClosedCoverForStatus,
-  normalizeCoverForDateKeys,
-  normalizeCoverForDateStatuses,
-  normalizeCoverForTimeValues,
-  normalizeCoverForVenueValues,
-  coverForDateEntriesFromPost,
-  summarizeCoverForDateEntries,
   formatTemporaryLoginRemaining,
-  toMillis,
   commentAuthorName,
-  plainRichPayload,
   renderStoredContentHtml,
-  createRoleDefMap,
-  normalizeRoleKey,
-  isExplicitNewbieRole,
-  roleMatchCandidates,
-  isPrivilegedBoardRole,
-  isNoticeBoardData,
   sortCommentsForDisplay
 } = pageUtils;
-
-function RoleBadge({ role, roleDefMap }) {
-  const roleKey = normalizeText(role) || 'Newbie';
-  const roleDef = roleDefMap.get(roleKey) || null;
-  const palette = getRoleBadgePalette(roleKey, roleDef);
-  const label = roleDef?.labelKo || roleKey;
-
-  return (
-    <span
-      className="role-badge"
-      style={{
-        background: palette.bgColor,
-        color: palette.textColor,
-        borderColor: palette.borderColor
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function AuthorWithRole({ name, role, roleDefMap }) {
-  return (
-    <span className="author-role-wrap">
-      <span className="author-name">{name || '-'}</span>
-      <RoleBadge role={role} roleDefMap={roleDefMap} />
-    </span>
-  );
-}
-
 
 export function PostPageView({ vm }) {
   // Flat destructuring is intentional to preserve the legacy JSX naming
   // contract during large refactors.
   const {
     navigate,
-    location,
-    theme,
     toggleTheme,
     isExcel,
-    searchParams,
-    routeState,
-    postId,
-    focusCommentId,
-    boardIdFromQuery,
-    fromBoardIdFromQuery,
-    boardIdFromState,
-    fromBoardIdFromState,
     editorRef,
-    editorElRef,
-    editorElMounted,
-    setEditorElMounted,
-    editorElCallbackRef,
     fontSizeLabelRef,
     editEditorRef,
     editEditorElRef,
     editFontSizeLabelRef,
-    expiryTimerRef,
-    countdownTimerRef,
-    lastActivityRefreshAtRef,
-    focusCommentTimerRef,
-    mentionRequestIdRef,
-    mentionCacheRef,
-    commentDraftPayloadRef,
     ready,
-    setReady,
     message,
-    setMessage,
     currentUser,
-    setCurrentUser,
     currentUserProfile,
-    setCurrentUserProfile,
     permissions,
-    setPermissions,
-    roleDefinitions,
-    setRoleDefinitions,
     currentPost,
-    setCurrentPost,
-    currentPostCanWrite,
-    setCurrentPostCanWrite,
     comments,
-    setComments,
     commentsLoading,
-    setCommentsLoading,
     replyTarget,
     setReplyTarget,
-    commentMentionMenu,
-    setCommentMentionMenu,
-    commentMentionCandidates,
-    setCommentMentionCandidates,
-    commentMentionActiveIndex,
-    setCommentMentionActiveIndex,
     editMentionMenu,
-    setEditMentionMenu,
     editMentionCandidates,
-    setEditMentionCandidates,
     editMentionActiveIndex,
-    setEditMentionActiveIndex,
-    commentSubmitting,
-    setCommentSubmitting,
     excelCommentModalOpen,
     setExcelCommentModalOpen,
     statusUpdating,
-    setStatusUpdating,
     editModalOpen,
     setEditModalOpen,
     editTitle,
@@ -250,31 +84,16 @@ export function PostPageView({ vm }) {
     reorderEditWorkScheduleRow,
     removeEditWorkScheduleColumn,
     editSubmitting,
-    setEditSubmitting,
     editMessage,
-    setEditMessage,
     sessionRemainingMs,
-    setSessionRemainingMs,
     compactListMode,
-    setCompactListMode,
     boardLabel,
-    setBoardLabel,
-    currentBoardAccessDebug,
-    setCurrentBoardAccessDebug,
     roleDefMap,
-    appPage,
-    backBoardId,
-    resolvedBackBoardId,
-    backHref,
     canAccessAdminSite,
     canModerateCurrentPost,
-    normalizedRoleForWrite,
-    rawRoleForWrite,
-    hasPotentialWriteRole,
     canAttemptCommentWrite,
     isCoverForPost,
     isWorkSchedulePost,
-    isAdminOrSuper,
     canChangeCoverStatus,
     canResetCoverToSeeking,
     currentPostCoverDateEntries,
@@ -282,30 +101,11 @@ export function PostPageView({ vm }) {
     currentPostCoverStatus,
     isCoverForClosed,
     userDisplayName,
-    currentUserUid,
-    fetchMentionCandidates,
-    readMentionAnchor,
     closeMentionMenu,
-    syncMentionMenu,
     applyMentionCandidate,
-    insertReplyMention,
-    clearExpiryTimer,
-    clearCountdownTimer,
-    handleTemporaryLoginExpiry,
-    scheduleTemporaryLoginExpiry,
-    hasTemporarySession,
-    commentComposerMountKey,
     handleExtendSession,
     handleLogout,
     handleOpenGuide,
-    canUseBoardData,
-    canWriteBoardData,
-    resolveBoardAccess,
-    loadPost,
-    resolveMentionTargets,
-    resolveAllMentionTargets,
-    writeUserNotification,
-    submitComment,
     openEditModal,
     submitEditPost,
     deletePost,
@@ -319,19 +119,18 @@ export function PostPageView({ vm }) {
     myCommentsPage,
     handleMoveHome,
     handleBrandTitleKeyDown,
-    userRoleLabel,
-    excelCommentRows,
-    postMetaLine,
     excelSheetModel,
     isExcelDesktopMode,
     excelActiveCellLabel,
-    setExcelActiveCellLabel,
     excelFormulaText,
-    setExcelFormulaText,
     handleExcelSelectCell,
     handleExcelAction
   } = vm;
 
+  // ---- responsive layout projections -------------------------------------
+  // The detail screen keeps a large set of inline style projections here so
+  // controller logic can stay focused on data/permissions instead of CSS mode
+  // branching.
   const editWorkScheduleColumnCount = useMemo(() => {
     const rows = Array.isArray(editWorkScheduleTableRows) ? editWorkScheduleTableRows : [];
     return Math.max(1, ...rows.map((row) => (Array.isArray(row) ? row.length : 0)));
@@ -458,6 +257,9 @@ export function PostPageView({ vm }) {
           </Dialog>
         ) : null}
         <div className={isExcelDesktopMode ? 'hidden' : ''}>
+        {/* Hero / session / global message zone:
+            page identity, guide button, temporary-login countdown, and
+            controller-level notice/error message all render here first. */}
         <section className="card hero-card">
         <div className="row space-between mobile-col">
           <div>
@@ -508,6 +310,9 @@ export function PostPageView({ vm }) {
         </section>
 
         <section className="post-detail-content-layout" style={postDetailContentLayoutStyle}>
+          {/* Side rail:
+              current user identity and quick navigation actions are kept in a
+              separate rail so desktop/mobile layouts can diverge safely. */}
           <aside className="board-rail post-detail-side-rail" aria-label="게시글 상세 내 정보" style={postDetailSideRailStyle}>
             <section className="board-rail-profile post-detail-side-profile">
             <div className="board-profile-head-row">
@@ -547,6 +352,9 @@ export function PostPageView({ vm }) {
             </section>
           </aside>
 
+          {/* Main detail column:
+              navigation, post metadata, body, optional cover-for status rows,
+              and the comment thread all live in this column. */}
           <div className="post-detail-main-column" style={postDetailMainColumnStyle}>
             <section className="card post-detail-card">
         <div className="row space-between mobile-col post-detail-nav-row" style={postDetailNavRowStyle}>
@@ -616,7 +424,7 @@ export function PostPageView({ vm }) {
                 </span>
                 <span className="meta"> · {toDateText(currentPost.createdAt)} · 조회 {numberOrZero(currentPost.views)}</span>
               </>
-            ) : (ready ? '게시글 정보를 불러오지 못했습니다.' : '불러오는 중...')}
+            ) : (ready ? (message.text || '게시글 정보를 불러오지 못했습니다.') : '불러오는 중...')}
           </div>
         </div>
 
@@ -826,6 +634,9 @@ export function PostPageView({ vm }) {
 
       <AnimatePresence>
         {editModalOpen ? (
+          /* Edit modal:
+             switched between rich-text edit and work-schedule table edit based
+             on the current post type. */
           <div id="postEditModal" className="composer-modal" aria-hidden={!editModalOpen}>
             <motion.div
               className="composer-backdrop"

@@ -11,10 +11,12 @@ import {
   getDocs
 } from '../../legacy/firebase-app.js';
 
+// ---- snapshot mapping -----------------------------------------------------
 function mapDocs(snap) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// ---- board reads / writes -------------------------------------------------
 // Full board scan (used by admin/app bootstrap).
 export async function listAllBoards() {
   const snap = await getDocs(collection(db, 'boards'));

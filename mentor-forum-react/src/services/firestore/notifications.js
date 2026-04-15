@@ -11,6 +11,7 @@ import {
   getDocs
 } from '../../legacy/firebase-app.js';
 
+// ---- notification writes / reads -----------------------------------------
 // Idempotent notification upsert for user inbox rows.
 export async function upsertUserNotification(uid, notificationId, payload, merge = true) {
   const ref = doc(db, 'users', String(uid || ''), 'notifications', String(notificationId || ''));

@@ -26,6 +26,11 @@ async function renderAt(pathname) {
 }
 
 describe('route smoke', () => {
+  it('redirects / to /app', async () => {
+    await renderAt('/');
+    expect(await screen.findByText('APP_ROUTE_OK')).toBeInTheDocument();
+  });
+
   it('renders /login route', async () => {
     await renderAt('/login');
     expect(await screen.findByText('LOGIN_ROUTE_OK')).toBeInTheDocument();
@@ -44,5 +49,38 @@ describe('route smoke', () => {
   it('renders /admin route', async () => {
     await renderAt('/admin');
     expect(await screen.findByText('ADMIN_ROUTE_OK')).toBeInTheDocument();
+  });
+
+  it('renders /me/posts route', async () => {
+    await renderAt('/me/posts');
+    expect(await screen.findByText('MY_POSTS_ROUTE_OK')).toBeInTheDocument();
+  });
+
+  it('renders /me/comments route', async () => {
+    await renderAt('/me/comments');
+    expect(await screen.findByText('MY_COMMENTS_ROUTE_OK')).toBeInTheDocument();
+  });
+
+  it('redirects legacy html routes to SPA routes', async () => {
+    const cases = [
+      ['/login.html', 'LOGIN_ROUTE_OK'],
+      ['/signup.html', 'SIGNUP_ROUTE_OK'],
+      ['/app.html', 'APP_ROUTE_OK'],
+      ['/post.html', 'POST_ROUTE_OK'],
+      ['/admin.html', 'ADMIN_ROUTE_OK'],
+      ['/me/posts.html', 'MY_POSTS_ROUTE_OK'],
+      ['/me/comments.html', 'MY_COMMENTS_ROUTE_OK']
+    ];
+
+    for (const [pathname, expectedText] of cases) {
+      cleanup();
+      await renderAt(pathname);
+      expect(await screen.findByText(expectedText)).toBeInTheDocument();
+    }
+  });
+
+  it('renders not found fallback for unknown routes', async () => {
+    await renderAt('/totally-unknown-route');
+    expect(await screen.findByText('NOT_FOUND_ROUTE_OK')).toBeInTheDocument();
   });
 });

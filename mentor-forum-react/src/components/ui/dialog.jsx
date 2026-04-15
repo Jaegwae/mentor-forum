@@ -8,11 +8,13 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
 
+// ---- radix dialog aliases -------------------------------------------------
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
+// ---- overlay/content shell ------------------------------------------------
 const DialogOverlay = React.forwardRef(function DialogOverlay({ className, ...props }, ref) {
   return (
     <DialogPrimitive.Overlay

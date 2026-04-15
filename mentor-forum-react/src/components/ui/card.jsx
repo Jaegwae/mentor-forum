@@ -6,6 +6,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils.js';
 
+// ---- card primitive set ---------------------------------------------------
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   // 컨테이너는 기본적으로 border + shadow를 제공하고, 페이지에서 className으로 확장한다.
   <section

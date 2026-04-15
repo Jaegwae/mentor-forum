@@ -8,10 +8,12 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../lib/utils.js';
 
+// ---- radix select aliases -------------------------------------------------
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
 const SelectValue = SelectPrimitive.Value;
 
+// ---- trigger / content primitives ----------------------------------------
 const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}

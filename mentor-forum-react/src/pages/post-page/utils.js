@@ -20,6 +20,7 @@ import {
   ROLE_KEY_ALIASES
 } from './constants.js';
 
+// ---- stored HTML sanitization --------------------------------------------
 const ALLOWED_STORED_HTML_TAGS = new Set([
   'a',
   'p',
@@ -182,6 +183,7 @@ export function isDeletedPost(post) {
   return !!post && isTruthyLegacyValue(post.deleted);
 }
 
+// ---- error/debug helpers -------------------------------------------------
 export function normalizeErrMessage(err, fallback) {
   return toUserErrorMessage(err, fallback);
 }
@@ -242,6 +244,7 @@ export function boardAccessDebugText(boardAccess, profile) {
   ]);
 }
 
+// ---- navigation persistence ----------------------------------------------
 export function readLastBoardId() {
   try {
     const value = normalizeText(window.sessionStorage.getItem(LAST_BOARD_STORAGE_KEY));
@@ -266,6 +269,7 @@ export function isCoverForBoardId(boardId) {
   return normalized === COVER_FOR_BOARD_ID || normalized === WORK_SCHEDULE_BOARD_ID;
 }
 
+// ---- date / work-schedule parsing ----------------------------------------
 export function toDateKey(value) {
   const date = value && typeof value.toDate === 'function'
     ? value.toDate()

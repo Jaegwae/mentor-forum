@@ -1,10 +1,6 @@
 // AppPage data-access orchestration.
 // The controller uses this layer for async fetch/load routines so view-state logic
 // stays separate from Firestore query composition.
-import { serverTimestamp } from '../../legacy/firebase-app.js';
-import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
-import { listRoleDefinitionDocs } from '../../services/firestore/roles.js';
-import { getUserProfileDoc, setUserProfileDoc, updateUserProfileDoc } from '../../services/firestore/users.js';
 import {
   listAllBoards,
   getBoardById,
@@ -45,6 +41,11 @@ import {
   normalizeBoardIdentity,
   comparePostsWithPinnedPriority
 } from './utils.js';
+import {
+  loadRoleDefinitionsWithFallback,
+  readNormalizedUserProfile
+} from '../../services/profile-bootstrap.js';
+import { serverTimestamp } from '../../legacy/firebase-app.js';
 
 function resolveWorkScheduleAllowedRoles(roleDefMap) {
   const fallback = ['Mentor', 'Staff', 'Admin', 'Super_Admin'];
@@ -69,65 +70,16 @@ function workScheduleFallbackBoard(roleDefMap) {
 }
 
 export async function loadRoleDefinitions() {
-  const definitions = (await listRoleDefinitionDocs()).map(({ id, ...data }) => ({ role: id, ...data }));
-  const mergedByRole = new Map();
-
-  FALLBACK_ROLE_DEFINITIONS.forEach((item) => {
-    const key = normalizeText(item?.role);
-    if (!key) return;
-    mergedByRole.set(key, { ...item, role: key });
-  });
-
-  definitions.forEach((item) => {
-    const key = normalizeText(item?.role);
-    if (!key) return;
-    mergedByRole.set(key, { ...(mergedByRole.get(key) || {}), ...item, role: key });
-  });
-
-  return [...mergedByRole.values()];
+  return loadRoleDefinitionsWithFallback(FALLBACK_ROLE_DEFINITIONS);
 }
 
 export async function ensureUserProfile(user, roleDefMap) {
-  const docData = await getUserProfileDoc(user.uid);
-
-  if (docData) {
-    const { id: _id, ...profile } = docData;
-    const rawRoleExact = String(profile.role ?? '');
-    const rawRole = normalizeText(rawRoleExact);
-    const normalizedRole = normalizeRoleKey(rawRole, roleDefMap);
-    const shouldNormalizeRole = !!normalizedRole && rawRoleExact !== normalizedRole;
-    const shouldSetVerified = !!user.emailVerified && !profile.emailVerified;
-    if (shouldNormalizeRole || shouldSetVerified) {
-      const patch = { updatedAt: serverTimestamp() };
-      if (shouldNormalizeRole) patch.role = normalizedRole;
-      if (shouldSetVerified) patch.emailVerified = true;
-      await updateUserProfileDoc(user.uid, patch);
-      return {
-        ...profile,
-        ...(shouldSetVerified ? { emailVerified: true } : {}),
-        role: normalizedRole,
-        rawRole: normalizedRole
-      };
-    }
-    return { ...profile, role: normalizedRole, rawRole };
-  }
-
-  const profile = {
-    uid: user.uid,
-    email: user.email || '',
-    realName: user.displayName || '',
-    nickname: user.email ? user.email.split('@')[0] : 'new-user',
-    role: MENTOR_FORUM_CONFIG.app.defaultRole,
-    emailVerified: !!user.emailVerified,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  };
-
-  await setUserProfileDoc(user.uid, profile);
+  const result = await readNormalizedUserProfile(user, roleDefMap, normalizeRoleKey);
   return {
-    ...profile,
-    role: normalizeRoleKey(profile.role, roleDefMap),
-    rawRole: normalizeText(profile.role)
+    ...result.profile,
+    rawRole: result.updated.shouldNormalizeRole || result.updated.shouldSetVerified
+      ? result.normalizedRole
+      : result.rawRole
   };
 }
 

@@ -4,6 +4,7 @@
  */
 import { db, collection, getDocs } from '../../legacy/firebase-app.js';
 
+// ---- snapshot mapping / role-definition reads ----------------------------
 function mapDocs(snap) {
   // Firestore DocumentSnapshot 배열을 plain object 배열로 정규화한다.
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));

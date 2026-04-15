@@ -28,6 +28,7 @@ import {
   ROLE_KEY_ALIASES
 } from './constants.js';
 
+// ---- scalar normalization / debug formatting ------------------------------
 export function numberOrZero(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
@@ -171,6 +172,7 @@ export function writeRememberedBoardId(boardId) {
   }
 }
 
+// ---- lightweight display helpers -----------------------------------------
 export function formatTemporaryLoginRemaining(ms) {
   const totalSeconds = Math.max(0, Math.ceil(Number(ms || 0) / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -220,6 +222,7 @@ export function buildRecentCommentPreview(value) {
   return `${compact.slice(0, RECENT_COMMENT_PREVIEW_LIMIT)}...`;
 }
 
+// ---- Firestore path helpers used by controller write flows ----------------
 export function notificationCollectionRef(uid) {
   return collection(db, 'users', normalizeText(uid), 'notifications');
 }
@@ -265,6 +268,7 @@ export function venueOptionCollectionRef() {
   return collection(db, 'venue_options');
 }
 
+// ---- notification typing / filtering -------------------------------------
 export function formatNotificationDate(ms) {
   const date = new Date(Number(ms || 0));
   if (Number.isNaN(date.getTime())) return '-';
@@ -419,6 +423,7 @@ export function notificationMatchesFeedFilter(item, filterValue) {
   return type === NOTIFICATION_TYPE.MENTION;
 }
 
+// ---- responsive/layout heuristics ----------------------------------------
 export function detectCompactListMode() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   const userAgent = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
@@ -451,6 +456,7 @@ export function detectCompactListMode() {
   return !desktopLike;
 }
 
+// ---- calendar / cover-for helpers ----------------------------------------
 export function toDateKey(value) {
   const date = value && typeof value.toDate === 'function'
     ? value.toDate()

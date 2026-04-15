@@ -27,6 +27,7 @@ import {
   Unlink2
 } from 'lucide-react';
 
+// ---- toolbar constants ----------------------------------------------------
 const DEFAULT_EDITOR_COLOR = '#0f172a';
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const FONT_SIZE_MIN = 10;
@@ -46,6 +47,7 @@ const EDITOR_COLOR_PRESETS = [
   '#7c2d12'
 ];
 
+// ---- small presentational primitive --------------------------------------
 function ToolButton({ label, onClick, children, id }) {
   return (
     <button
@@ -64,6 +66,7 @@ function ToolButton({ label, onClick, children, id }) {
 }
 
 export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
+  // ---- local UI state -----------------------------------------------------
   const [colorValue, setColorValue] = React.useState(DEFAULT_EDITOR_COLOR);
   const [colorPaletteOpen, setColorPaletteOpen] = React.useState(false);
   const [customPickerOpen, setCustomPickerOpen] = React.useState(false);
@@ -73,6 +76,7 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
   const colorPopoverRef = React.useRef(null);
   const fontSizeInputRef = React.useRef(null);
 
+  // ---- derived editor reads / coercion helpers ----------------------------
   const readCurrentFontSize = React.useCallback(() => {
     // Quill API 우선, fallback으로 label 텍스트를 파싱한다.
     const apiSize = Number(editorRef.current?.getSelectionFontSize?.());
@@ -129,6 +133,7 @@ export function RichEditorToolbar({ editorRef, fontSizeLabelRef, ids = {} }) {
     editorRef.current?.setColor(safeColor);
   }, [editorRef]);
 
+  // ---- popover / focus effects -------------------------------------------
   React.useEffect(() => {
     if (!colorPaletteOpen) {
       setCustomPickerOpen(false);

@@ -7,6 +7,7 @@ import React from 'react';
 const DEFAULT_TABS = ['홈', '삽입', '페이지 레이아웃', '수식', '데이터', '검토', '보기'];
 const DEFAULT_TOOLS = ['붙여넣기', '글꼴', '맞춤', '숫자', '스타일', '셀', '편집'];
 
+// ---- header label builders -----------------------------------------------
 function columnLabel(index) {
   let n = Math.max(1, Math.floor(index) + 1);
   let label = '';
@@ -30,6 +31,7 @@ function buildRowHeaders(rowCount) {
   return Array.from({ length: total }, (_, i) => String(i + 1));
 }
 
+// ---- visual chrome primitives --------------------------------------------
 export function ExcelSheetCorner() {
   return <div className="excel-sheet-corner" aria-hidden="true" />;
 }

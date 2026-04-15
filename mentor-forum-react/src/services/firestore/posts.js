@@ -9,10 +9,12 @@ import {
   getDocs
 } from '../../legacy/firebase-app.js';
 
+// ---- snapshot mapping -----------------------------------------------------
 function mapDocs(snap) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// ---- post feed queries ----------------------------------------------------
 // Pinned posts for board header section.
 export async function listPinnedPostsByBoard(boardId, maxCount) {
   const snap = await getDocs(query(

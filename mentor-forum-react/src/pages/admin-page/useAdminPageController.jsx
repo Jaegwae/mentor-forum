@@ -47,51 +47,47 @@ import * as pageUtils from './utils.js';
 import * as pageData from './data.js';
 
 const {
-  AUTO_LOGOUT_MESSAGE,
   DEFAULT_VENUE_LABELS,
   WORK_SCHEDULE_BOARD_ID,
   WORK_SCHEDULE_BOARD_NAME,
   WORK_SCHEDULE_BOARD_DESCRIPTION,
-  roleFlagDefs,
-  ROLE_KEY_ALIASES,
-  ROLE_COLOR_PRESETS,
   coreRoleDefaults,
-  CORE_ROLE_SET,
+  roleFlagDefs,
   legacyRoleVisibilityCleanup
 } = pageConstants;
 
 const {
-  normalizeText,
-  sanitizeRoleKey,
   detectCompactListMode,
+  normalizeText,
   shouldLogDebugPayload,
   isPermissionDeniedError,
   joinDebugParts,
   debugCodePoints,
   debugValueList,
+  sanitizeRoleKey,
+  normalizeRoles,
+  normalizeRoleKey,
   normalizeNickname,
   buildNicknameKey,
   normalizeVenueLabel,
   sortVenueOptions,
   timestampToMs,
-  normalizeRoles,
   isCoreRole,
   roleDeleteLockedForAdmin,
   formatTemporaryLoginRemaining,
   createRoleDefMap,
-  normalizeRoleKey,
   roleLevelWithDefinitions,
-  sortRolesForManage,
-  sortUsersForManage,
   isDividerItem,
   dividerLabel,
   boardSortValue,
   sortBoardItems,
+  sortUsersForManage,
   initRoleFlags,
   buildRoleFlagsFromDoc,
   buildManageState,
   roleSummaryText,
-  normalizeErrMessage
+  normalizeErrMessage,
+  sortRolesForManage
 } = pageUtils;
 
 const {
@@ -215,6 +211,9 @@ export function useAdminPageController() {
     setMessage({ type: '', text: '' });
   }, []);
 
+  // ---- feedback helpers ---------------------------------------------------
+  // These helpers normalize transient user-facing feedback so every admin
+  // mutation reports success/error in a consistent tone.
   const pushMessage = useCallback((text, type = 'notice') => {
     const nextText = type === 'error'
       ? normalizeErrMessage(text, '문제가 발생했습니다. 잠시 후 다시 시도해주세요.')
@@ -240,6 +239,7 @@ export function useAdminPageController() {
     return roleLevelWithDefinitions(roleKey, roleDefinitions);
   }, [roleDefinitions]);
 
+  // ---- view-facing permission helpers ------------------------------------
   const evaluateUserManageState = useCallback((targetUid, targetRole, nextRole = targetRole) => {
     if (!permissions?.canManageRoles) return buildManageState('lock', '권한 없음');
     if (!currentUser || !currentUserProfile) return buildManageState('lock', '권한 없음');
@@ -295,6 +295,7 @@ export function useAdminPageController() {
     return sortUsersForManage(matched, roleDefinitions);
   }, [allUserRows, userSearch, roleDefinitions]);
 
+  // ---- session + modal lifecycle effects ---------------------------------
   const clearExpiryTimer = useCallback(() => {
     if (expiryTimerRef.current == null) return;
     window.clearTimeout(expiryTimerRef.current);
@@ -425,6 +426,7 @@ export function useAdminPageController() {
     };
   }, []);
 
+  // ---- async refreshers ---------------------------------------------------
   const refreshRoles = useCallback(async (preferredRoleKey = '') => {
     const loadedDefinitions = await loadRoleDefinitionsFromDb();
     setRoleDefinitions(loadedDefinitions);
@@ -798,14 +800,9 @@ export function useAdminPageController() {
       clearCountdownTimer();
     };
   }, [
-    clearCountdownTimer,
-    clearExpiryTimer,
-    clearMessage,
-    ensureDefaultVenueOptions,
     navigate,
     pushMessage,
     refreshBoards,
-    refreshRoles,
     refreshUsers,
     refreshVenueOptions,
     scheduleTemporaryLoginExpiry
@@ -907,8 +904,6 @@ export function useAdminPageController() {
 
     setRoleEditOpen(true);
   }, [
-    clearMessage,
-    ensurePermission,
     editableRoles,
     activeEditRoleKey,
     roleDefinitions,
@@ -978,12 +973,8 @@ export function useAdminPageController() {
     pushMessage(`게시판 ${id}를 생성했습니다.`, 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     createBoardForm,
     boardItems,
-    nextBoardSortOrder,
-    currentUser,
     refreshBoards,
     pushMessage,
     showAppliedPopup
@@ -1032,12 +1023,9 @@ export function useAdminPageController() {
     pushMessage('게시판을 저장했습니다.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     activeEditBoardId,
     editBoardForm,
     boardRows,
-    currentUser,
     refreshBoards,
     pushMessage,
     showAppliedPopup
@@ -1077,8 +1065,6 @@ export function useAdminPageController() {
     pushMessage('게시판을 삭제했습니다.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     isSuperAdminUser,
     activeEditBoardId,
     boardRows,
@@ -1110,10 +1096,6 @@ export function useAdminPageController() {
     pushMessage('구분선을 추가했습니다. 드래그해서 위치를 조정하세요.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
-    nextBoardSortOrder,
-    currentUser,
     refreshBoards,
     activeEditBoardId,
     pushMessage,
@@ -1134,8 +1116,6 @@ export function useAdminPageController() {
     showAppliedPopup();
   }, [
     activeEditBoardId,
-    clearMessage,
-    ensurePermission,
     pushMessage,
     refreshBoards,
     showAppliedPopup
@@ -1185,13 +1165,9 @@ export function useAdminPageController() {
     pushMessage(`Role ${role}을 생성했습니다.`, 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     createRoleForm,
     roleDefinitions,
     isSuperAdminUser,
-    currentUser,
-    refreshRoles,
     refreshUsers,
     pushMessage,
     showAppliedPopup
@@ -1247,14 +1223,10 @@ export function useAdminPageController() {
     pushMessage('Role을 저장했습니다.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     activeEditRoleKey,
     roleDefinitions,
     editRoleForm,
     isSuperAdminUser,
-    currentUser,
-    refreshRoles,
     refreshUsers,
     pushMessage,
     showAppliedPopup
@@ -1305,13 +1277,9 @@ export function useAdminPageController() {
     pushMessage(`Role을 삭제했습니다. ${assignedUsersSnap.size}명의 회원을 Newbie로 변경했습니다.`, 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
     activeEditRoleKey,
     roleDefinitions,
     isSuperAdminUser,
-    permissions,
-    refreshRoles,
     refreshUsers,
     pushMessage,
     showAppliedPopup
@@ -1342,11 +1310,7 @@ export function useAdminPageController() {
     pushMessage('기본 Role 정의를 반영했습니다.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
     isSuperAdminUser,
-    ensurePermission,
-    currentUser,
-    refreshRoles,
     refreshUsers,
     pushMessage,
     showAppliedPopup
@@ -1515,16 +1479,10 @@ export function useAdminPageController() {
     pushMessage('회원 권한을 변경했습니다.', 'notice');
     showAppliedPopup();
   }, [
-    clearMessage,
-    ensurePermission,
-    currentUser,
-    currentUserProfile,
     userDrafts,
     roleDefMap,
     roleDefinitions,
-    permissions,
     roleLevelOf,
-    myRoleLevel,
     refreshUsers,
     pushMessage,
     showAppliedPopup
@@ -1570,13 +1528,10 @@ export function useAdminPageController() {
       setCreatingVenue(false);
     }
   }, [
-    clearMessage,
     currentUser?.uid,
-    ensurePermission,
     newVenueLabel,
     pushMessage,
     refreshVenueOptions,
-    showAppliedPopup,
     venueOptions
   ]);
 
@@ -1614,12 +1569,9 @@ export function useAdminPageController() {
       setSavingVenueId('');
     }
   }, [
-    clearMessage,
     currentUser?.uid,
-    ensurePermission,
     pushMessage,
     refreshVenueOptions,
-    showAppliedPopup,
     venueDrafts,
     venueOptions
   ]);
@@ -1643,11 +1595,8 @@ export function useAdminPageController() {
       setDeletingVenueId('');
     }
   }, [
-    clearMessage,
-    ensurePermission,
     pushMessage,
     refreshVenueOptions,
-    showAppliedPopup,
     venueOptions
   ]);
 
@@ -1858,35 +1807,17 @@ export function useAdminPageController() {
     sortedRoleOptionsForSelect
   ]);
 
-
+  // ---- flat VM contract ---------------------------------------------------
   return {
     navigate,
-    theme,
     toggleTheme,
     isExcel,
     compactListMode,
-    setCompactListMode,
-    expiryTimerRef,
-    countdownTimerRef,
-    lastActivityRefreshAtRef,
-    appliedPopupTimerRef,
     draggingBoardItemIdRef,
-    ready,
-    setReady,
     message,
-    setMessage,
     appliedPopup,
-    setAppliedPopup,
-    currentUser,
-    setCurrentUser,
-    currentUserProfile,
-    setCurrentUserProfile,
-    permissions,
-    setPermissions,
     sessionRemainingMs,
-    setSessionRemainingMs,
     roleDefinitions,
-    setRoleDefinitions,
     activeEditRoleKey,
     setActiveEditRoleKey,
     createRoleForm,
@@ -1894,72 +1825,45 @@ export function useAdminPageController() {
     editRoleForm,
     setEditRoleForm,
     boardItems,
-    setBoardItems,
     activeEditBoardId,
     setActiveEditBoardId,
     createBoardForm,
     setCreateBoardForm,
     editBoardForm,
     setEditBoardForm,
-    allUserRows,
-    setAllUserRows,
     userSearch,
     setUserSearch,
     userDrafts,
     setUserDrafts,
     syncingNicknameIndex,
-    setSyncingNicknameIndex,
     venueOptions,
-    setVenueOptions,
     venueDrafts,
     setVenueDrafts,
     newVenueLabel,
     setNewVenueLabel,
     creatingVenue,
-    setCreatingVenue,
     savingVenueId,
-    setSavingVenueId,
     deletingVenueId,
-    setDeletingVenueId,
     boardEditOpen,
-    setBoardEditOpen,
     boardCreateOpen,
-    setBoardCreateOpen,
     roleEditOpen,
-    setRoleEditOpen,
     roleCreateOpen,
-    setRoleCreateOpen,
     roleDefMap,
     sortedRoles,
     editableRoles,
     boardRows,
-    anyModalOpen,
     isSuperAdminUser,
-    myRoleLevel,
-    clearMessage,
     pushMessage,
-    showAppliedPopup,
     roleLevelOf,
     evaluateUserManageState,
     getBoardRoleChoices,
-    defaultBoardRoles,
     filteredUsers,
-    clearExpiryTimer,
-    clearCountdownTimer,
-    handleTemporaryLoginExpiry,
-    scheduleTemporaryLoginExpiry,
-    hasTemporarySession,
-    refreshRoles,
     refreshBoards,
     refreshUsers,
     refreshVenueOptions,
-    ensureDefaultVenueOptions,
     backfillNicknameIndex,
     handleExtendSession,
     handleLogout,
-    ensurePermission,
-    nextBoardSortOrder,
-    persistBoardOrder,
     reorderBoardItems,
     openBoardEditModal,
     openBoardCreateModal,
@@ -1986,21 +1890,14 @@ export function useAdminPageController() {
     adminRoleText,
     createRoleBadgePalette,
     editRoleBadgePalette,
-    editRoleDoc,
     editRoleDeleteDisabled,
     sortedRoleOptionsForSelect,
     boardCount,
     venueCount,
-    excelBoardRows,
-    excelVenueRows,
-    excelRoleRows,
-    excelUserRows,
     excelSheetModel,
     isExcelDesktopMode,
     excelActiveCellLabel,
-    setExcelActiveCellLabel,
     excelFormulaText,
-    setExcelFormulaText,
     handleExcelSelectCell,
     handleExcelAction
   };

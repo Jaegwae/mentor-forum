@@ -1,6 +1,7 @@
 // User profile Firestore helpers.
 import { db, doc, getDoc, setDoc, updateDoc } from '../../legacy/firebase-app.js';
 
+// ---- profile document reads / writes -------------------------------------
 // Reads profile document, returning null when missing.
 export async function getUserProfileDoc(uid) {
   const ref = doc(db, 'users', String(uid || ''));

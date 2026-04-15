@@ -1,11 +1,9 @@
 // AdminPage presentation component.
 // The controller handles permission checks and side-effects; this file renders
 // admin UI and dispatches intent through controller handlers.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutPanelTop, LogOut, MapPin, MessageSquare, ShieldCheck, ShieldPlus, UsersRound } from 'lucide-react';
-import { usePageMeta } from '../../hooks/usePageMeta.js';
 import {
   Select,
   SelectContent,
@@ -13,114 +11,39 @@ import {
   SelectTrigger,
   SelectValue
 } from '../../components/ui/select.jsx';
+import { RoleBadge } from '../../components/ui/role-badge.jsx';
 import { ThemeToggle } from '../../components/ui/theme-toggle.jsx';
 import { ExcelChrome } from '../../components/ui/excel-chrome.jsx';
 import { AppExcelWorkbook } from '../../components/excel/AppExcelWorkbook.jsx';
 import {
   EXCEL_STANDARD_COL_COUNT,
-  EXCEL_STANDARD_ROW_COUNT,
-  buildAdminExcelSheetModel
+  EXCEL_STANDARD_ROW_COUNT
 } from '../../components/excel/secondary-excel-sheet-models.js';
-import { useTheme } from '../../hooks/useTheme.js';
-import {
-  auth,
-  db,
-  ensureFirebaseConfigured,
-  onAuthStateChanged,
-  getTemporaryLoginRemainingMs,
-  setTemporaryLoginExpiry,
-  TEMP_LOGIN_TTL_MS,
-  clearTemporaryLoginExpiry,
-  enforceTemporaryLoginExpiry,
-  signOut,
-  serverTimestamp,
-  deleteField,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  addDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-  writeBatch
-} from '../../legacy/firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
-import {
-  buildPermissions,
-  roleDisplay,
-  getRoleBadgePalette,
-  normalizeBadgeColor
-} from '../../legacy/rbac.js';
+import { normalizeBadgeColor } from '../../legacy/rbac.js';
 import * as pageConstants from './constants.js';
 import * as pageUtils from './utils.js';
 
 const {
-  AUTO_LOGOUT_MESSAGE,
-  DEFAULT_VENUE_LABELS,
   WORK_SCHEDULE_BOARD_ID,
   roleFlagDefs,
-  ROLE_KEY_ALIASES,
-  ROLE_COLOR_PRESETS,
-  coreRoleDefaults,
-  CORE_ROLE_SET,
   legacyRoleVisibilityCleanup
 } = pageConstants;
 
 const {
   normalizeText,
   sanitizeRoleKey,
-  detectCompactListMode,
-  shouldLogDebugPayload,
-  isPermissionDeniedError,
-  joinDebugParts,
-  debugCodePoints,
-  debugValueList,
-  normalizeNickname,
-  buildNicknameKey,
-  normalizeVenueLabel,
-  sortVenueOptions,
-  timestampToMs,
   normalizeRoles,
   isCoreRole,
   roleDeleteLockedForAdmin,
   formatTemporaryLoginRemaining,
-  createRoleDefMap,
-  normalizeRoleKey,
   roleLevelWithDefinitions,
-  sortRolesForManage,
-  sortUsersForManage,
   isDividerItem,
   dividerLabel,
-  boardSortValue,
-  sortBoardItems,
-  initRoleFlags,
   buildRoleFlagsFromDoc,
   buildManageState,
   roleSummaryText
 } = pageUtils;
-
-function RoleBadge({ role, roleDefinition = null }) {
-  const roleKey = normalizeText(role) || 'Newbie';
-  const def = roleDefinition || null;
-  const palette = getRoleBadgePalette(roleKey, def);
-  const label = def?.labelKo || roleKey;
-
-  return (
-    <span
-      className="role-badge"
-      style={{
-        background: palette.bgColor,
-        color: palette.textColor,
-        borderColor: palette.borderColor
-      }}
-    >
-      {label}
-    </span>
-  );
-}
 
 function RoleColorField({ id, label, value, disabled = false, onChange }) {
   const safeValue = normalizeBadgeColor(value, '#ffffff');
@@ -199,32 +122,14 @@ export function AdminPageView({ vm }) {
   // Explicit bindings help catch missing VM fields during refactors.
   const {
     navigate,
-    theme,
     toggleTheme,
     isExcel,
     compactListMode,
-    setCompactListMode,
-    expiryTimerRef,
-    countdownTimerRef,
-    lastActivityRefreshAtRef,
-    appliedPopupTimerRef,
     draggingBoardItemIdRef,
-    ready,
-    setReady,
     message,
-    setMessage,
     appliedPopup,
-    setAppliedPopup,
-    currentUser,
-    setCurrentUser,
-    currentUserProfile,
-    setCurrentUserProfile,
-    permissions,
-    setPermissions,
     sessionRemainingMs,
-    setSessionRemainingMs,
     roleDefinitions,
-    setRoleDefinitions,
     activeEditRoleKey,
     setActiveEditRoleKey,
     createRoleForm,
@@ -232,72 +137,45 @@ export function AdminPageView({ vm }) {
     editRoleForm,
     setEditRoleForm,
     boardItems,
-    setBoardItems,
     activeEditBoardId,
     setActiveEditBoardId,
     createBoardForm,
     setCreateBoardForm,
     editBoardForm,
     setEditBoardForm,
-    allUserRows,
-    setAllUserRows,
     userSearch,
     setUserSearch,
     userDrafts,
     setUserDrafts,
     syncingNicknameIndex,
-    setSyncingNicknameIndex,
     venueOptions,
-    setVenueOptions,
     venueDrafts,
     setVenueDrafts,
     newVenueLabel,
     setNewVenueLabel,
     creatingVenue,
-    setCreatingVenue,
     savingVenueId,
-    setSavingVenueId,
     deletingVenueId,
-    setDeletingVenueId,
     boardEditOpen,
-    setBoardEditOpen,
     boardCreateOpen,
-    setBoardCreateOpen,
     roleEditOpen,
-    setRoleEditOpen,
     roleCreateOpen,
-    setRoleCreateOpen,
     roleDefMap,
     sortedRoles,
     editableRoles,
     boardRows,
-    anyModalOpen,
     isSuperAdminUser,
-    myRoleLevel,
-    clearMessage,
     pushMessage,
-    showAppliedPopup,
     roleLevelOf,
     evaluateUserManageState,
     getBoardRoleChoices,
-    defaultBoardRoles,
     filteredUsers,
-    clearExpiryTimer,
-    clearCountdownTimer,
-    handleTemporaryLoginExpiry,
-    scheduleTemporaryLoginExpiry,
-    hasTemporarySession,
-    refreshRoles,
     refreshBoards,
     refreshUsers,
     refreshVenueOptions,
-    ensureDefaultVenueOptions,
     backfillNicknameIndex,
     handleExtendSession,
     handleLogout,
-    ensurePermission,
-    nextBoardSortOrder,
-    persistBoardOrder,
     reorderBoardItems,
     openBoardEditModal,
     openBoardCreateModal,
@@ -324,25 +202,21 @@ export function AdminPageView({ vm }) {
     adminRoleText,
     createRoleBadgePalette,
     editRoleBadgePalette,
-    editRoleDoc,
     editRoleDeleteDisabled,
     sortedRoleOptionsForSelect,
     boardCount,
     venueCount,
-    excelBoardRows,
-    excelVenueRows,
-    excelRoleRows,
-    excelUserRows,
     excelSheetModel,
     isExcelDesktopMode,
     excelActiveCellLabel,
-    setExcelActiveCellLabel,
     excelFormulaText,
-    setExcelFormulaText,
     handleExcelSelectCell,
     handleExcelAction
   } = vm;
 
+  // ---- responsive/excel projections --------------------------------------
+  // The admin screen supports both normal cards/tables and an Excel-like shell.
+  // These derived flags keep the JSX readable while preserving one flat VM.
   return (
     <>
       {isExcel ? (
@@ -378,6 +252,8 @@ export function AdminPageView({ vm }) {
           />
         ) : null}
         <div className={isExcelDesktopMode ? 'hidden' : ''}>
+        {/* Hero / top-level admin status:
+            page identity, theme toggle, and controller-level message output. */}
         <section className="card admin-hero">
           <div className="row space-between mobile-col">
             <div>
@@ -396,6 +272,9 @@ export function AdminPageView({ vm }) {
         </section>
 
         <section className="admin-content-shell">
+          {/* Side rail:
+              acting admin identity plus stable "back to forum" / logout
+              actions that should remain visible regardless of active panel. */}
           <aside className="admin-side-rail" aria-label="관리자 내 정보">
             <section className="admin-side-profile">
               <p className="admin-side-kicker">내 정보</p>
@@ -426,6 +305,9 @@ export function AdminPageView({ vm }) {
             </section>
           </aside>
 
+          {/* Main admin column:
+              board / venue / role / user management panels are grouped here in
+              the same order users typically operate them. */}
           <div className="admin-main-column">
             <section className="card admin-panel">
           <div className="row space-between mobile-col">
@@ -779,6 +661,7 @@ export function AdminPageView({ vm }) {
         onClose={() => closeModalById('boardEditModal')}
         panelClassName="admin-modal-panel board-edit-modal-panel"
       >
+          {/* Board edit modal: edits one existing board/divider item at a time. */}
           <div className="row space-between mobile-col">
             <div>
               <h3>게시판 수정</h3>
@@ -999,6 +882,7 @@ export function AdminPageView({ vm }) {
         open={boardCreateOpen}
         onClose={() => closeModalById('boardCreateModal')}
       >
+          {/* Board create modal: creates a new board with allowed-role rules. */}
           <div className="row space-between mobile-col">
             <div>
               <h3>게시판 생성</h3>
@@ -1094,6 +978,7 @@ export function AdminPageView({ vm }) {
         onClose={() => closeModalById('roleEditModal')}
         panelClassName="admin-modal-panel board-edit-modal-panel"
       >
+          {/* Role edit modal: edits an existing role-definition document. */}
           <div className="row space-between mobile-col">
             <div>
               <h3>등급 수정</h3>
@@ -1251,6 +1136,7 @@ export function AdminPageView({ vm }) {
         open={roleCreateOpen}
         onClose={() => closeModalById('roleCreateModal')}
       >
+          {/* Role create modal: creates a new custom role-definition document. */}
           <div className="row space-between mobile-col">
             <div>
               <h3>등급 생성</h3>

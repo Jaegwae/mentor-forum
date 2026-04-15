@@ -15,6 +15,7 @@ import {
   writeBatch
 } from '../../legacy/firebase-app.js';
 
+// ---- list fetchers -------------------------------------------------------
 // Base list fetchers used by initial admin bootstrap.
 export function fetchBoardsDocs() {
   return getDocs(collection(db, 'boards'));
@@ -33,6 +34,7 @@ export function addVenueOptionDoc(payload) {
   return addDoc(collection(db, 'venue_options'), payload);
 }
 
+// ---- nickname-index helpers ----------------------------------------------
 // Nickname index reads/writes for backfill workflow.
 export function fetchNicknameIndexDoc(nicknameKey) {
   return getDoc(doc(db, 'nickname_index', String(nicknameKey || '')));
@@ -74,6 +76,7 @@ export async function saveBoardOrder(items, userUid, serverTimestamp) {
   }
 }
 
+// ---- board CRUD ----------------------------------------------------------
 // Board CRUD helpers.
 export function upsertBoardDoc(boardId, payload, options = { merge: true }) {
   return setDoc(doc(db, 'boards', String(boardId || '')), payload, options);
@@ -83,6 +86,7 @@ export function deleteBoardDoc(boardId) {
   return deleteDoc(doc(db, 'boards', String(boardId || '')));
 }
 
+// ---- role-definition / user-role writes ----------------------------------
 // Role-definition and user-role helpers.
 export function upsertRoleDefinitionDoc(roleKey, payload, options = { merge: true }) {
   return setDoc(doc(db, 'role_definitions', String(roleKey || '')), payload, options);
@@ -107,6 +111,7 @@ export function deleteRoleDefinitionDoc(roleKey) {
   return deleteDoc(doc(db, 'role_definitions', String(roleKey || '')));
 }
 
+// ---- venue option CRUD ---------------------------------------------------
 // Venue update/delete helpers.
 export function upsertVenueOptionDoc(venueId, payload, options = { merge: true }) {
   return setDoc(doc(db, 'venue_options', String(venueId || '')), payload, options);

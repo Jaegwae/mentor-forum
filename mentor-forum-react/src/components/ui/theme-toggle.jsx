@@ -26,6 +26,7 @@ const THEME_LABEL = {
   [THEME_EXCEL]: '엑셀'
 };
 
+// ---- theme toggle button --------------------------------------------------
 export function ThemeToggle({ className = '' }) {
   const { theme, toggleTheme } = useTheme();
   const currentTheme = THEME_LABEL[theme] ? theme : THEME_LIGHT;

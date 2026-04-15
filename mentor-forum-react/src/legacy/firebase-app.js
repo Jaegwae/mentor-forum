@@ -40,6 +40,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { MENTOR_FORUM_CONFIG } from './config.js';
 
+// ---- app bootstrap + shared singletons -----------------------------------
 const placeholderProjectId = !MENTOR_FORUM_CONFIG.firebase.projectId || MENTOR_FORUM_CONFIG.firebase.projectId === 'YOUR_PROJECT_ID';
 
 export const firebaseConfigured = !placeholderProjectId;
@@ -51,6 +52,7 @@ export const TEMP_LOGIN_TTL_MS = 10 * 60 * 1000;
 
 const TEMP_LOGIN_EXPIRY_KEY = 'mentor_forum_temp_login_expiry';
 
+// ---- sessionStorage helpers ----------------------------------------------
 function readSessionValue(key) {
   try {
     return window.sessionStorage.getItem(key);
@@ -107,6 +109,7 @@ export {
   httpsCallable
 };
 
+// ---- config / auth persistence helpers -----------------------------------
 export function ensureFirebaseConfigured() {
   if (!firebaseConfigured) {
     throw new Error('Firebase 설정이 비어 있습니다. mentor-forum-react/src/legacy/config.js 값을 먼저 채워주세요.');
@@ -124,6 +127,7 @@ export async function configureLoginPersistence(rememberLogin) {
   setTemporaryLoginExpiry(Date.now() + TEMP_LOGIN_TTL_MS);
 }
 
+// ---- temporary-login ttl helpers -----------------------------------------
 export function setTemporaryLoginExpiry(expiresAtMs) {
   const expiresAt = Number(expiresAtMs);
   if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
@@ -167,6 +171,7 @@ export async function enforceTemporaryLoginExpiry() {
   return { expired: true, remainingMs: 0 };
 }
 
+// ---- presentation helper --------------------------------------------------
 export function toDateText(value) {
   if (!value) return '-';
   const d = value.toDate ? value.toDate() : new Date(value);

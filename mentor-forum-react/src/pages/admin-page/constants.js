@@ -2,11 +2,20 @@
 // Role defaults and permission flags are treated as policy contracts across
 // controller/view/data, so update with extra care.
 import { deleteField } from '../../legacy/firebase-app.js';
+import {
+  AUTO_LOGOUT_MESSAGE,
+  ROLE_KEY_ALIASES,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_NAME
+} from '../shared/forum-constants.js';
+export {
+  AUTO_LOGOUT_MESSAGE,
+  ROLE_KEY_ALIASES,
+  WORK_SCHEDULE_BOARD_ID,
+  WORK_SCHEDULE_BOARD_NAME
+} from '../shared/forum-constants.js';
 
-export const AUTO_LOGOUT_MESSAGE = '로그인 유지를 선택하지 않아 10분이 지나 자동 로그아웃되었습니다.';
 export const DEFAULT_VENUE_LABELS = ['구로', '경기도서관'];
-export const WORK_SCHEDULE_BOARD_ID = 'work_schedule';
-export const WORK_SCHEDULE_BOARD_NAME = '근무일정';
 export const WORK_SCHEDULE_BOARD_DESCRIPTION = '근무 일정 공유 게시판';
 
 export const roleFlagDefs = [
@@ -16,15 +25,6 @@ export const roleFlagDefs = [
   { key: 'canManageRoleDefinitions', label: 'Role 추가/삭제' },
   { key: 'canAccessAdminSite', label: '관리자 사이트 접근' }
 ];
-
-export const ROLE_KEY_ALIASES = {
-  '개발자': 'Super_Admin',
-  '관리자': 'Admin',
-  '멘토': 'Mentor',
-  '새싹': 'Newbie',
-  '토': 'Mentor',
-  '운영진': 'Staff'
-};
 
 export const ROLE_COLOR_PRESETS = [
   '#ffffff', '#f8fafc', '#e2e8f0', '#334155',

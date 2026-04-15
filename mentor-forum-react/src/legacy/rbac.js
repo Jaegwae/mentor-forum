@@ -5,6 +5,7 @@
  */
 import { MENTOR_FORUM_CONFIG } from './config.js';
 
+// ---- core role policy table ----------------------------------------------
 export const CORE_ROLES = ['Newbie', 'Mentor', 'Staff', 'Admin', 'Super_Admin'];
 
 const CORE_ROLE_META = {
@@ -82,6 +83,7 @@ const CORE_ROLE_META = {
 
 const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
+// ---- badge palette helpers -----------------------------------------------
 export function normalizeBadgeColor(value, fallback = '#ffffff') {
   const input = String(value || '').trim();
   if (HEX_COLOR_RE.test(input)) return input.toLowerCase();
@@ -105,6 +107,7 @@ export function roleDisplay(role) {
   return `${role}(${suffix})`;
 }
 
+// ---- permission merge helpers --------------------------------------------
 export function buildPermissions(role, userDoc, roleDefinition) {
   const base = CORE_ROLE_META[role] || CORE_ROLE_META.Newbie;
   const def = roleDefinition || {};
@@ -146,6 +149,7 @@ export function canWriteVisibility(permissions, visibility) {
   return !!permissions.canWritePublic;
 }
 
+// ---- sorting helper ------------------------------------------------------
 export function sortRolesByLevel(roleDocs) {
   // level 내림차순 우선, 동일 level은 role 키 문자열로 안정 정렬한다.
   return [...roleDocs].sort((a, b) => {

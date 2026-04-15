@@ -23,8 +23,8 @@ import {
 import { DayPicker } from 'react-day-picker';
 import { ko } from 'date-fns/locale';
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
-import { getRoleBadgePalette } from '../../legacy/rbac.js';
 import { RichEditorToolbar } from '../../components/editor/RichEditorToolbar.jsx';
+import { AuthorWithRole, RoleBadge } from '../../components/ui/role-badge.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select.jsx';
 import { ThemeToggle } from '../../components/ui/theme-toggle.jsx';
 import { ExcelChrome } from '../../components/ui/excel-chrome.jsx';
@@ -245,177 +245,74 @@ function hasScheduleCellText(value) {
   return true;
 }
 
-function RoleBadge({ role, roleDefMap }) {
-  const roleKey = normalizeText(role) || 'Newbie';
-  const roleDef = roleDefMap.get(roleKey) || null;
-  const palette = getRoleBadgePalette(roleKey, roleDef);
-  const label = roleDef?.labelKo || roleKey;
-
-  return (
-    <span
-      className="role-badge"
-      style={{
-        background: palette.bgColor,
-        color: palette.textColor,
-        borderColor: palette.borderColor
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function AuthorWithRole({ name, role, roleDefMap }) {
-  return (
-    <span className="author-role-wrap">
-      <span className="author-name">{name || '-'}</span>
-      <RoleBadge role={role} roleDefMap={roleDefMap} />
-    </span>
-  );
-}
-
-
 export function AppPageView({ vm }) {
   // Keep property names aligned with the controller return object.
   // This explicit destructuring makes accidental contract drift easy to detect.
   const {
     navigate,
-    location,
     theme,
     toggleTheme,
     isExcel,
-    pendingBoardIdRef,
     editorRef,
     editorElRef,
     fontSizeLabelRef,
-    expiryTimerRef,
-    countdownTimerRef,
-    lastActivityRefreshAtRef,
-    postsLoadRequestRef,
-    appliedPopupTimerRef,
-    knownRealtimePostIdsRef,
-    realtimePostsReadyRef,
-    notificationPrefsRef,
-    mentionRequestIdRef,
-    mentionCacheRef,
     composerVenueInputRefs,
-    ready,
-    setReady,
     pageMessage,
-    setPageMessage,
     appliedPopup,
-    setAppliedPopup,
-    currentUser,
-    setCurrentUser,
     currentUserProfile,
-    setCurrentUserProfile,
-    permissions,
-    setPermissions,
-    roleDefinitions,
-    setRoleDefinitions,
-    boardNavItems,
-    setBoardNavItems,
-    boardList,
-    setBoardList,
     selectedBoardId,
-    setSelectedBoardId,
-    visiblePosts,
-    setVisiblePosts,
     commentCountByPost,
-    setCommentCountByPost,
-    listMessage,
-    setListMessage,
     loadingPosts,
-    setLoadingPosts,
-    currentPage,
     setCurrentPage,
     postListViewMode,
     setPostListViewMode,
     compactListMode,
-    setCompactListMode,
     excelActiveCellLabel,
-    setExcelActiveCellLabel,
     excelFormulaText,
-    setExcelFormulaText,
     boardDrawerOpen,
     setBoardDrawerOpen,
     guideModalOpen,
     setGuideModalOpen,
     composerOpen,
-    setComposerOpen,
     composerMessage,
-    setComposerMessage,
     postTitle,
     setPostTitle,
     composerCoverDateKeys,
-    setComposerCoverDateKeys,
     composerCoverStartTimeValues,
-    setComposerCoverStartTimeValues,
     composerCoverEndTimeValues,
-    setComposerCoverEndTimeValues,
     composerCoverVenueValues,
-    setComposerCoverVenueValues,
     composerCoverVenueCustomModes,
-    setComposerCoverVenueCustomModes,
     setComposerVenueInputFocusIndex,
     composerMentionMenu,
-    setComposerMentionMenu,
     composerMentionCandidates,
-    setComposerMentionCandidates,
     composerMentionActiveIndex,
-    setComposerMentionActiveIndex,
-    venueOptions,
-    setVenueOptions,
     submittingPost,
-    setSubmittingPost,
     sessionRemainingMs,
-    setSessionRemainingMs,
-    todayDate,
-    coverCalendarCursor,
     setCoverCalendarCursor,
-    coverCalendarSelectedDate,
     setCoverCalendarSelectedDate,
     coverCalendarModalOpen,
     setCoverCalendarModalOpen,
-    coverCalendarModalDateKey,
     setCoverCalendarModalDateKey,
     composerDatePickerOpen,
-    setComposerDatePickerOpen,
     composerDatePickerTargetIndex,
-    setComposerDatePickerTargetIndex,
     composerDatePickerCursor,
     setComposerDatePickerCursor,
     notificationCenterOpen,
     setNotificationCenterOpen,
-    notifications,
-    setNotifications,
-    notificationPrefs,
-    setNotificationPrefs,
     notificationFeedFilter,
     setNotificationFeedFilter,
     mobilePushModalOpen,
     setMobilePushModalOpen,
     mobilePushCapability,
-    setMobilePushCapability,
     mobilePushWorking,
-    setMobilePushWorking,
     mobilePushStatus,
     setMobilePushStatus,
     mobilePushTokens,
-    setMobilePushTokens,
-    viewedPostIdMap,
-    setViewedPostIdMap,
     recentComments,
-    setRecentComments,
     recentCommentsLoading,
-    setRecentCommentsLoading,
     selectedPinPostIdMap,
-    setSelectedPinPostIdMap,
     pinActionPending,
-    setPinActionPending,
     roleDefMap,
-    currentUserUid,
-    isAdminOrSuper,
     coverVenueOptions,
     coverVenueDefault,
     profileSurface,
@@ -426,30 +323,21 @@ export function AppPageView({ vm }) {
     currentBoardRoles,
     currentBoardVisibility,
     canManagePinInCurrentBoard,
-    visiblePostById,
-    listedPosts,
-    selectedPinPostIds,
     selectedPinPostCount,
     selectedPinMode,
     showPinToolbar,
     totalPostCount,
-    latestTenPosts,
     recentUnreadPostIdSet,
     totalPageCount,
     safeCurrentPage,
     currentPageStartIndex,
     currentPagePosts,
     postListViewTabs,
-    postListEmptyText,
     activeListMessage,
     isPostListEmptyState,
     desktopPostTableColSpan,
     paginationPages,
-    isCommentNotificationEnabled,
-    isMentionNotificationEnabled,
     isMobilePushEnabled,
-    effectiveNotifications,
-    recentEffectiveNotifications,
     filteredNotifications,
     unreadNotificationCount,
     hasUnreadNotifications,
@@ -457,23 +345,8 @@ export function AppPageView({ vm }) {
     hasActivePushToken,
     notificationPermission,
     notificationPermissionText,
-    showAppliedPopup,
-    fetchMentionCandidates,
-    closeComposerMentionMenu,
-    readComposerMentionAnchor,
-    syncComposerMentionMenu,
     applyComposerMentionCandidate,
-    clearExpiryTimer,
-    clearCountdownTimer,
-    handleTemporaryLoginExpiry,
-    scheduleTemporaryLoginExpiry,
-    hasTemporarySession,
-    canUseBoard,
-    canWriteBoard,
-    hydrateCommentCounts,
-    loadPostsForCurrentBoard,
     closeComposer,
-    resetComposer,
     openComposer,
     addComposerCoverDate,
     removeComposerCoverDate,
@@ -481,7 +354,6 @@ export function AppPageView({ vm }) {
     updateComposerCoverStartTime,
     updateComposerCoverEndTime,
     updateComposerCoverVenue,
-    setComposerCoverVenueCustomMode,
     updateComposerCoverVenueSelect,
     openComposerDatePicker,
     closeComposerDatePicker,
@@ -490,14 +362,12 @@ export function AppPageView({ vm }) {
     handleLogout,
     isBoardNotificationEnabled,
     isNotificationTypeEnabled,
-    appendNotification,
     markAllNotificationsRead,
     markNotificationRead,
     toggleBoardNotification,
     toggleNotificationTypePreference,
     isMobilePushBoardEnabled,
     toggleMobilePushBoardPreference,
-    setMobilePushGlobalPreference,
     refreshMobilePushCapability,
     enableMobilePush,
     disableMobilePush,
@@ -518,19 +388,14 @@ export function AppPageView({ vm }) {
     myPostsPage,
     myCommentsPage,
     coverCalendarMonthLabel,
-    composerDatePickerSelectedKey,
     composerDatePickerSelectedDate,
     composerDatePickerStartMonth,
     composerDatePickerEndMonth,
-    coverCalendarEventsByDate,
     coverCalendarModalItems,
     coverCalendarModalDateText,
     coverCalendarCells,
     loadingText,
     isExcelDesktopMode,
-    userRoleLabel,
-    excelBoardItems,
-    excelPosts,
     excelSheetModel,
     handleExcelSelectCell,
     handleExcelOpenPost,
@@ -538,6 +403,9 @@ export function AppPageView({ vm }) {
     handleExcelPageChange
   } = vm;
 
+  // ---- responsive layout projections -------------------------------------
+  // The style objects below translate the same VM into desktop/mobile variants
+  // without pushing presentation branching back into the controller.
   // Keep mobile navigation accessible even when a browser reports desktop-like
   // viewport metrics (for example, iOS "request desktop site").
   const forumListLayoutStyle = compactListMode
@@ -785,6 +653,9 @@ export function AppPageView({ vm }) {
 
         <section className="forum-content-shell">
           <div className="forum-list-layout" style={forumListLayoutStyle}>
+            {/* Left rail:
+                profile, notifications, board list, and recent comments.
+                This is the main navigation shell for the forum. */}
             <div className={compactListMode ? 'forum-side-column hidden' : 'forum-side-column'} aria-hidden={compactListMode}>
               <aside className="board-rail" aria-label="게시판 목록">
                 <section className="board-rail-profile" aria-label="내 정보" style={profileSurface.cardStyle}>
@@ -905,6 +776,9 @@ export function AppPageView({ vm }) {
               </section>
             </div>
 
+            {/* Main forum column:
+                optional calendar, current-board header, sorting tabs,
+                feed cards/table, and pagination all live here. */}
             <div className="forum-list-main">
               <div id="coverForCalendarWrap" className={showCoverCalendar ? 'cover-calendar-wrap cover-calendar-in-main' : 'cover-calendar-wrap cover-calendar-in-main hidden'}>
                 <div className="row space-between mobile-col">
@@ -2003,6 +1877,8 @@ export function AppPageView({ vm }) {
 
       <AnimatePresence>
         {notificationCenterOpen ? (
+          /* Notification center modal:
+             inbox feed + preference controls + mobile push entrypoint. */
           <div
             className="notification-center-modal"
             aria-hidden={!notificationCenterOpen}
@@ -2171,6 +2047,8 @@ export function AppPageView({ vm }) {
 
       <AnimatePresence>
         {coverCalendarModalOpen ? (
+          /* Calendar day modal:
+             shows the selected day's cover-for or work-schedule items. */
           <div className="cover-calendar-modal" aria-hidden={!coverCalendarModalOpen}>
             <motion.div
               className="cover-calendar-modal-backdrop"
@@ -2333,6 +2211,9 @@ export function AppPageView({ vm }) {
 
       <AnimatePresence>
         {composerOpen ? (
+          /* Composer modal:
+             board-scoped post creation, including cover-for date/time/venue
+             rows and the composer mention menu. */
           <motion.div
             id="composerModal"
             className="composer-modal"

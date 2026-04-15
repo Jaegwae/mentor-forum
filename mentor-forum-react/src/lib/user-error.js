@@ -6,6 +6,7 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
+// ---- text/code extraction helpers ----------------------------------------
 function extractKnownErrorCode(rawText) {
   const raw = normalizeText(rawText).toLowerCase();
   if (!raw) return '';
@@ -35,6 +36,7 @@ function extractKnownErrorCode(rawText) {
   return genericCodes.find((code) => raw.includes(code)) || '';
 }
 
+// ---- code/message mapping -------------------------------------------------
 function mapKnownErrorCode(code) {
   const key = normalizeText(code).toLowerCase();
   if (!key) return '';
@@ -99,6 +101,7 @@ function looksFriendlyUserMessage(rawText) {
   return /[가-힣]/.test(raw);
 }
 
+// ---- public conversion helper --------------------------------------------
 export function toUserErrorMessage(error, fallback = '문제가 발생했습니다. 잠시 후 다시 시도해주세요.') {
   const safeFallback = normalizeText(fallback) || '문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
   const rawMessage = normalizeText(typeof error === 'string' ? error : error?.message);

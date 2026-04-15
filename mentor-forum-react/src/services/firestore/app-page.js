@@ -18,6 +18,7 @@ import {
   onSnapshot
 } from '../../legacy/firebase-app.js';
 
+// ---- read-side list/query helpers ----------------------------------------
 // Mention candidate lookup from nickname index.
 export function fetchMentionIndexDocs({ keyPrefix = '', maxItems = 8 } = {}) {
   const baseCollection = collection(db, 'nickname_index');
@@ -87,11 +88,13 @@ export function fetchBoardDoc(boardId) {
   return getDoc(doc(db, 'boards', String(boardId || '')));
 }
 
+// ---- write-side post creation --------------------------------------------
 // Post creation entrypoint.
 export function createPost(payload) {
   return addDoc(collection(db, 'posts'), payload);
 }
 
+// ---- user-scoped realtime subcollections ---------------------------------
 // Realtime option/state subscriptions under user scope.
 export function subscribeVenueOptions({ maxItems = 120, onNext, onError }) {
   return onSnapshot(
@@ -137,6 +140,7 @@ export function subscribeNotificationPrefs({ uid, onNext, onError }) {
   );
 }
 
+// ---- user-scoped write helpers -------------------------------------------
 // Notification + preference writes.
 export function fetchNotificationDoc(uid, notificationId) {
   return getDoc(doc(db, 'users', String(uid || ''), 'notifications', String(notificationId || '')));

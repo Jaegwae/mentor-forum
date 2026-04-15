@@ -6,6 +6,7 @@
 export const EXCEL_STANDARD_ROW_COUNT = 120;
 export const EXCEL_STANDARD_COL_COUNT = 20;
 
+// ---- scalar / shared cell DSL helpers ------------------------------------
 function toText(value) {
   return String(value == null ? '' : value).trim();
 }
@@ -129,6 +130,7 @@ function setActionCell(rows, rowCount, colCount, rowIndex, colIndex, text, actio
   applyHorizontalMerge(rows, rowCount, colCount, rowIndex, colIndex, requestedMergeAcross);
 }
 
+// ---- layout skeleton helpers ---------------------------------------------
 function applySurfaceRange(rows, rowCount, colCount, startRow, startCol, endRow, endCol, surface) {
   for (let row = startRow; row <= endRow; row += 1) {
     for (let col = startCol; col <= endCol; col += 1) {
@@ -168,6 +170,8 @@ function createBaseRows(rowCount, colCount) {
 }
 
 function applyHero(rows, rowCount, colCount, input = {}) {
+  // 공통 hero 영역:
+  // 제목, 부제, 도움말/테마 액션 같은 상단 공용 chrome을 구성한다.
   const title = toText(input.title) || '멘토스';
   const subtitle = toText(input.subtitle) || '멘토끼리 자유롭게 소통 가능한 커뮤니티입니다!';
   const showGuide = input.showGuide !== false;
@@ -199,6 +203,8 @@ function applyHero(rows, rowCount, colCount, input = {}) {
 }
 
 function applyProfile(rows, rowCount, colCount, input = {}) {
+  // 공통 profile 영역:
+  // 사용자 식별 정보 + 화면별 빠른 이동 액션 버튼들을 배치한다.
   const userDisplayName = toText(input.userDisplayName) || '사용자';
   const userRoleLabel = toText(input.userRoleLabel) || '-';
   const actions = Array.isArray(input.actions) ? input.actions : [];
@@ -239,6 +245,8 @@ function applyProfile(rows, rowCount, colCount, input = {}) {
 }
 
 function buildPagination(rows, rowCount, colCount, baseRow, input = {}) {
+  // 공통 pagination 영역:
+  // page 액션 셀과 현재 페이지 badge를 표준 위치에 배치한다.
   const safeCurrentPage = Math.max(1, Math.floor(toNumber(input.safeCurrentPage, 1)));
   const totalPageCount = Math.max(1, Math.floor(toNumber(input.totalPageCount, 1)));
   const pageItemsRaw = Array.isArray(input.paginationPages) ? input.paginationPages : [safeCurrentPage];
@@ -271,8 +279,10 @@ function buildPagination(rows, rowCount, colCount, baseRow, input = {}) {
   });
 }
 
+// ---- page-specific workbook builders -------------------------------------
 export function buildMyPostsExcelSheetModel(input = {}) {
   // 내가 쓴 글 목록 화면용 시트 모델.
+  // board/feed 상세 기능 대신 "내 활동 목록"에 맞는 요약 열 구성을 사용한다.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createBaseRows(rowCount, colCount);
@@ -366,6 +376,7 @@ export function buildMyPostsExcelSheetModel(input = {}) {
 
 export function buildMyCommentsExcelSheetModel(input = {}) {
   // 내가 쓴 댓글 목록 화면용 시트 모델.
+  // 댓글 내용/원글/게시판/작성일을 한 줄에서 함께 볼 수 있게 배치한다.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createBaseRows(rowCount, colCount);
@@ -460,6 +471,8 @@ export function buildMyCommentsExcelSheetModel(input = {}) {
 
 export function buildPostDetailExcelSheetModel(input = {}) {
   // 게시글 상세 화면용 시트 모델(본문/댓글/cover-for 상태 포함).
+  // 동적 행 높이 대신 "행 수 계산 + 섹션 시작 row 계산" 방식으로 상세를
+  // 엑셀 시트에 펼쳐 넣는다.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createRows(rowCount, colCount);
@@ -753,6 +766,7 @@ export function buildPostDetailExcelSheetModel(input = {}) {
 
 export function buildAdminExcelSheetModel(input = {}) {
   // 관리자 화면용 시트 모델(게시판/체험관/Role/회원 등급 관리 섹션).
+  // 여러 관리 패널을 한 시트의 command cell 집합으로 축약한다.
   const rowCount = EXCEL_STANDARD_ROW_COUNT;
   const colCount = EXCEL_STANDARD_COL_COUNT;
   const rows = createRows(rowCount, colCount);

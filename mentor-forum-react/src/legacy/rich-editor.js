@@ -15,6 +15,7 @@ import {
   deltaToPayload as deltaToPayloadPure
 } from '../services/editor/rich-editor-transform.js';
 
+// ---- editor defaults / registry setup ------------------------------------
 const DEFAULT_MIN = 10;
 const DEFAULT_MAX = 48;
 const DEFAULT_STEP = 2;
@@ -51,6 +52,7 @@ for (let size = DEFAULT_MIN; size <= DEFAULT_MAX; size += 1) {
 SizeStyle.whitelist = SIZE_WHITELIST;
 Quill.register(SizeStyle, true);
 
+// ---- mention chip embed ---------------------------------------------------
 function sanitizeMentionValue(value) {
   const source = value && typeof value === 'object' ? value : {};
   const uid = String(source.uid || source.id || '').trim();
@@ -87,6 +89,7 @@ MentionChipBlot.tagName = 'span';
 MentionChipBlot.className = 'ql-mention-chip';
 Quill.register(MentionChipBlot, true);
 
+// ---- HTML/payload serialization helpers ----------------------------------
 export function escapeHtml(text) {
   return String(text || '')
     .replace(/&/g, '&amp;')
@@ -262,6 +265,10 @@ export function renderRichPayloadToHtml(payload) {
   return parts.join('');
 }
 
+// ---- payload <-> delta transform bridge ----------------------------------
+// The helpers below keep the legacy wrapper compatible with the pure transform
+// module. Controllers can continue exchanging payload-like objects while Quill
+// still receives a sanitized Delta internally.
 function sanitizePayloadStyle(style, minSize, maxSize) {
   return sanitizePayloadStylePure(style, minSize, maxSize);
 }
@@ -298,6 +305,8 @@ function quillAttrsToPayloadStyle(attrs, minSize, maxSize) {
 }
 
 function normalizePayloadRuns(text, runs) {
+  // payload.runs가 비어 있더라도 "plain text 1-run" 기본값으로 정규화해
+  // 이후 단계에서 null/empty branch를 반복하지 않게 만든다.
   const sourceText = String(text || '');
   const normalizedRuns = Array.isArray(runs) ? runs : [];
   if (!normalizedRuns.length) {
@@ -332,6 +341,7 @@ function clampIndent(value) {
   return Math.max(0, Math.min(8, n));
 }
 
+// ---- delta sanitization pipeline -----------------------------------------
 function sanitizeDeltaAttributes(attrs, minSize, maxSize) {
   return sanitizeDeltaAttributesPure(attrs, minSize, maxSize);
 }
@@ -341,6 +351,8 @@ function sanitizeDelta(delta, minSize, maxSize) {
 }
 
 function deltaLikeToQuillDelta(deltaLike, minSize, maxSize) {
+  // 이미 Delta-like shape이면 sanitize만 하고, 아니면 payload -> Delta
+  // 경로로 보낸다. 호출부는 input 종류를 크게 신경 쓰지 않아도 된다.
   if (deltaLike && typeof deltaLike === 'object' && Array.isArray(deltaLike.ops)) {
     return sanitizeDelta(deltaLike, minSize, maxSize);
   }
@@ -355,6 +367,7 @@ function deltaToPayload(delta, minSize, maxSize) {
   return deltaToPayloadPure(delta, minSize, maxSize);
 }
 
+// ---- detached renderer for stored delta -> html --------------------------
 function ensureDeltaRenderQuill() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null;
   if (deltaRenderQuill && deltaRenderHost && document.body.contains(deltaRenderHost)) {
@@ -400,6 +413,10 @@ export function renderRichDeltaToHtml(delta, options = {}) {
   }
 }
 
+// ---- runtime editor wrapper ----------------------------------------------
+// `createRichEditor` is the imperative bridge consumed by page controllers.
+// It wraps Quill with a smaller, app-specific API so the rest of the codebase
+// does not need to know Quill internals directly.
 export function createRichEditor(options) {
   const editorEl = options.editorEl;
   const fontSizeLabelEl = options.fontSizeLabelEl;
@@ -495,6 +512,7 @@ export function createRichEditor(options) {
     return Math.max(minSize, Math.min(maxSize, Math.round(Number(n) || DEFAULT_FONT_SIZE)));
   }
 
+  // ---- selection / label helpers -----------------------------------------
   function refreshLabel() {
     const size = getSelectionFontSize();
     if (fontSizeLabelEl) fontSizeLabelEl.textContent = `${size}px`;
@@ -507,6 +525,7 @@ export function createRichEditor(options) {
     return clampSize(quillSizeToPx(format?.size, DEFAULT_FONT_SIZE));
   }
 
+  // ---- toolbar command bridge --------------------------------------------
   function exec(command, value) {
     quill.focus();
     const range = quill.getSelection(true);
@@ -620,6 +639,7 @@ export function createRichEditor(options) {
     refreshLabel();
   }
 
+  // ---- content read/write api --------------------------------------------
   function setPayload(payload) {
     const delta = deltaLikeToQuillDelta(payload, minSize, maxSize);
     clearMentionDeleteArmedState();
@@ -738,6 +758,7 @@ export function createRichEditor(options) {
     onChange();
   }
 
+  // ---- mention delete UX + editor event wiring ---------------------------
   quill.keyboard.addBinding({ key: 8 }, (range) => {
     if (!range || Number(range.length) > 0) {
       clearMentionDeleteArmedState();
@@ -790,6 +811,7 @@ export function createRichEditor(options) {
 
   refreshLabel();
 
+  // ---- public wrapper contract -------------------------------------------
   return {
     exec,
     setColor,

@@ -3,10 +3,13 @@
  * - 시트 모델이 어떤 형태로 넘어오더라도 렌더링 가능한 안전한 셀 형태를 보장한다.
  * - Workbook 컴포넌트는 이 모듈의 반환값만 신뢰하고 DOM class/style를 구성한다.
  */
+
+// ---- scalar normalization -------------------------------------------------
 function asText(value) {
   return String(value == null ? '' : value);
 }
 
+// ---- cell normalization / presentation helpers ---------------------------
 export function normalizeAppExcelCell(value) {
   if (!value || typeof value !== 'object') {
     // 데이터 누락 시에도 워크북이 깨지지 않도록 기본 셀 스키마를 강제한다.

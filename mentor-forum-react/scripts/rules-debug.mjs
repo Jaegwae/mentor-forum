@@ -1,3 +1,6 @@
+// Firestore rules debugging helper.
+// - Seeds a tiny local dataset and performs direct emulator reads/writes so
+//   rules changes can be inspected outside the Vitest harness when needed.
 import fs from 'node:fs/promises';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore';

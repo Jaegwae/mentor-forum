@@ -5,6 +5,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils.js';
 
+// ---- input primitive ------------------------------------------------------
 const Input = React.forwardRef(({ className, type = 'text', ...props }, ref) => (
   // 타입별 동작은 브라우저 기본을 따르되, 외형 스타일은 일관되게 유지한다.
   <input

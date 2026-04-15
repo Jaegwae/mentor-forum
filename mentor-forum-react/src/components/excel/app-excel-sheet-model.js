@@ -6,6 +6,7 @@
 export const APP_EXCEL_ROW_COUNT = 80;
 export const APP_EXCEL_COL_COUNT = 20;
 
+// ---- scalar / base grid helpers ------------------------------------------
 function toText(value) {
   return String(value == null ? '' : value).trim();
 }
@@ -149,6 +150,7 @@ function setStaticCell(rows, rowCount, colCount, rowIndex, colIndex, text, patch
   applyHorizontalMerge(rows, rowCount, colCount, rowIndex, colIndex, requestedMergeAcross);
 }
 
+// ---- input normalization --------------------------------------------------
 function normalizeBoardItems(items) {
   return (Array.isArray(items) ? items : [])
     .filter((item) => !!item && !item.isDivider && toText(item.id))
@@ -183,6 +185,7 @@ export function toExcelColumnLabel(index) {
   return label;
 }
 
+// ---- main AppPage sheet projection ---------------------------------------
 export function buildAppExcelSheetModel(input = {}) {
   const rowCount = Math.max(20, Math.floor(toNumber(input.rowCount, APP_EXCEL_ROW_COUNT)));
   const colCount = Math.max(12, Math.floor(toNumber(input.colCount, APP_EXCEL_COL_COUNT)));

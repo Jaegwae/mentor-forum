@@ -5,6 +5,7 @@
  */
 import { useEffect } from 'react';
 
+// ---- document meta effect -------------------------------------------------
 export function usePageMeta(title, bodyClass) {
   useEffect(() => {
     // 페이지별 메타를 적용하기 전에 기존 값을 보관한다.

@@ -53,6 +53,44 @@
 4. `src/services/firestore/*`
 5. `firestore.rules`, `firestore.indexes.json`
 
+### 1-1) AI / 새 기여자용 권장 읽기 순서
+AI 에이전트나 새 기여자가 빠르게 구조를 파악하려면 아래 순서가 가장 효율적입니다.
+
+1. `README.md`
+   - 제품 범위, 실행 방법, 계층 구조를 먼저 잡습니다.
+2. `docs/refactor-handbook.md`
+   - 최근 구조 변경, 분해된 훅, 안정화 이슈를 확인합니다.
+3. `src/App.jsx`
+   - 실제 라우트 엔트리와 페이지 진입점을 확인합니다.
+4. `src/pages/*Page.jsx`
+   - 각 페이지가 thin wrapper인지 확인합니다.
+5. `src/pages/*-page/use*Controller*`
+   - 실제 런타임 오케스트레이션이 있는 곳입니다.
+6. `src/pages/*-page/*View.jsx`
+   - VM이 실제 JSX로 어떻게 투영되는지 확인합니다.
+7. `src/pages/*-page/data.js`
+   - 페이지 단위 async orchestration / bootstrap 경계를 봅니다.
+8. `src/services/firestore/*`
+   - Firestore 읽기/쓰기/구독 경계를 봅니다.
+9. `src/pages/*-page/utils.js`, `src/pages/shared/forum-constants.js`
+   - 도메인 정규화 규칙과 공통 상수를 확인합니다.
+10. `firestore.rules`
+   - 실제 보안 제약과 클라이언트 권한 가정이 일치하는지 확인합니다.
+
+최근 리팩터링 이후에는 아래 분리 훅도 같이 보면 구조를 더 빨리 파악할 수 있습니다.
+- `src/pages/app-page/useAppBoardFeed.js`
+- `src/pages/app-page/useAppComposerState.js`
+- `src/pages/app-page/useAppComposerMentions.js`
+- `src/pages/app-page/useAppComposerActions.js`
+- `src/pages/app-page/useAppNotificationCenter.js`
+- `src/pages/app-page/useAppNotificationSync.js`
+- `src/pages/app-page/useAppNavigationPins.js`
+- `src/pages/app-page/useAppCalendar.js`
+- `src/pages/post-page/usePostComments.js`
+- `src/pages/post-page/usePostCommentMentions.js`
+- `src/pages/post-page/usePostEditModal.js`
+- `src/pages/post-page/usePostNotifications.js`
+
 ### 2) 30초 구조 요약
 - 라우트 엔트리(`src/pages/*.jsx`)는 **thin wrapper**입니다.
 - 실제 상태/이펙트/핸들러는 `use*Controller` 훅에 있습니다.
@@ -81,6 +119,7 @@ RUN_E2E=1 npm run test:e2e
 ```text
 Route Wrapper (src/pages/*.jsx)
   -> Controller Hook (src/pages/*-page/use*Controller*)
+    -> Split Hooks (domain runtime slices)
     -> Page Data (src/pages/*-page/data.js)
       -> Firestore Service (src/services/firestore/*.js)
   -> View (src/pages/*-page/*View.jsx)
@@ -98,6 +137,11 @@ Route Wrapper (src/pages/*.jsx)
 - 컨트롤러에서 Firestore primitive (`doc`, `getDoc`, `setDoc` 등)를 직접 호출하지 않습니다.
 - 쿼리와 문서 경로는 `src/services/firestore/*`로 집중합니다.
 - 쿼리 제약(`where/orderBy/limit`)은 기능 동등성 유지를 위해 서비스에서 고정합니다.
+
+### 4) 최근 구조 정리 메모
+- `PostPage`는 댓글 / 멘션 / 수정 모달 / 알림 fanout이 각각 별도 훅으로 분리되었습니다.
+- `AppPage`는 board feed / composer state / composer mentions / composer actions / notification center / navigation-pins / calendar 기준으로 분리되었습니다.
+- 세부 진행 로그는 `docs/refactor-handbook.md`를 참고하세요.
 
 ---
 

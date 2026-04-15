@@ -18,6 +18,7 @@ import {
   deleteDoc
 } from '../../legacy/firebase-app.js';
 
+// ---- query fallback detection --------------------------------------------
 function isMissingIndexError(err) {
   const code = String(err?.code || '').toLowerCase();
   const message = String(err?.message || '').toLowerCase();
@@ -45,6 +46,7 @@ export function fetchBoardDoc(boardId) {
   return getDoc(doc(db, 'boards', String(boardId || '')));
 }
 
+// ---- realtime detail streams ---------------------------------------------
 // Realtime comments stream for the current post.
 export function subscribeCommentsForPost({ postId, onNext, onError }) {
   const commentsRef = collection(db, 'posts', String(postId || ''), 'comments');
@@ -89,6 +91,7 @@ export function incrementPostViews(postId, numberOrZero) {
   });
 }
 
+// ---- user-scoped detail helpers ------------------------------------------
 // User-scoped viewed-post marker write.
 export function upsertViewedPost(uid, postId, payload, options = { merge: true }) {
   return setDoc(
@@ -107,6 +110,7 @@ export function fetchUsersDocs() {
   return getDocs(collection(db, 'users'));
 }
 
+// ---- notification writes -------------------------------------------------
 // Notification write helper.
 export function upsertNotificationDoc(uid, notificationId, payload, options = { merge: true }) {
   return setDoc(
@@ -133,6 +137,7 @@ export function deleteCommentDoc(postId, commentId) {
   return deleteDoc(doc(db, 'posts', String(postId || ''), 'comments', String(commentId || '')));
 }
 
+// ---- diagnostics ---------------------------------------------------------
 // Small runtime diagnostic helper for permission-debug payloads.
 export function getRuntimeProjectId() {
   return db?.app?.options?.projectId || '';

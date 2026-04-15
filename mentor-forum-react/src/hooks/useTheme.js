@@ -13,6 +13,7 @@ const THEME_EXCEL = 'excel';
 const THEME_CHANGE_EVENT = 'mentor_forum_theme_change';
 const THEME_SEQUENCE = [THEME_LIGHT, THEME_DARK, THEME_EXCEL];
 
+// ---- environment guards / normalization ---------------------------------
 export function isMobileLike() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
   const viewportWide = window.matchMedia('(min-width: 901px)').matches;
@@ -69,6 +70,7 @@ function writeStoredTheme(theme) {
   }
 }
 
+// ---- public bootstrap + hook entrypoints ---------------------------------
 export function initTheme() {
   // 앱 부팅 시 저장값을 읽고, 모바일에서 금지된 excel 값은 light로 강등한다.
   const initialTheme = readStoredTheme();

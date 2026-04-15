@@ -10,6 +10,7 @@ import {
   roleFlagDefs
 } from './constants.js';
 
+// ---- scalar normalization / viewport heuristics ---------------------------
 export function normalizeText(value) {
   return String(value || '').trim();
 }
@@ -128,6 +129,7 @@ export function normalizeRoles(roles) {
   return [...new Set(roles.map((role) => normalizeText(role)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
 }
 
+// ---- role / board sorting helpers ----------------------------------------
 export function isCoreRole(roleKey) {
   return CORE_ROLE_SET.has(normalizeText(roleKey));
 }
@@ -235,6 +237,7 @@ export function sortBoardItems(items) {
   });
 }
 
+// ---- role flag / manage-state helpers ------------------------------------
 export function initRoleFlags() {
   return {
     canModerate: false,

@@ -22,7 +22,6 @@ import {
 import { MENTOR_FORUM_CONFIG } from '../../legacy/config.js';
 import { buildPermissions, getRoleBadgePalette } from '../../legacy/rbac.js';
 import { createRichEditor, renderRichDeltaToHtml, renderRichPayloadToHtml } from '../../legacy/rich-editor.js';
-import { pushRelayConfigured, sendPushRelayNotification } from '../../legacy/push-relay.js';
 import * as postFirestore from '../../services/firestore/post-page.js';
 import { RichEditorToolbar } from '../../components/editor/RichEditorToolbar.jsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog.jsx';
@@ -38,9 +37,12 @@ import { useTheme } from '../../hooks/useTheme.js';
 import * as pageConstants from './constants.js';
 import * as pageUtils from './utils.js';
 import * as pageData from './data.js';
+import { usePostComments } from './usePostComments.js';
+import { usePostCommentMentions } from './usePostCommentMentions.js';
+import { usePostEditModal } from './usePostEditModal.js';
+import { usePostNotifications } from './usePostNotifications.js';
 
 const {
-  NOTICE_BOARD_ID,
   ALL_BOARD_ID,
   COVER_FOR_BOARD_ID,
   WORK_SCHEDULE_BOARD_ID,
@@ -49,80 +51,60 @@ const {
   COVER_FOR_STATUS,
   COVER_FOR_DEFAULT_START_TIME,
   COVER_FOR_DEFAULT_END_TIME,
-  DEFAULT_COVER_FOR_VENUE_OPTIONS,
   COVER_FOR_DEFAULT_VENUE,
   AUTO_LOGOUT_MESSAGE,
-  LAST_BOARD_STORAGE_KEY,
   NOTIFICATION_TYPE,
-  NOTIFICATION_SUBTYPE,
   MENTION_ALL_TOKEN,
   MENTION_MAX_ITEMS,
   MENTION_MENU_ESTIMATED_WIDTH,
   MENTION_MENU_INITIAL,
-  CORE_ROLE_LEVELS,
-  ROLE_KEY_ALIASES,
-  FALLBACK_ROLE_DEFINITIONS
+  FALLBACK_ROLE_DEFINITIONS,
+  NOTIFICATION_SUBTYPE
 } = pageConstants;
 
 const {
   numberOrZero,
   normalizeText,
   detectCompactListMode,
-  stripHtmlToText,
-  isTruthyLegacyValue,
-  isDeletedPost,
+  createRoleDefMap,
   normalizeErrMessage,
-  isPermissionDeniedError,
-  shouldLogDebugPayload,
   logErrorWithOptionalDebug,
-  debugValueList,
-  debugCodePoints,
-  joinDebugParts,
   boardAccessDebugText,
   readLastBoardId,
   writeLastBoardId,
-  toDateKey,
-  fromDateKey,
-  formatDateKeyLabel,
   normalizeDateKeyInput,
-  normalizeNotificationType,
+  plainRichPayload,
+  normalizeRoleKey,
+  isExplicitNewbieRole,
+  roleMatchCandidates,
+  isPrivilegedBoardRole,
+  isNoticeBoardData,
+  isDeletedPost,
   normalizeNickname,
   buildNicknameKey,
   extractMentionNicknames,
   hasAllMentionCommand,
   detectMentionContext,
+  normalizeNotificationType,
   notificationIdForEvent,
   toNotificationBodySnippet,
+  coverForDateEntriesFromPost,
+  summarizeCoverForDateEntries,
+  formatDateKeyLabel,
   normalizeCoverForVenue,
   normalizeTimeInput,
-  timeValueToMinutes,
-  isValidTimeRange,
-  suggestEndTime,
   normalizeCoverForStatus,
   coverForStatusLabel,
   isClosedCoverForStatus,
-  normalizeCoverForDateKeys,
-  normalizeCoverForDateStatuses,
-  normalizeCoverForTimeValues,
-  normalizeCoverForVenueValues,
-  coverForDateEntriesFromPost,
-  summarizeCoverForDateEntries,
   formatTemporaryLoginRemaining,
-  toMillis,
   commentAuthorName,
-  plainRichPayload,
+  stripHtmlToText,
   sanitizeStoredContentHtml,
   extractWorkScheduleRowsFromHtml,
   extractEditableTableGridFromHtml,
   normalizeEditableTableGrid,
   replaceFirstTableInHtml,
   renderStoredContentHtml,
-  createRoleDefMap,
-  normalizeRoleKey,
-  isExplicitNewbieRole,
-  roleMatchCandidates,
-  isPrivilegedBoardRole,
-  isNoticeBoardData,
   sortCommentsForDisplay
 } = pageUtils;
 
@@ -148,6 +130,9 @@ export function usePostPageController() {
   const boardIdFromState = normalizeText(routeState.postBoardId || '');
   const fromBoardIdFromState = normalizeText(routeState.preferredBoardId || routeState.fromBoardId || '');
 
+  // ---- ref bucket ---------------------------------------------------------
+  // Refs hold editor instances, timer handles, and the comment draft payload
+  // that should survive editor remounts.
   // Refs for editor instances, timers, and request ordering guards.
   const editorRef = useRef(null);
   const editorElRef = useRef(null);
@@ -163,9 +148,6 @@ export function usePostPageController() {
   const expiryTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const lastActivityRefreshAtRef = useRef(0);
-  const focusCommentTimerRef = useRef(null);
-  const mentionRequestIdRef = useRef({ comment: 0, edit: 0 });
-  const mentionCacheRef = useRef(new Map());
   const commentDraftPayloadRef = useRef({ text: '', runs: [] });
 
   // Global page readiness and message channels.
@@ -181,30 +163,11 @@ export function usePostPageController() {
   // Primary post payload and comment thread state.
   const [currentPost, setCurrentPost] = useState(null);
   const [currentPostCanWrite, setCurrentPostCanWrite] = useState(false);
-  const [comments, setComments] = useState([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
 
   // Comment composer/mention/edit modal state.
-  const [replyTarget, setReplyTarget] = useState(null);
-  const [commentMentionMenu, setCommentMentionMenu] = useState(MENTION_MENU_INITIAL);
-  const [commentMentionCandidates, setCommentMentionCandidates] = useState([]);
-  const [commentMentionActiveIndex, setCommentMentionActiveIndex] = useState(0);
-  const [editMentionMenu, setEditMentionMenu] = useState(MENTION_MENU_INITIAL);
-  const [editMentionCandidates, setEditMentionCandidates] = useState([]);
-  const [editMentionActiveIndex, setEditMentionActiveIndex] = useState(0);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [excelCommentModalOpen, setExcelCommentModalOpen] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  // Work-schedule edit keeps the original HTML snapshot so non-table sections
-  // (intro paragraphs, notices, links) survive table-only edits.
-  const [editHtmlContent, setEditHtmlContent] = useState('');
-  // Generic 2D grid model used by the work-schedule table editor.
-  // row[0] is treated as the header row in the view layer.
-  const [editWorkScheduleTableRows, setEditWorkScheduleTableRows] = useState([]);
-  const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editMessage, setEditMessage] = useState({ type: '', text: '' });
   const [sessionRemainingMs, setSessionRemainingMs] = useState(null);
   const [compactListMode, setCompactListMode] = useState(detectCompactListMode);
 
@@ -212,12 +175,83 @@ export function usePostPageController() {
   const [boardLabel, setBoardLabel] = useState(boardIdFromQuery || '-');
   const [currentBoardAccessDebug, setCurrentBoardAccessDebug] = useState(null);
 
+  // ---- split sub-hooks ----------------------------------------------------
+  // Post detail delegates thread, mention, edit-modal, and notification
+  // behavior into smaller hooks. This controller stitches them together.
   const roleDefMap = useMemo(() => createRoleDefMap(roleDefinitions), [roleDefinitions]);
+  const currentUserUid = normalizeText(currentUser?.uid);
+  const isAdminOrSuper = normalizeText(currentUserProfile?.role) === 'Admin' || normalizeText(currentUserProfile?.role) === 'Super_Admin';
+
+  const {
+    editModalOpen,
+    setEditModalOpen,
+    editTitle,
+    setEditTitle,
+    editHtmlContent,
+    setEditHtmlContent,
+    editWorkScheduleTableRows,
+    setEditWorkScheduleTableRows,
+    addEditWorkScheduleRow,
+    addEditWorkScheduleColumn,
+    updateEditWorkScheduleCell,
+    removeEditWorkScheduleRow,
+    moveEditWorkScheduleRow,
+    reorderEditWorkScheduleRow,
+    removeEditWorkScheduleColumn,
+    editSubmitting,
+    editMessage,
+    openEditModal,
+    submitEditPost
+  } = usePostEditModal({
+    currentPost,
+    canModerateCurrentPost: !!(
+      currentPost
+      && currentUser
+      && permissions
+      && (permissions.canModerate || currentPost.authorUid === currentUser.uid)
+    ),
+    currentUser,
+    currentUserProfile,
+    permissions,
+    editEditorRef,
+    postFirestore,
+    normalizeText,
+    normalizeEditableTableGrid,
+    sanitizeStoredContentHtml,
+    extractEditableTableGridFromHtml,
+    extractWorkScheduleRowsFromHtml,
+    replaceFirstTableInHtml,
+    serverTimestamp,
+    WORK_SCHEDULE_BOARD_ID
+  });
+
+  const {
+    dispatchCommentNotifications
+  } = usePostNotifications({
+    postFirestore,
+    normalizeText,
+    normalizeNickname,
+    buildNicknameKey,
+    extractMentionNicknames,
+    hasAllMentionCommand,
+    normalizeNotificationType,
+    notificationIdForEvent,
+    toNotificationBodySnippet,
+    MENTION_ALL_TOKEN,
+    NOTIFICATION_TYPE,
+    NOTIFICATION_SUBTYPE,
+    isAdminOrSuper,
+    serverTimestamp,
+    logErrorWithOptionalDebug
+  });
 
   useEffect(() => {
     setBoardLabel(boardIdFromQuery || '-');
   }, [boardIdFromQuery]);
 
+  // ---- navigation context -------------------------------------------------
+  // The "back to list" logic prefers the actual post board, then explicit
+  // fromBoard hints, then the remembered board from session storage.
   useEffect(() => {
     // Persist the most reliable board target for "back to list".
     // Once post data is loaded, post.boardId becomes the highest-confidence source.
@@ -277,7 +311,6 @@ export function usePostPageController() {
   const canAttemptCommentWrite = !!currentPost && (currentPostCanWrite || hasPotentialWriteRole);
   const isCoverForPost = !!currentPost && normalizeText(currentPost.boardId) === COVER_FOR_BOARD_ID;
   const isWorkSchedulePost = !!currentPost && normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID;
-  const isAdminOrSuper = normalizeText(currentUserProfile?.role) === 'Admin' || normalizeText(currentUserProfile?.role) === 'Super_Admin';
   const canChangeCoverStatus = isCoverForPost && canModerateCurrentPost;
   const canResetCoverToSeeking = isCoverForPost && isAdminOrSuper;
   const currentPostCoverDateEntries = useMemo(() => {
@@ -299,198 +332,55 @@ export function usePostPageController() {
   const userDisplayName = currentUserProfile
     ? (currentUserProfile.nickname || currentUserProfile.realName || currentUser?.email || '사용자')
     : '사용자';
-  const currentUserUid = normalizeText(currentUser?.uid);
 
-  const fetchMentionCandidates = useCallback(async (queryText = '') => {
-    const normalizedQuery = normalizeNickname(queryText);
-    const keyPrefix = buildNicknameKey(normalizedQuery);
-    const snap = await postFirestore.fetchMentionIndexDocs({
-      keyPrefix,
-      maxItems: MENTION_MAX_ITEMS
-    });
-    const rows = snap.docs
-      .map((row) => {
-        const data = row.data() || {};
-        const uid = normalizeText(data.uid);
-        const nickname = normalizeNickname(data.nickname);
-        if (!uid || !nickname) return null;
-        return {
-          uid,
-          nickname
-        };
-      })
-      .filter((row) => !!row && row.uid !== currentUserUid);
+  const {
+    commentMentionMenu,
+    commentMentionCandidates,
+    commentMentionActiveIndex,
+    editMentionMenu,
+    editMentionCandidates,
+    editMentionActiveIndex,
+    closeMentionMenu,
+    syncMentionMenu,
+    applyMentionCandidate,
+    insertReplyMention
+  } = usePostCommentMentions({
+    editorRef,
+    editEditorRef,
+    currentUserUid,
+    isAdminOrSuper,
+    postFirestore,
+    normalizeNickname,
+    buildNicknameKey,
+    normalizeText,
+    detectMentionContext,
+    canAttemptCommentWrite,
+    editModalOpen,
+    MENTION_MAX_ITEMS,
+    MENTION_ALL_TOKEN,
+    MENTION_MENU_ESTIMATED_WIDTH,
+    MENTION_MENU_INITIAL
+  });
 
-    const byUid = new Map();
-    rows.forEach((row) => {
-      if (!byUid.has(row.uid)) byUid.set(row.uid, row);
-    });
-    const next = [...byUid.values()].slice(0, MENTION_MAX_ITEMS);
-    if (isAdminOrSuper) {
-      const lowerQuery = normalizedQuery.toLowerCase();
-      if (!lowerQuery || MENTION_ALL_TOKEN.toLowerCase().startsWith(lowerQuery)) {
-        next.unshift({ uid: '__all__', nickname: MENTION_ALL_TOKEN });
-      }
-    }
-    return next.slice(0, MENTION_MAX_ITEMS);
-  }, [currentUserUid, isAdminOrSuper]);
+  const {
+    comments,
+    commentsLoading,
+    replyTarget,
+    setReplyTarget,
+    resetCommentsState,
+    deleteComment
+  } = usePostComments({
+    currentPost,
+    editorRef,
+    insertReplyMention,
+    syncMentionMenu,
+    normalizeText,
+    sortCommentsForDisplay,
+    postFirestore,
+    setMessage
+  });
 
-  const readMentionAnchor = useCallback((editor, mentionStart) => {
-    const fallback = { anchorLeft: 8, anchorTop: 12 };
-    const quill = editor?.getQuill?.();
-    if (!quill) return fallback;
-
-    try {
-      const safeStart = Math.max(0, Math.floor(Number(mentionStart) || 0));
-      const bounds = quill.getBounds(safeStart, 0);
-      const editorWidth = Number(quill.container?.clientWidth) || 0;
-      const scrollLeft = Number(quill.root?.scrollLeft) || 0;
-      const scrollTop = Number(quill.root?.scrollTop) || 0;
-      const desiredLeft = Math.max(8, Math.floor((Number(bounds?.left) || 0) - scrollLeft));
-      const maxLeft = editorWidth > 0
-        ? Math.max(8, editorWidth - MENTION_MENU_ESTIMATED_WIDTH)
-        : desiredLeft;
-      return {
-        anchorLeft: Math.max(8, Math.min(desiredLeft, maxLeft)),
-        anchorTop: Math.max(8, Math.floor((Number(bounds?.top) || 0) + (Number(bounds?.height) || 18) - scrollTop + 4))
-      };
-    } catch (_) {
-      return fallback;
-    }
-  }, []);
-
-  const closeMentionMenu = useCallback((target = 'comment') => {
-    if (target === 'edit') {
-      setEditMentionMenu(MENTION_MENU_INITIAL);
-      setEditMentionCandidates([]);
-      setEditMentionActiveIndex(0);
-      return;
-    }
-
-    setCommentMentionMenu(MENTION_MENU_INITIAL);
-    setCommentMentionCandidates([]);
-    setCommentMentionActiveIndex(0);
-  }, []);
-
-  const syncMentionMenu = useCallback((target = 'comment') => {
-    const isEditTarget = target === 'edit';
-    const editor = isEditTarget ? editEditorRef.current : editorRef.current;
-    if (!editor) {
-      closeMentionMenu(target);
-      return;
-    }
-
-    const selection = editor.getSelection?.() || { index: 0 };
-    const rawText = editor.getRawText?.() || editor.getPayload?.()?.text || '';
-    const context = detectMentionContext(rawText, selection.index);
-
-    if (!context) {
-      closeMentionMenu(target);
-      return;
-    }
-
-    const anchor = readMentionAnchor(editor, context.start);
-    const nextMenu = {
-      open: true,
-      query: context.query,
-      start: context.start,
-      end: context.end,
-      anchorLeft: anchor.anchorLeft,
-      anchorTop: anchor.anchorTop
-    };
-    if (isEditTarget) {
-      setEditMentionMenu(nextMenu);
-      setEditMentionActiveIndex(0);
-    } else {
-      setCommentMentionMenu(nextMenu);
-      setCommentMentionActiveIndex(0);
-    }
-
-    const cacheKey = `${currentUserUid || '-'}:${context.query.toLowerCase()}`;
-    const cached = mentionCacheRef.current.get(cacheKey);
-    if (cached) {
-      if (isEditTarget) {
-        setEditMentionCandidates(cached);
-      } else {
-        setCommentMentionCandidates(cached);
-      }
-      return;
-    }
-
-    const currentRequest = mentionRequestIdRef.current || {};
-    const requestId = Number(currentRequest[target] || 0) + 1;
-    mentionRequestIdRef.current = { ...currentRequest, [target]: requestId };
-    fetchMentionCandidates(context.query)
-      .then((rows) => {
-        if (Number((mentionRequestIdRef.current || {})[target] || 0) !== requestId) return;
-        mentionCacheRef.current.set(cacheKey, rows);
-        if (isEditTarget) {
-          setEditMentionCandidates(rows);
-        } else {
-          setCommentMentionCandidates(rows);
-        }
-      })
-      .catch(() => {
-        if (Number((mentionRequestIdRef.current || {})[target] || 0) !== requestId) return;
-        if (isEditTarget) {
-          setEditMentionCandidates([]);
-        } else {
-          setCommentMentionCandidates([]);
-        }
-      });
-  }, [closeMentionMenu, currentUserUid, fetchMentionCandidates, readMentionAnchor]);
-
-  const applyMentionCandidate = useCallback((target, candidate) => {
-    const isEditTarget = target === 'edit';
-    const editor = isEditTarget ? editEditorRef.current : editorRef.current;
-    const mentionMenu = isEditTarget ? editMentionMenu : commentMentionMenu;
-    const nickname = normalizeNickname(candidate?.nickname);
-    if (!editor || !nickname) return;
-
-    const start = Number.isFinite(Number(mentionMenu.start)) ? Number(mentionMenu.start) : -1;
-    const end = Number.isFinite(Number(mentionMenu.end)) ? Number(mentionMenu.end) : -1;
-    const safeSelection = editor.getSelection?.() || { index: 0 };
-    const replaceStart = start >= 0 ? start : Math.max(0, Number(safeSelection.index) || 0);
-    const replaceLen = start >= 0 && end >= start
-      ? (end - start)
-      : 0;
-
-    const inserted = editor.insertMention?.(replaceStart, replaceLen, {
-      uid: normalizeText(candidate?.uid),
-      nickname
-    });
-    if (!inserted) {
-      editor.replaceRange?.(replaceStart, replaceLen, `@${nickname} `);
-    }
-    closeMentionMenu(target);
-    editor.focus?.();
-  }, [closeMentionMenu, commentMentionMenu, editMentionMenu]);
-
-  const insertReplyMention = useCallback((target) => {
-    const editor = editorRef.current;
-    const nickname = normalizeNickname(target?.authorName);
-    if (!editor || !nickname) return;
-
-    const payloadText = String(editor.getPayload?.()?.text || '');
-    const mentionToken = `@${nickname}`;
-    if (payloadText.includes(mentionToken)) {
-      editor.focus?.();
-      return;
-    }
-
-    const selection = editor.getSelection?.() || { index: payloadText.length, length: 0 };
-    const index = Math.max(0, Number(selection.index) || 0);
-    const length = Math.max(0, Number(selection.length) || 0);
-    const inserted = editor.insertMention?.(index, length, {
-      uid: normalizeText(target?.authorUid),
-      nickname
-    });
-    if (!inserted) {
-      editor.replaceRange?.(index, length, `${mentionToken} `);
-    }
-    editor.focus?.();
-  }, []);
-
+  // ---- session handling ---------------------------------------------------
   const clearExpiryTimer = useCallback(() => {
     if (expiryTimerRef.current == null) return;
     window.clearTimeout(expiryTimerRef.current);
@@ -674,6 +564,9 @@ export function usePostPageController() {
     navigate(`${appPage}?guide=1`);
   }, [navigate]);
 
+  // ---- board access + post loading ---------------------------------------
+  // Firestore rules remain authoritative, but these client-side helpers keep
+  // the detail screen's read/write affordances and error messages coherent.
   const canUseBoardData = useCallback((boardId, boardData) => {
     if (!currentUserProfile) return false;
 
@@ -775,173 +668,6 @@ export function usePostPageController() {
   }, [canUseBoardData, canWriteBoardData]);
 
   useEffect(() => {
-    if (!currentPost?.id) {
-      setComments([]);
-      setCommentsLoading(false);
-      return () => {};
-    }
-
-    setCommentsLoading(true);
-    const unsubscribe = postFirestore.subscribeCommentsForPost({
-      postId: currentPost.id,
-      onNext: (snap) => {
-      const ordered = sortCommentsForDisplay(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      );
-      setComments(ordered);
-      setCommentsLoading(false);
-    },
-      onError: (err) => {
-      logErrorWithOptionalDebug('[comment-realtime-subscribe-failed]', err, {
-        error: err,
-        postId: currentPost.id
-      });
-      setComments([]);
-      setCommentsLoading(false);
-      setMessage((prev) => (
-        prev?.type === 'error' && prev?.text
-          ? prev
-          : { type: 'error', text: normalizeErrMessage(err, '댓글 조회 실패') }
-      ));
-    }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [currentPost?.id]);
-
-  useEffect(() => {
-    if (!replyTarget) return;
-    if (comments.some((comment) => comment.id === replyTarget.id)) return;
-    setReplyTarget(null);
-  }, [comments, replyTarget]);
-
-  useEffect(() => {
-    if (!replyTarget) return () => {};
-
-    let cancelled = false;
-    let retries = 0;
-    const attemptInsert = () => {
-      if (cancelled) return;
-      if (editorRef.current) {
-        insertReplyMention(replyTarget);
-        syncMentionMenu('comment');
-        return;
-      }
-      retries += 1;
-      if (retries > 18) return;
-      window.setTimeout(attemptInsert, 18);
-    };
-
-    window.setTimeout(attemptInsert, 0);
-    return () => {
-      cancelled = true;
-    };
-  }, [insertReplyMention, replyTarget, syncMentionMenu]);
-
-  useEffect(() => {
-    return () => {
-      if (focusCommentTimerRef.current) {
-        window.clearTimeout(focusCommentTimerRef.current);
-        focusCommentTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!focusCommentId || commentsLoading || !comments.length) return;
-    if (!comments.some((comment) => String(comment.id) === focusCommentId)) return;
-
-    const targets = Array.from(document.querySelectorAll('[data-comment-id]'));
-    const targetEl = targets.find((node) => String(node.getAttribute('data-comment-id') || '') === focusCommentId);
-    if (!targetEl) return;
-
-    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    targetEl.classList.remove('comment-focus-highlight');
-    void targetEl.offsetWidth;
-    targetEl.classList.add('comment-focus-highlight');
-
-    if (focusCommentTimerRef.current) {
-      window.clearTimeout(focusCommentTimerRef.current);
-      focusCommentTimerRef.current = null;
-    }
-    focusCommentTimerRef.current = window.setTimeout(() => {
-      targetEl.classList.remove('comment-focus-highlight');
-      focusCommentTimerRef.current = null;
-    }, 2200);
-  }, [comments, commentsLoading, focusCommentId]);
-
-  useEffect(() => {
-    const mentionTarget = editMentionMenu.open ? 'edit' : (commentMentionMenu.open ? 'comment' : '');
-    if (!mentionTarget) return () => {};
-
-    const onKeyDown = (event) => {
-      const candidates = mentionTarget === 'edit' ? editMentionCandidates : commentMentionCandidates;
-      const activeIndex = mentionTarget === 'edit' ? editMentionActiveIndex : commentMentionActiveIndex;
-      const setActiveIndex = mentionTarget === 'edit' ? setEditMentionActiveIndex : setCommentMentionActiveIndex;
-
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        closeMentionMenu(mentionTarget);
-        return;
-      }
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        event.stopPropagation();
-        setActiveIndex((prev) => {
-          if (!candidates.length) return 0;
-          return (prev + 1) % candidates.length;
-        });
-        return;
-      }
-
-      if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        event.stopPropagation();
-        setActiveIndex((prev) => {
-          if (!candidates.length) return 0;
-          return (prev - 1 + candidates.length) % candidates.length;
-        });
-        return;
-      }
-
-      if (event.key === 'Enter' && candidates.length) {
-        event.preventDefault();
-        event.stopPropagation();
-        const targetCandidate = candidates[activeIndex] || candidates[0];
-        applyMentionCandidate(mentionTarget, targetCandidate);
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-    };
-  }, [
-    applyMentionCandidate,
-    closeMentionMenu,
-    commentMentionActiveIndex,
-    commentMentionCandidates,
-    commentMentionMenu.open,
-    editMentionActiveIndex,
-    editMentionCandidates,
-    editMentionMenu.open
-  ]);
-
-  useEffect(() => {
-    if (canAttemptCommentWrite) return;
-    closeMentionMenu('comment');
-  }, [canAttemptCommentWrite, closeMentionMenu]);
-
-  useEffect(() => {
-    if (editModalOpen) return;
-    closeMentionMenu('edit');
-  }, [closeMentionMenu, editModalOpen]);
-
-  useEffect(() => {
     if (editModalOpen) {
       document.body.style.overflow = 'hidden';
       return () => {
@@ -972,8 +698,7 @@ export function usePostPageController() {
     setCurrentPostCanWrite(false);
     setCurrentPost(null);
     setCurrentBoardAccessDebug(null);
-    setComments([]);
-    setReplyTarget(null);
+    resetCommentsState();
     setMessage({ type: '', text: '' });
 
     if (!postId) {
@@ -1022,7 +747,7 @@ export function usePostPageController() {
     }
 
     setMessage({ type: '', text: '' });
-  }, [currentUserProfile, postId, resolveBoardAccess]);
+  }, [currentUserProfile, postId, resetCommentsState, resolveBoardAccess]);
 
   useEffect(() => {
     let active = true;
@@ -1156,109 +881,6 @@ export function usePostPageController() {
     });
   }, [currentPost?.id, currentUser?.uid]);
 
-  const resolveMentionTargets = useCallback(async (sourceText) => {
-    const nicknames = extractMentionNicknames(sourceText).filter(
-      (nickname) => normalizeText(nickname).toUpperCase() !== MENTION_ALL_TOKEN
-    );
-    if (!nicknames.length) return [];
-
-    const resolved = await Promise.all(
-      nicknames.map(async (nickname) => {
-        const key = buildNicknameKey(nickname);
-        if (!key) return null;
-        const snap = await postFirestore.fetchNicknameIndexDoc(key);
-        if (!snap.exists()) return null;
-        const data = snap.data() || {};
-        const uid = normalizeText(data.uid);
-        const resolvedNickname = normalizeNickname(data.nickname || nickname);
-        if (!uid || !resolvedNickname) return null;
-        return { uid, nickname: resolvedNickname };
-      })
-    );
-
-    const byUid = new Map();
-    resolved.forEach((item) => {
-      if (!item || !item.uid) return;
-      byUid.set(item.uid, item);
-    });
-    return [...byUid.values()];
-  }, []);
-
-  const resolveAllMentionTargets = useCallback(async () => {
-    const usersSnap = await postFirestore.fetchUsersDocs();
-    const rows = usersSnap.docs
-      .map((row) => {
-        const data = row.data() || {};
-        const uid = normalizeText(row.id || data.uid);
-        const nickname = normalizeNickname(data.nickname || data.realName || data.email || uid);
-        if (!uid || !nickname) return null;
-        return { uid, nickname };
-      })
-      .filter(Boolean);
-
-    const byUid = new Map();
-    rows.forEach((item) => {
-      if (!item || !item.uid) return;
-      byUid.set(item.uid, item);
-    });
-    return [...byUid.values()];
-  }, []);
-
-  const writeUserNotification = useCallback(async ({
-    targetUid,
-    type,
-    subtype = '',
-    postId: targetPostId,
-    boardId,
-    boardName,
-    title,
-    body = '',
-    actorUid,
-    actorName,
-    commentId = ''
-  }) => {
-    const userUid = normalizeText(targetUid);
-    const safePostId = normalizeText(targetPostId);
-    const safeBoardId = normalizeText(boardId);
-    if (!userUid || !safePostId || !safeBoardId) return null;
-
-    const safeType = normalizeNotificationType(type);
-    const safeSubtype = normalizeText(subtype);
-    const safeCommentId = normalizeText(commentId);
-    const safeActorUid = normalizeText(actorUid);
-    const safeActorName = normalizeText(actorName) || '익명';
-    const notificationId = notificationIdForEvent(
-      `${safeType}${safeSubtype ? `-${safeSubtype}` : ''}`,
-      safePostId,
-      safeCommentId,
-      userUid
-    );
-    const createdAtMs = Date.now();
-
-    await postFirestore.upsertNotificationDoc(userUid, notificationId, {
-      userUid,
-      actorUid: safeActorUid,
-      actorName: safeActorName,
-      type: safeType,
-      subtype: safeSubtype,
-      postId: safePostId,
-      commentId: safeCommentId,
-      boardId: safeBoardId,
-      boardName: normalizeText(boardName) || safeBoardId,
-      title: normalizeText(title) || '(제목 없음)',
-      body: toNotificationBodySnippet(body),
-      createdAtMs,
-      readAtMs: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    return {
-      targetUid: userUid,
-      notificationId
-    };
-  }, []);
-
   const submitComment = useCallback(async (event) => {
     event.preventDefault();
 
@@ -1338,146 +960,16 @@ export function usePostPageController() {
     }
 
     try {
-      const actorUid = normalizeText(currentUser.uid);
-      const postIdValue = normalizeText(currentPost.id);
-      const boardIdValue = normalizeText(currentPost.boardId);
-      const boardNameValue = normalizeText(currentBoardAccessDebug?.boardName || boardLabel || boardIdValue) || boardIdValue;
-      const postTitle = normalizeText(currentPost.title) || '(제목 없음)';
-      const postAuthorUid = normalizeText(currentPost.authorUid);
-      const mentionTargets = await resolveMentionTargets(payload.text);
-      // @all notification fan-out is intentionally restricted to admin/super-admin accounts.
-      const canUseAllMentionCommand = isAdminOrSuper;
-      const hasAllMention = canUseAllMentionCommand && hasAllMentionCommand(payload.text);
-      const allMentionTargets = hasAllMention
-        ? await resolveAllMentionTargets()
-        : [];
-      const mentionTargetUidSet = new Set(
-        mentionTargets
-          .map((item) => normalizeText(item?.uid))
-          .filter(Boolean)
-      );
-      const allMentionTargetUidSet = new Set(
-        allMentionTargets
-          .map((item) => normalizeText(item?.uid))
-          .filter(Boolean)
-      );
-
-      const parentAuthorUid = parentId
-        ? normalizeText(
-          replyTarget?.authorUid
-          || comments.find((item) => normalizeText(item?.id) === normalizeText(parentId))?.authorUid
-        )
-        : '';
-
-      const events = [];
-
-      if (postAuthorUid && postAuthorUid !== actorUid) {
-        events.push({
-          targetUid: postAuthorUid,
-          type: NOTIFICATION_TYPE.COMMENT,
-          subtype: NOTIFICATION_SUBTYPE.POST_COMMENT,
-          body: `${commentAuthorName}님이 내 게시글에 댓글을 남겼습니다.`
-        });
-      }
-
-      if (
-        parentId
-        && parentAuthorUid
-        && parentAuthorUid !== actorUid
-        && parentAuthorUid !== postAuthorUid
-        && !mentionTargetUidSet.has(parentAuthorUid)
-        && !allMentionTargetUidSet.has(parentAuthorUid)
-      ) {
-        events.push({
-          targetUid: parentAuthorUid,
-          type: NOTIFICATION_TYPE.COMMENT,
-          subtype: NOTIFICATION_SUBTYPE.REPLY_COMMENT,
-          body: `${commentAuthorName}님이 내 댓글에 답글을 남겼습니다.`
-        });
-      }
-
-      mentionTargets.forEach((target) => {
-        const targetUid = normalizeText(target?.uid);
-        if (!targetUid || targetUid === actorUid) return;
-        events.push({
-          targetUid,
-          type: NOTIFICATION_TYPE.MENTION,
-          subtype: NOTIFICATION_SUBTYPE.MENTION,
-          body: `${commentAuthorName}님이 댓글에서 회원님을 언급했습니다.`
-        });
+      await dispatchCommentNotifications({
+        payloadText: payload.text,
+        currentPost,
+        boardLabel,
+        currentUser,
+        currentUserProfile,
+        replyTarget,
+        comments,
+        createdCommentId
       });
-
-      allMentionTargets.forEach((target) => {
-        const targetUid = normalizeText(target?.uid);
-        if (!targetUid || targetUid === actorUid) return;
-        events.push({
-          targetUid,
-          type: NOTIFICATION_TYPE.MENTION,
-          subtype: NOTIFICATION_SUBTYPE.MENTION_ALL,
-          body: `${commentAuthorName}님이 댓글에서 @ALL로 전체 멘션을 보냈습니다.`
-        });
-      });
-
-      const dedupedByKey = new Map();
-      events.forEach((eventItem) => {
-        const targetUid = normalizeText(eventItem?.targetUid);
-        const type = normalizeNotificationType(eventItem?.type);
-        const subtype = normalizeText(eventItem?.subtype);
-        if (!targetUid) return;
-        const key = `${targetUid}|${type}`;
-        const existing = dedupedByKey.get(key);
-        if (!existing) {
-          dedupedByKey.set(key, eventItem);
-          return;
-        }
-        if (
-          subtype === NOTIFICATION_SUBTYPE.MENTION_ALL
-          && normalizeText(existing?.subtype) !== NOTIFICATION_SUBTYPE.MENTION_ALL
-        ) {
-          dedupedByKey.set(key, eventItem);
-        }
-      });
-
-      const createdNotifications = await Promise.all(
-        [...dedupedByKey.values()].map(async (eventItem) => {
-          return writeUserNotification({
-            targetUid: eventItem.targetUid,
-            type: eventItem.type,
-            subtype: eventItem.subtype,
-            postId: postIdValue,
-            commentId: createdCommentId,
-            boardId: boardIdValue,
-            boardName: boardNameValue,
-            title: postTitle,
-            body: eventItem.body,
-            actorUid,
-            actorName: commentAuthorName
-          });
-        })
-      );
-
-      const relayTargets = createdNotifications.filter((item) => item && item.targetUid && item.notificationId);
-      if (relayTargets.length && pushRelayConfigured() && typeof currentUser?.getIdToken === 'function') {
-        void (async () => {
-          try {
-            const idToken = normalizeText(await currentUser.getIdToken());
-            if (!idToken) return;
-            await Promise.allSettled(
-              relayTargets.map((target) => sendPushRelayNotification({
-                idToken,
-                targetUid: target.targetUid,
-                notificationId: target.notificationId
-              }))
-            );
-          } catch (err) {
-            logErrorWithOptionalDebug('[push-relay-dispatch-failed]', err, {
-              error: err,
-              postId: postIdValue,
-              commentId: createdCommentId
-            });
-          }
-        })();
-      }
     } catch (err) {
       logErrorWithOptionalDebug('[comment-notification-write-failed]', err, {
         error: err,
@@ -1498,343 +990,12 @@ export function usePostPageController() {
     canAttemptCommentWrite,
     closeMentionMenu,
     comments,
-    currentBoardAccessDebug,
     currentPost,
-    currentPostCanWrite,
     currentUser,
     currentUserProfile,
-    hasPotentialWriteRole,
-    isAdminOrSuper,
-    resolveAllMentionTargets,
-    resolveMentionTargets,
+    dispatchCommentNotifications,
     replyTarget,
-    writeUserNotification
-  ]);
-
-  // Generic table editor actions for work_schedule posts.
-  const addEditWorkScheduleRow = useCallback(() => {
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      const columnCount = Math.max(1, source[0]?.length || 1);
-      return [...source, new Array(columnCount).fill('')];
-    });
-  }, []);
-
-  const addEditWorkScheduleColumn = useCallback(() => {
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      return source.map((row) => [...row, '']);
-    });
-  }, []);
-
-  const updateEditWorkScheduleCell = useCallback((rowIndex, columnIndex, value) => {
-    const safeRowIndex = Number(rowIndex);
-    const safeColumnIndex = Number(columnIndex);
-    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
-    if (!Number.isFinite(safeColumnIndex) || safeColumnIndex < 0) return;
-
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      if (!source[safeRowIndex]) return source;
-      return source.map((row, rowIdx) => {
-        if (rowIdx !== safeRowIndex) return row;
-        const nextRow = [...row];
-        if (safeColumnIndex >= nextRow.length) {
-          while (nextRow.length <= safeColumnIndex) nextRow.push('');
-        }
-        nextRow[safeColumnIndex] = String(value ?? '');
-        return nextRow;
-      });
-    });
-  }, []);
-
-  const removeEditWorkScheduleRow = useCallback((rowIndex) => {
-    const safeRowIndex = Number(rowIndex);
-    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      const next = source.filter((_, idx) => idx !== safeRowIndex);
-      return normalizeEditableTableGrid(next);
-    });
-  }, []);
-
-  const moveEditWorkScheduleRow = useCallback((rowIndex, direction) => {
-    const safeRowIndex = Number(rowIndex);
-    if (!Number.isFinite(safeRowIndex) || safeRowIndex < 0) return;
-
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      if (!source[safeRowIndex]) return source;
-
-      const maxIndex = Math.max(0, source.length - 1);
-      let targetIndex = safeRowIndex;
-      if (direction === 'up') targetIndex = safeRowIndex - 1;
-      else if (direction === 'down') targetIndex = safeRowIndex + 1;
-      else if (direction === 'up5') targetIndex = safeRowIndex - 5;
-      else if (direction === 'down5') targetIndex = safeRowIndex + 5;
-      else if (direction === 'top') targetIndex = 0;
-      else if (direction === 'bottom') targetIndex = maxIndex;
-      else return source;
-
-      targetIndex = Math.max(0, Math.min(maxIndex, targetIndex));
-      if (targetIndex === safeRowIndex) return source;
-
-      const next = [...source];
-      const [picked] = next.splice(safeRowIndex, 1);
-      next.splice(targetIndex, 0, picked);
-      return next;
-    });
-  }, []);
-
-  const reorderEditWorkScheduleRow = useCallback((fromIndexRaw, toIndexRaw) => {
-    const fromIndex = Number(fromIndexRaw);
-    const toIndex = Number(toIndexRaw);
-    if (!Number.isFinite(fromIndex) || !Number.isFinite(toIndex)) return;
-
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      const maxIndex = source.length - 1;
-      if (maxIndex < 1) return source;
-
-      // Keep header row(0) fixed and reorder data rows only.
-      const safeFrom = Math.max(1, Math.min(maxIndex, Math.floor(fromIndex)));
-      const safeTo = Math.max(1, Math.min(maxIndex, Math.floor(toIndex)));
-      if (safeFrom === safeTo) return source;
-
-      const next = [...source];
-      const [picked] = next.splice(safeFrom, 1);
-      next.splice(safeTo, 0, picked);
-      return next;
-    });
-  }, []);
-
-  const removeEditWorkScheduleColumn = useCallback((columnIndex) => {
-    const safeColumnIndex = Number(columnIndex);
-    if (!Number.isFinite(safeColumnIndex) || safeColumnIndex < 0) return;
-    setEditWorkScheduleTableRows((prev) => {
-      const source = normalizeEditableTableGrid(prev);
-      const columnCount = source[0]?.length || 1;
-      if (columnCount <= 1) return source;
-      const next = source.map((row) => row.filter((_, idx) => idx !== safeColumnIndex));
-      return normalizeEditableTableGrid(next);
-    });
-  }, []);
-
-  const openEditModal = useCallback(() => {
-    if (!currentPost || !canModerateCurrentPost) return;
-
-    setEditTitle(currentPost.title || '');
-    if (normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID) {
-      const storedHtml = sanitizeStoredContentHtml(currentPost.contentHtml || '');
-      const parsedTable = extractEditableTableGridFromHtml(storedHtml);
-      const fallbackRows = Array.isArray(currentPost?.workScheduleRows) ? currentPost.workScheduleRows : [];
-      let nextTableRows = parsedTable.rows;
-      // Migration fallback: old documents may have parsed rows but missing/invalid HTML table.
-      if (!nextTableRows.length && fallbackRows.length) {
-        nextTableRows = [
-          ['날짜', '요일', '풀타임', '파트1', '파트2', '파트3', '교육'],
-          ...fallbackRows.map((row) => ([
-            normalizeText(row?.dateLabel || row?.dateKey),
-            normalizeText(row?.weekday),
-            normalizeText(row?.fullTime),
-            normalizeText(row?.part1),
-            normalizeText(row?.part2),
-            normalizeText(row?.part3),
-            normalizeText(row?.education)
-          ]))
-        ];
-      }
-      if (!nextTableRows.length) {
-        // Last-resort starter table for first-time edits.
-        nextTableRows = [
-          ['날짜', '요일', '풀타임', '파트1', '파트2', '파트3', '교육'],
-          ['', '', '', '', '', '', '']
-        ];
-      }
-      setEditHtmlContent(storedHtml);
-      setEditWorkScheduleTableRows(normalizeEditableTableGrid(nextTableRows));
-    } else {
-      setEditHtmlContent('');
-      setEditWorkScheduleTableRows([]);
-    }
-    setEditMessage({ type: '', text: '' });
-    setEditModalOpen(true);
-  }, [canModerateCurrentPost, currentPost]);
-
-  const submitEditPost = useCallback(async (event) => {
-    event.preventDefault();
-    if (!currentPost || !canModerateCurrentPost) return;
-
-    const title = normalizeText(editTitle);
-    const useTableHtmlEditor = normalizeText(currentPost.boardId) === WORK_SCHEDULE_BOARD_ID;
-
-    let body = '';
-    let rich = plainRichPayload('');
-    let delta = { ops: [{ insert: '\n' }] };
-    let contentHtml = '';
-    let workScheduleRows = Array.isArray(currentPost?.workScheduleRows) ? currentPost.workScheduleRows : [];
-    let workScheduleDateKeys = Array.isArray(currentPost?.workScheduleDateKeys) ? currentPost.workScheduleDateKeys : [];
-    let workScheduleCalendarNotice = '';
-
-    if (useTableHtmlEditor) {
-      const normalizedTableRows = normalizeEditableTableGrid(editWorkScheduleTableRows);
-      const hasAnyCellText = normalizedTableRows.some((row) => row.some((cell) => normalizeText(cell)));
-      if (!hasAnyCellText) {
-        setEditMessage({ type: 'error', text: '표가 비어 있습니다. 최소 한 칸 이상 입력해주세요.' });
-        return;
-      }
-      // Replace only the first table in the original content HTML so narrative
-      // blocks around the table are preserved.
-      const mergedHtml = replaceFirstTableInHtml(editHtmlContent || currentPost.contentHtml || '', normalizedTableRows);
-      contentHtml = sanitizeStoredContentHtml(mergedHtml);
-      body = normalizeText(stripHtmlToText(contentHtml));
-      // Calendar derives from semantic columns. If users renamed headers beyond
-      // recognition, save still succeeds but we surface a clear notice.
-      const parsedSchedule = extractWorkScheduleRowsFromHtml(contentHtml, title);
-      workScheduleRows = parsedSchedule.rows;
-      workScheduleDateKeys = parsedSchedule.rows.map((row) => row.dateKey);
-      if (parsedSchedule.hasTable && !parsedSchedule.rows.length) {
-        workScheduleCalendarNotice = '표는 저장됐지만 캘린더 반영용 열(날짜/풀타임/파트)이 감지되지 않았습니다.';
-      }
-      rich = plainRichPayload(body);
-      delta = { ops: [{ insert: body ? `${body}\n` : '\n' }] };
-    } else {
-      rich = editEditorRef.current?.getPayload() || plainRichPayload('');
-      delta = editEditorRef.current?.getDelta?.() || { ops: [{ insert: '\n' }] };
-      body = normalizeText(rich.text);
-      // Quill 편집 저장 시에는 기존 외부 HTML 스냅샷을 제거해 stale 렌더를 막는다.
-      contentHtml = '';
-    }
-
-    if (!title || !body) {
-      setEditMessage({ type: 'error', text: '제목과 본문을 모두 입력해주세요.' });
-      return;
-    }
-
-    setEditSubmitting(true);
-    setEditMessage({ type: '', text: '' });
-    try {
-      await postFirestore.updatePostDoc(currentPost.id, {
-        title,
-        contentDelta: delta,
-        contentText: rich.text,
-        contentRich: rich,
-        contentHtml,
-        workScheduleRows,
-        workScheduleDateKeys,
-        updatedAt: serverTimestamp()
-      });
-
-      setCurrentPost((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          title,
-          contentDelta: delta,
-          contentText: rich.text,
-          contentRich: rich,
-          contentHtml,
-          workScheduleRows,
-          workScheduleDateKeys
-        };
-      });
-
-      setMessage({
-        type: 'notice',
-        text: workScheduleCalendarNotice
-          ? `게시글을 수정했습니다. ${workScheduleCalendarNotice}`
-          : '게시글을 수정했습니다.'
-      });
-      setEditModalOpen(false);
-    } catch (err) {
-      if (isPermissionDeniedError(err)) {
-        let latestPostDocExists = false;
-        let latestPostAuthorUid = '';
-        let latestPostAuthorId = '';
-        let latestPostUid = '';
-        let latestPostCreatedByUid = '';
-        try {
-          const latestPostSnap = await postFirestore.fetchPostDoc(currentPost.id);
-          latestPostDocExists = !!latestPostSnap?.exists?.() && latestPostSnap.exists();
-          if (latestPostDocExists) {
-            const latestPostData = latestPostSnap.data() || {};
-            latestPostAuthorUid = normalizeText(latestPostData.authorUid);
-            latestPostAuthorId = normalizeText(latestPostData.authorId);
-            latestPostUid = normalizeText(latestPostData.uid);
-            latestPostCreatedByUid = normalizeText(
-              latestPostData.createdByUid
-              || latestPostData?.createdBy?.uid
-            );
-          }
-        } catch (_) {
-          // Keep original permission error when extra debug reads fail.
-        }
-
-        const debugText = joinDebugParts([
-          'action=post-update',
-          boardAccessDebugText(currentBoardAccessDebug, currentUserProfile),
-          `runtimeProjectId=${normalizeText(postFirestore.getRuntimeProjectId()) || '-'}`,
-          `postId=${normalizeText(currentPost?.id) || '-'}`,
-          `postAuthorUid=${normalizeText(currentPost?.authorUid) || '-'}`,
-          `postAuthorUidHex=${debugCodePoints(currentPost?.authorUid || '')}`,
-          `postAuthorId=${normalizeText(currentPost?.authorId) || '-'}`,
-          `postUid=${normalizeText(currentPost?.uid) || '-'}`,
-          `postAuthorNestedUid=${normalizeText(currentPost?.author?.uid) || '-'}`,
-          `postCreatedByUid=${normalizeText(currentPost?.createdByUid || currentPost?.createdBy?.uid) || '-'}`,
-          `myUid=${normalizeText(currentUser?.uid) || '-'}`,
-          `myUidHex=${debugCodePoints(currentUser?.uid || '')}`,
-          `latestPostDoc=${latestPostDocExists ? 'exists' : 'missing'}`,
-          `latestPostAuthorUid=${latestPostAuthorUid || '-'}`,
-          `latestPostAuthorUidHex=${debugCodePoints(latestPostAuthorUid || '')}`,
-          `latestPostAuthorId=${latestPostAuthorId || '-'}`,
-          `latestPostUid=${latestPostUid || '-'}`,
-          `latestPostCreatedByUid=${latestPostCreatedByUid || '-'}`,
-          `latestOwnerMatch=${latestPostAuthorUid && normalizeText(latestPostAuthorUid) === normalizeText(currentUser?.uid) ? 'Y' : 'N'}`,
-          `canModerate=${permissions?.canModerate ? 'Y' : 'N'}`,
-          `errorCode=${normalizeText(err?.code) || '-'}`
-        ]);
-        logErrorWithOptionalDebug('[post-update-permission-debug]', err, {
-          error: err,
-          runtimeProjectId: normalizeText(postFirestore.getRuntimeProjectId()),
-          postId: currentPost?.id || '',
-          postAuthorUid: currentPost?.authorUid || '',
-          postAuthorUidHex: debugCodePoints(currentPost?.authorUid || ''),
-          postAuthorId: currentPost?.authorId || '',
-          postUid: currentPost?.uid || '',
-          postAuthorNestedUid: currentPost?.author?.uid || '',
-          postCreatedByUid: currentPost?.createdByUid || currentPost?.createdBy?.uid || '',
-          myUid: currentUser?.uid || '',
-          myUidHex: debugCodePoints(currentUser?.uid || ''),
-          latestPostDocExists,
-          latestPostAuthorUid,
-          latestPostAuthorUidHex: debugCodePoints(latestPostAuthorUid || ''),
-          latestPostAuthorId,
-          latestPostUid,
-          latestPostCreatedByUid,
-          latestOwnerMatch: latestPostAuthorUid && normalizeText(latestPostAuthorUid) === normalizeText(currentUser?.uid),
-          canModerate: !!permissions?.canModerate,
-          boardAccess: currentBoardAccessDebug,
-          userRole: currentUserProfile?.role || '',
-          userRawRole: currentUserProfile?.rawRole || currentUserProfile?.role || '',
-          debugText
-        });
-        setEditMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 수정 실패') });
-        return;
-      }
-      setEditMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 수정 실패') });
-    } finally {
-      setEditSubmitting(false);
-    }
-  }, [
-    canModerateCurrentPost,
-    currentBoardAccessDebug,
-    currentPost,
-    currentUser,
-    currentUserProfile,
-    editHtmlContent,
-    editWorkScheduleTableRows,
-    editTitle,
-    permissions
+    normalizeErrMessage
   ]);
 
   const deletePost = useCallback(async () => {
@@ -1888,9 +1049,7 @@ export function usePostPageController() {
       setMessage({ type: 'error', text: normalizeErrMessage(err, '게시글 삭제 실패') });
     }
   }, [
-    backHref,
     canModerateCurrentPost,
-    currentBoardAccessDebug,
     currentPost,
     currentUser,
     currentUserProfile,
@@ -1906,21 +1065,6 @@ export function usePostPageController() {
     }
     navigate(backHref);
   }, [backHref, navigate, resolvedBackBoardId]);
-
-  const deleteComment = useCallback(async (commentIdRaw) => {
-    const targetCommentId = normalizeText(commentIdRaw);
-    if (!targetCommentId || !currentPost) return;
-    if (!window.confirm('댓글을 삭제할까요?')) return;
-
-    try {
-      await postFirestore.deleteCommentDoc(currentPost.id, targetCommentId);
-      if (replyTarget && replyTarget.id === targetCommentId) {
-        setReplyTarget(null);
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: normalizeErrMessage(err, '댓글 삭제 실패') });
-    }
-  }, [currentPost, replyTarget]);
 
   const updateCoverForDateStatus = useCallback(async (targetIndexRaw, nextStatusRaw) => {
     if (!currentPost || !canChangeCoverStatus) return;
@@ -2065,7 +1209,6 @@ export function usePostPageController() {
   }, [
     canChangeCoverStatus,
     canResetCoverToSeeking,
-    currentBoardAccessDebug,
     currentPost,
     currentUser,
     currentUserProfile,
@@ -2223,7 +1366,6 @@ export function usePostPageController() {
   const excelSheetModel = useMemo(() => {
     return buildPostDetailExcelSheetModel({
       userDisplayName,
-      userRoleLabel,
       canAccessAdminSite,
       boardLabel,
       title: currentPost?.title || '(제목 없음)',
@@ -2255,9 +1397,7 @@ export function usePostPageController() {
     comments.length,
     currentPostCoverDateEntries,
     currentPost?.title,
-    excelCommentRows,
     isCoverForPost,
-    postMetaLine,
     renderedPostBody,
     userDisplayName,
     userRoleLabel
@@ -2340,77 +1480,36 @@ export function usePostPageController() {
     updateCoverForDateStatus
   ]);
 
+  // ---- flat VM contract ---------------------------------------------------
+  // The view still consumes a broad flat VM because the JSX historically
+  // referenced controller-owned identifiers directly. Keeping that contract
+  // stable makes the refactor incremental and reviewable.
 
   return {
     navigate,
-    location,
-    theme,
     toggleTheme,
     isExcel,
-    searchParams,
-    routeState,
-    postId,
-    focusCommentId,
-    boardIdFromQuery,
-    fromBoardIdFromQuery,
-    boardIdFromState,
-    fromBoardIdFromState,
     editorRef,
-    editorElRef,
-    editorElMounted,
-    setEditorElMounted,
-    editorElCallbackRef,
     fontSizeLabelRef,
     editEditorRef,
     editEditorElRef,
     editFontSizeLabelRef,
-    expiryTimerRef,
-    countdownTimerRef,
-    lastActivityRefreshAtRef,
-    focusCommentTimerRef,
-    mentionRequestIdRef,
-    mentionCacheRef,
-    commentDraftPayloadRef,
     ready,
-    setReady,
     message,
-    setMessage,
     currentUser,
-    setCurrentUser,
     currentUserProfile,
-    setCurrentUserProfile,
     permissions,
-    setPermissions,
-    roleDefinitions,
-    setRoleDefinitions,
     currentPost,
-    setCurrentPost,
-    currentPostCanWrite,
-    setCurrentPostCanWrite,
     comments,
-    setComments,
     commentsLoading,
-    setCommentsLoading,
     replyTarget,
     setReplyTarget,
-    commentMentionMenu,
-    setCommentMentionMenu,
-    commentMentionCandidates,
-    setCommentMentionCandidates,
-    commentMentionActiveIndex,
-    setCommentMentionActiveIndex,
     editMentionMenu,
-    setEditMentionMenu,
     editMentionCandidates,
-    setEditMentionCandidates,
     editMentionActiveIndex,
-    setEditMentionActiveIndex,
-    commentSubmitting,
-    setCommentSubmitting,
     excelCommentModalOpen,
     setExcelCommentModalOpen,
     statusUpdating,
-    setStatusUpdating,
     editModalOpen,
     setEditModalOpen,
     editTitle,
@@ -2427,31 +1526,16 @@ export function usePostPageController() {
     reorderEditWorkScheduleRow,
     removeEditWorkScheduleColumn,
     editSubmitting,
-    setEditSubmitting,
     editMessage,
-    setEditMessage,
     sessionRemainingMs,
-    setSessionRemainingMs,
     compactListMode,
-    setCompactListMode,
     boardLabel,
-    setBoardLabel,
-    currentBoardAccessDebug,
-    setCurrentBoardAccessDebug,
     roleDefMap,
-    appPage,
-    backBoardId,
-    resolvedBackBoardId,
-    backHref,
     canAccessAdminSite,
     canModerateCurrentPost,
-    normalizedRoleForWrite,
-    rawRoleForWrite,
-    hasPotentialWriteRole,
     canAttemptCommentWrite,
     isCoverForPost,
     isWorkSchedulePost,
-    isAdminOrSuper,
     canChangeCoverStatus,
     canResetCoverToSeeking,
     currentPostCoverDateEntries,
@@ -2459,30 +1543,12 @@ export function usePostPageController() {
     currentPostCoverStatus,
     isCoverForClosed,
     userDisplayName,
-    currentUserUid,
-    fetchMentionCandidates,
-    readMentionAnchor,
     closeMentionMenu,
     syncMentionMenu,
     applyMentionCandidate,
-    insertReplyMention,
-    clearExpiryTimer,
-    clearCountdownTimer,
-    handleTemporaryLoginExpiry,
-    scheduleTemporaryLoginExpiry,
-    hasTemporarySession,
-    commentComposerMountKey,
     handleExtendSession,
     handleLogout,
     handleOpenGuide,
-    canUseBoardData,
-    canWriteBoardData,
-    resolveBoardAccess,
-    loadPost,
-    resolveMentionTargets,
-    resolveAllMentionTargets,
-    writeUserNotification,
-    submitComment,
     openEditModal,
     submitEditPost,
     deletePost,
@@ -2496,15 +1562,10 @@ export function usePostPageController() {
     myCommentsPage,
     handleMoveHome,
     handleBrandTitleKeyDown,
-    userRoleLabel,
-    excelCommentRows,
-    postMetaLine,
     excelSheetModel,
     isExcelDesktopMode,
     excelActiveCellLabel,
-    setExcelActiveCellLabel,
     excelFormulaText,
-    setExcelFormulaText,
     handleExcelSelectCell,
     handleExcelAction
   };

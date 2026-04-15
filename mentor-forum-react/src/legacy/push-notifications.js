@@ -7,10 +7,12 @@ import { app } from './firebase-app.js';
 import { MENTOR_FORUM_CONFIG } from './config.js';
 import { toUserErrorMessage } from '../lib/user-error.js';
 
+// ---- runtime constants / shared module state -----------------------------
 export const WEB_PUSH_SW_PATH = '/firebase-messaging-sw.js';
 
 let messagingModulePromise = null;
 
+// ---- environment / capability probes ------------------------------------
 function normalizeText(value) {
   return String(value || '').trim();
 }
@@ -52,6 +54,7 @@ function vapidKeyFromConfig() {
   );
 }
 
+// ---- capability + token entrypoints --------------------------------------
 export async function getWebPushCapability() {
   // 런타임 환경/보안 요건부터 순차 검증해 사용자에게 실패 원인을 명시한다.
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {

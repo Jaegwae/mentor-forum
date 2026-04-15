@@ -13,6 +13,7 @@ import {
 } from './AppExcelCellRenderers.jsx';
 import { toExcelColumnLabel } from './app-excel-sheet-model.js';
 
+// ---- low-level coordinate / action helpers -------------------------------
 /**
  * App 화면의 "엑셀 스타일 인터랙션 레이어".
  * - 실제 데이터는 외부에서 row/col 모델로 주입받고, 본 컴포넌트는 렌더/선택/액션만 담당한다.
@@ -105,6 +106,7 @@ export function AppExcelWorkbook({
   onOpenMobilePush,
   onAction
 }) {
+  // ---- refs + local workbook UI state ------------------------------------
   const containerRef = useRef(null);
   const selectionRef = useRef({ x: -1, y: -1 });
   const skipInitialSelectionRef = useRef(true);
@@ -113,6 +115,7 @@ export function AppExcelWorkbook({
   const dispatchActionRef = useRef(null);
   const onSelectCellRef = useRef(null);
 
+  // ---- external sheetRows -> workbook model ------------------------------
   const workbookModel = useMemo(() => {
     // sheetRows -> jspreadsheet 입력 데이터 + merge 메타 구조로 1회 변환한다.
     const data = [];
@@ -154,6 +157,7 @@ export function AppExcelWorkbook({
     return { data, mergeCells, cellMetaMap, mergeAnchorMap };
   }, [sheetRows, rowCount, colCount]);
 
+  // ---- action router ------------------------------------------------------
   const dispatchAction = useCallback((cellValue) => {
     // 시트 모델에서 정의한 actionType 문자열을 페이지 콜백으로 라우팅한다.
     const cell = normalizeAppExcelCell(cellValue);
@@ -224,6 +228,7 @@ export function AppExcelWorkbook({
     onToggleTheme
   ]);
 
+  // ---- workbook mount / event bridging -----------------------------------
   useLayoutEffect(() => { dispatchActionRef.current = dispatchAction; }, [dispatchAction]);
   useLayoutEffect(() => { onSelectCellRef.current = onSelectCell; }, [onSelectCell]);
 

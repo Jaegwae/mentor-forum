@@ -1,6 +1,7 @@
 // Comment-focused Firestore helpers.
 import { db, collection, getDocs } from '../../legacy/firebase-app.js';
 
+// ---- comment reads --------------------------------------------------------
 // Returns all comments for a post (used in fallback/detail paths).
 export async function listCommentsByPost(postId) {
   const snap = await getDocs(collection(db, 'posts', String(postId || ''), 'comments'));
