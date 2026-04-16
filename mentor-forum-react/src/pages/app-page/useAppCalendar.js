@@ -209,6 +209,9 @@ export function useAppCalendar({
       if (!inMonth) classes.push('is-outside');
       if (cellDate.getDay() === 0) classes.push('is-sun');
       if (cellDate.getDay() === 6) classes.push('is-sat');
+      // 오늘보다 이전 날짜는 "지난 일정/요청"으로 간주한다.
+      // 실제 숨김 처리는 하지 않고, CSS에서 더 어두운 톤으로만 표현한다.
+      if (cellDate.getTime() < todayDate.getTime()) classes.push('is-past');
       if (dateKey === todayKey) classes.push('is-today');
       if (dateKey === selectedKey) classes.push('is-selected');
 

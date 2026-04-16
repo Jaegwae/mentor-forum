@@ -13,6 +13,7 @@
 ## 버전별 업데이트
 
 ### v0.2
+- 캘린더에서 오늘 이전 날짜를 더 어둡게 표시해 지난 일정/요청을 더 쉽게 구분
 - App/Post/Admin 대형 controller를 split hook 기준으로 분해
 - profile bootstrap / forum constants / role badge 공통화
 - App/Post/Admin 렌더 안정화 및 wiring 누락 회귀 수정

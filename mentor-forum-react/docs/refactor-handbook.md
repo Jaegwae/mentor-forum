@@ -914,3 +914,4 @@ services/firestore/*   -> Firestore 접근 계층
 - regression hardening: `tests/view-fallback-contract.test.js` 추가 (App/Post/Admin View의 핵심 메시지/fallback 바인딩 보호)
 - AI guide polish: README_AI에 변경 전/후 체크리스트 추가
 - AI readability comment pass 10: rich-editor payload/delta bridge 설명과 secondary excel sheet builder 공통 helper(applyHero/applyProfile/buildPagination 등) 세부 주석 추가
+- calendar past-date styling 주석 보강: useAppCalendar 클래스 부여 의도와 테마별 CSS override 목적 설명 추가
