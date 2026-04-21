@@ -31,6 +31,14 @@ describe('controller wiring regression', () => {
     expect(source).toContain('currentUserUid,');
     expect(source).toContain('notificationPrefs,');
     expect(source).toContain('setNotifications,');
+
+    const editorEffectStart = source.indexOf('const editor = createRichEditor({');
+    expect(editorEffectStart).toBeGreaterThan(-1);
+    const editorEffectEnd = source.indexOf('}, [closeComposerMentionMenu, composerOpen, setComposerMessage, syncComposerMentionMenu]);', editorEffectStart);
+    expect(editorEffectEnd).toBeGreaterThan(editorEffectStart);
+    const editorEffectSource = source.slice(editorEffectStart - 180, editorEffectEnd + 120);
+    expect(editorEffectSource).toContain('!composerOpen || !editorElRef.current || !fontSizeLabelRef.current');
+    expect(editorEffectSource).toContain('editorRef.current = editor;');
   });
 
   it('keeps critical PostPage hook wiring intact', () => {

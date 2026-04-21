@@ -909,8 +909,9 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
   }, []);
 
   useEffect(() => {
-    if (!editorElRef.current || !fontSizeLabelRef.current) return;
-    editorRef.current = createRichEditor({
+    // The composer editor is rendered only after the modal opens, so attach Quill when that DOM exists.
+    if (!composerOpen || !editorElRef.current || !fontSizeLabelRef.current) return;
+    const editor = createRichEditor({
       editorEl: editorElRef.current,
       fontSizeLabelEl: fontSizeLabelRef.current,
       onChange: () => {
@@ -921,11 +922,14 @@ export function useAppPageController({ navigate, location, theme, toggleTheme })
         syncComposerMentionMenu();
       }
     });
+    editorRef.current = editor;
     return () => {
       closeComposerMentionMenu();
-      editorRef.current = null;
+      if (editorRef.current === editor) {
+        editorRef.current = null;
+      }
     };
-  }, [closeComposerMentionMenu, setComposerMessage, syncComposerMentionMenu]);
+  }, [closeComposerMentionMenu, composerOpen, setComposerMessage, syncComposerMentionMenu]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

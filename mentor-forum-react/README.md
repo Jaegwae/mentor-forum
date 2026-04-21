@@ -2,15 +2,19 @@
 
 멘토스의 **실서비스용 React + Firebase 커뮤니티 앱**입니다.
 
-- 현재 버전: `0.2`
+- 현재 버전: `0.2 HotFix`
 - 운영 URL: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
 - Firebase 프로젝트: `guro-mentor-forum`
 - 주요 라우트: `/app`, `/post`, `/admin`, `/me/posts`, `/me/comments`
-- 기준 문서 업데이트 시점: `2026-03-01`
+- 기준 문서 업데이트 시점: `2026-04-21`
 
 ---
 
 ## 버전별 업데이트
+
+### v0.2 HotFix
+- 글쓰기 모달을 연 뒤 리치 에디터가 초기화되지 않아 본문 입력이 불가능하던 문제 수정
+- AppPage controller wiring 회귀 테스트에 글쓰기 에디터 초기화 가드 추가
 
 ### v0.2
 - 캘린더에서 오늘 이전 날짜를 더 어둡게 표시해 지난 일정/요청을 더 쉽게 구분
