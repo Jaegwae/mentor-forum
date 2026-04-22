@@ -5,7 +5,7 @@
  * 1) Schedule/timer orchestration (00/06/12/18 slot checks in Asia/Seoul)
  * 2) Naver list/article scraping in temporary hidden tabs
  * 3) Firestore upsert into work_schedule board
- * 4) Optional shift-alert notification document fanout + relay trigger
+ * 4) Work schedule push delivery is handled by Firebase Functions
  *
  * Note:
  * - Manual sync(force=true) bypasses schedule-window guards.
@@ -20,9 +20,6 @@ const STORAGE_KEYS = {
 
 const SYNC_ALARM = 'mentor_forum_naver_sync_tick';
 const DEFAULT_TICK_MINUTES = 15;
-const WORK_SCHEDULE_ALERT_PREF_KEY = 'pref_work_schedule_shift_alert';
-const WORK_SCHEDULE_ALERT_SUBTYPE = 'work_schedule_shift_alert';
-const DEFAULT_PUSH_RELAY_URL = 'https://script.google.com/macros/s/AKfycbyFoiPgFbVaNHr7wOmXVaDichgheQbzfhiwevt9fHYxqAX-lDAAUQ2Lj5mIuB0TNypq/exec';
 
 const DEFAULT_CONFIG = {
   autoEnabled: true,
@@ -34,9 +31,8 @@ const DEFAULT_CONFIG = {
   menuId: '5',
   maxArticles: 5,
   boardId: 'work_schedule',
-  firebaseApiKey: 'AIzaSyCbvxhl6GhRi8nk6FgZtOYz6VwuAepEokI',
-  firebaseProjectId: 'guro-mentor-forum',
-  pushRelayUrl: DEFAULT_PUSH_RELAY_URL
+  firebaseApiKey: '',
+  firebaseProjectId: 'guro-mentor-forum'
 };
 
 let runningPromise = null;
@@ -178,7 +174,8 @@ function normalizeConfig(raw) {
   next.boardId = String(next.boardId || DEFAULT_CONFIG.boardId).trim() || DEFAULT_CONFIG.boardId;
   next.firebaseApiKey = String(next.firebaseApiKey || DEFAULT_CONFIG.firebaseApiKey).trim() || DEFAULT_CONFIG.firebaseApiKey;
   next.firebaseProjectId = String(next.firebaseProjectId || DEFAULT_CONFIG.firebaseProjectId).trim() || DEFAULT_CONFIG.firebaseProjectId;
-  next.pushRelayUrl = String(next.pushRelayUrl || DEFAULT_CONFIG.pushRelayUrl).trim() || DEFAULT_CONFIG.pushRelayUrl;
+  // Push relay settings intentionally do not exist here anymore.
+  // Firebase Functions reads workScheduleRows later and owns all reminder delivery.
 
   return next;
 }
@@ -1178,325 +1175,6 @@ async function upsertArticlesToFirestore({ config, idToken, uid, authorName, aut
   }
 
   return { successCount, skippedCount, failedCount, articles: processedArticles };
-}
-
-function normalizeNameToken(value) {
-  return String(value || '')
-    .replace(/\s+/g, '')
-    .replace(/[^0-9A-Za-z가-힣]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
-function includesNameToken(text, nameToken) {
-  const token = normalizeNameToken(nameToken);
-  if (!token || token.length < 2) return false;
-  const source = normalizeNameToken(text);
-  if (!source) return false;
-  return source.includes(token);
-}
-
-function formatDateLabelFromDateKey(dateKey, fallbackLabel = '') {
-  const fallback = sanitizeText(fallbackLabel, 32);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ''))) return fallback || '-';
-  const parts = String(dateKey).split('-');
-  const month = Number(parts[1]);
-  const day = Number(parts[2]);
-  if (!Number.isFinite(month) || !Number.isFinite(day)) return fallback || '-';
-  return `${month}/${day}`;
-}
-
-function summarizeRoleMatches(row, realName) {
-  const fields = [
-    { key: 'fullTime', label: '풀타임' },
-    { key: 'part1', label: '파트1' },
-    { key: 'part2', label: '파트2' },
-    { key: 'part3', label: '파트3' },
-    { key: 'education', label: '교육' }
-  ];
-
-  const matches = [];
-  fields.forEach((field) => {
-    const value = sanitizeText(row?.[field.key] || '', 160);
-    if (!value) return;
-    if (!includesNameToken(value, realName)) return;
-    matches.push(`${field.label}: ${value}`);
-  });
-  return matches;
-}
-
-function addDaysToDateKey(dateKey, days) {
-  const match = String(dateKey || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return '';
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
-  const next = new Date(year, month - 1, day + Number(days || 0));
-  if (Number.isNaN(next.getTime())) return '';
-  const y = next.getFullYear();
-  const m = String(next.getMonth() + 1).padStart(2, '0');
-  const d = String(next.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-async function listUsersForWorkScheduleAlerts({ projectId, idToken }) {
-  const rows = await runFirestoreStructuredQuery({
-    projectId,
-    idToken,
-    structuredQuery: {
-      from: [{ collectionId: 'users' }],
-      limit: 2000
-    }
-  });
-
-  const users = [];
-  rows.forEach((row) => {
-    const doc = row?.document;
-    if (!doc?.name) return;
-    const docPath = docNameToDocPath(projectId, doc.name);
-    const uid = String(docPath || '').split('/')[1] || '';
-    if (!uid) return;
-    const fields = doc.fields || {};
-    const realName = sanitizeText(fromFirestoreValue(fields.realName) || '', 40);
-    if (!realName) return;
-    users.push({
-      uid,
-      realName
-    });
-  });
-
-  return users;
-}
-
-async function listWorkScheduleAlertPrefByUser({ projectId, idToken }) {
-  const rows = await runFirestoreStructuredQuery({
-    projectId,
-    idToken,
-    structuredQuery: {
-      from: [{ collectionId: 'notification_prefs', allDescendants: true }],
-      where: {
-        fieldFilter: {
-          field: { fieldPath: 'boardId' },
-          op: 'EQUAL',
-          value: { stringValue: WORK_SCHEDULE_ALERT_PREF_KEY }
-        }
-      },
-      limit: 4000
-    }
-  });
-
-  const prefByUser = new Map();
-  rows.forEach((row) => {
-    const doc = row?.document;
-    if (!doc?.name) return;
-    const docPath = docNameToDocPath(projectId, doc.name);
-    const pathParts = String(docPath || '').split('/');
-    const uid = pathParts[0] === 'users' ? String(pathParts[1] || '') : '';
-    if (!uid) return;
-    const fields = doc.fields || {};
-    const enabledValue = fromFirestoreValue(fields.enabled);
-    prefByUser.set(uid, enabledValue !== false);
-  });
-  return prefByUser;
-}
-
-function buildWorkScheduleNotificationId({ articleId, uid, dateKey, phase }) {
-  return `work_schedule_${sanitizeId(articleId)}_${sanitizeId(dateKey)}_${sanitizeId(phase)}_${sanitizeId(uid)}`;
-}
-
-async function sendPushRelayNotificationFromExtension({ pushRelayUrl, idToken, targetUid, notificationId }) {
-  const endpoint = String(pushRelayUrl || '').trim();
-  if (!endpoint) return { ok: false, skipped: true, reason: 'relay-not-configured' };
-
-  const payload = JSON.stringify({
-    idToken: String(idToken || '').trim(),
-    targetUid: String(targetUid || '').trim(),
-    notificationId: String(notificationId || '').trim()
-  });
-  if (!payload) return { ok: false, skipped: true, reason: 'invalid-payload' };
-
-  const body = new URLSearchParams();
-  body.set('payload', payload);
-
-  try {
-    await fetch(endpoint, {
-      method: 'POST',
-      mode: 'no-cors',
-      body
-    });
-    return { ok: true, skipped: false };
-  } catch (_err) {
-    try {
-      const url = new URL(endpoint);
-      url.searchParams.set('payload', payload);
-      url.searchParams.set('relay_transport', 'get_fallback');
-      await fetch(url.toString(), {
-        method: 'GET',
-        mode: 'no-cors'
-      });
-      return { ok: true, skipped: false };
-    } catch (err) {
-      return { ok: false, skipped: false, reason: String(err?.message || err || 'relay-failed') };
-    }
-  }
-}
-
-async function dispatchWorkScheduleAlerts({
-  config,
-  idToken,
-  actorUid,
-  actorName,
-  upsertedArticles
-}) {
-  const result = {
-    createdCount: 0,
-    updatedCount: 0,
-    skippedCount: 0,
-    failedCount: 0,
-    relaySentCount: 0
-  };
-
-  const articles = Array.isArray(upsertedArticles) ? upsertedArticles : [];
-  const candidates = articles
-    .filter((item) => item && Array.isArray(item.workScheduleRows) && item.workScheduleRows.length)
-    .map((item) => ({
-      ...item,
-      workScheduleRows: sanitizeWorkScheduleRowsForStorage(item.workScheduleRows)
-    }))
-    .filter((item) => item.workScheduleRows.length);
-
-  if (!candidates.length) return result;
-
-  let users = [];
-  try {
-    users = await listUsersForWorkScheduleAlerts({
-      projectId: config.firebaseProjectId,
-      idToken
-    });
-  } catch (_err) {
-    return result;
-  }
-  if (!users.length) return result;
-
-  let prefByUser = new Map();
-  try {
-    prefByUser = await listWorkScheduleAlertPrefByUser({
-      projectId: config.firebaseProjectId,
-      idToken
-    });
-  } catch (_err) {
-    prefByUser = new Map();
-  }
-
-  const todayKey = seoulDateParts(new Date()).dateKey;
-  const tomorrowKey = addDaysToDateKey(todayKey, 1);
-  const targetPhaseByDateKey = new Map([
-    [todayKey, 'today'],
-    [tomorrowKey, 'tomorrow']
-  ]);
-
-  for (const article of candidates) {
-    const safeArticleId = String(article.articleId || '').trim();
-    const safePostId = String(article.postId || '').trim();
-    if (!safePostId) continue;
-
-    for (const row of article.workScheduleRows) {
-      const dateKey = String(row?.dateKey || '').trim();
-      const phase = targetPhaseByDateKey.get(dateKey);
-      if (!phase) continue;
-
-      for (const user of users) {
-        const uid = String(user.uid || '').trim();
-        const realName = sanitizeText(user.realName || '', 40);
-        if (!uid || !realName) continue;
-        if (prefByUser.has(uid) && prefByUser.get(uid) === false) continue;
-
-        const roleMatches = summarizeRoleMatches(row, realName);
-        if (!roleMatches.length) continue;
-
-        const phaseLabel = phase === 'today' ? '당일' : '전날';
-        const dateLabel = formatDateLabelFromDateKey(dateKey, row?.dateLabel || '');
-        const weekday = sanitizeText(row?.weekday || '', 12);
-        const bodyParts = [
-          `${phaseLabel} 근무 알림`,
-          `${dateLabel}${weekday ? ` (${weekday})` : ''}`,
-          roleMatches.join(' / ')
-        ].filter(Boolean);
-        const body = sanitizeText(bodyParts.join(' · '), 220);
-        const title = `[근무일정] ${dateLabel} 근무 안내`;
-        const notificationId = buildWorkScheduleNotificationId({
-          articleId: safeArticleId || safePostId,
-          uid,
-          dateKey,
-          phase
-        });
-        const docPath = `users/${encodeURIComponent(uid)}/notifications/${encodeURIComponent(notificationId)}`;
-
-        try {
-          const existingDoc = await getFirestoreDoc({
-            projectId: config.firebaseProjectId,
-            docPath,
-            idToken
-          });
-          const existing = firestoreDocToPlain(existingDoc);
-          const nowIso = new Date().toISOString();
-          const createdAtIso = typeof existing.createdAt === 'string' && existing.createdAt
-            ? existing.createdAt
-            : nowIso;
-          const createdAtMs = Date.now();
-
-          const sameContent = !!existingDoc
-            && String(existing.body || '') === body
-            && String(existing.title || '') === title
-            && String(existing.postId || '') === safePostId
-            && String(existing.boardId || '') === String(config.boardId || '');
-          if (sameContent) {
-            result.skippedCount += 1;
-            continue;
-          }
-
-          await commitFirestoreDoc({
-            projectId: config.firebaseProjectId,
-            docPath,
-            idToken,
-            plainData: {
-              userUid: uid,
-              actorUid: String(actorUid || '').trim(),
-              actorName: sanitizeText(actorName || '근무일정 동기화', 60),
-              type: 'post',
-              subtype: WORK_SCHEDULE_ALERT_SUBTYPE,
-              postId: safePostId,
-              commentId: '',
-              boardId: String(config.boardId || '').trim(),
-              boardName: '근무일정',
-              title,
-              body,
-              createdAtMs,
-              readAtMs: 0,
-              createdAt: createdAtIso,
-              updatedAt: nowIso
-            }
-          });
-
-          if (existingDoc) result.updatedCount += 1;
-          else result.createdCount += 1;
-
-          const relay = await sendPushRelayNotificationFromExtension({
-            pushRelayUrl: config.pushRelayUrl,
-            idToken,
-            targetUid: uid,
-            notificationId
-          });
-          if (relay.ok) result.relaySentCount += 1;
-        } catch (_err) {
-          result.failedCount += 1;
-        }
-      }
-    }
-  }
-
-  return result;
 }
 
 function sanitizeId(value) {

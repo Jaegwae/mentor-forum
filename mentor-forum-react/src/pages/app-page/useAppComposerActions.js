@@ -1,9 +1,8 @@
 // AppPage composer command hook.
 // - Encapsulates imperative composer actions (`open`, `close`, `reset`,
 //   `submit`) that coordinate editor state, validation, Firestore writes, and
-//   optional push-relay side effects.
+//   post-create side effects now run from Firebase Functions.
 import { useCallback } from 'react';
-import { pushRelayConfigured, sendPushRelayPostCreate } from '../../legacy/push-relay.js';
 
 export function useAppComposerActions({
   currentBoard,
@@ -414,27 +413,6 @@ export function useAppComposerActions({
       setComposerMessage({ type: 'error', text: normalizeErrMessage(err, '저장 실패') });
       setSubmittingPost(false);
       return;
-    }
-
-    if (createdPostId && pushRelayConfigured() && typeof currentUser?.getIdToken === 'function') {
-      void (async () => {
-        try {
-          const idToken = normalizeText(await currentUser.getIdToken());
-          if (!idToken) return;
-          await sendPushRelayPostCreate({
-            idToken,
-            postId: createdPostId,
-            boardId: normalizeText(currentBoard?.id),
-            createdAtMs: Date.now()
-          });
-        } catch (relayErr) {
-          logErrorWithOptionalDebug('[post-create-push-relay-dispatch-failed]', relayErr, {
-            error: relayErr,
-            postId: createdPostId,
-            boardId: normalizeText(currentBoard?.id)
-          });
-        }
-      })();
     }
 
     resetComposer(currentBoard);

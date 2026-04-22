@@ -17,7 +17,7 @@
 
 - Firebase Auth / Firestore / FCM
 - Firestore Rules / 인덱스 관리
-- GAS 기반 push relay
+- Firebase Functions 기반 push dispatch
 - 네이버 카페 근무일정 동기화용 크롬 확장
 
 ---
@@ -223,7 +223,7 @@ AI가 페이지를 읽을 때는 아래 순서로 보면 빠르다.
 - `src/legacy/rich-editor.js`
 - `src/legacy/rbac.js`
 - `src/legacy/push-notifications.js`
-- `src/legacy/push-relay.js`
+- `functions/index.js`
 - `src/legacy/config.js`
 
 이름은 legacy지만 현재도 **실사용 핵심 계층**이다.
@@ -469,7 +469,7 @@ App/Post는 split hook으로 나누는 방향이 이미 시작됐다.
 
 ### push 문제
 1. `src/legacy/push-notifications.js`
-2. `src/legacy/push-relay.js`
+2. `functions/index.js`
 3. `src/services/firestore/notifications.js`
 
 ---

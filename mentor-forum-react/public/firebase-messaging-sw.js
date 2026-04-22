@@ -3,19 +3,9 @@
 
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
-
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyCbvxhl6GhRi8nk6FgZtOYz6VwuAepEokI',
-  authDomain: 'guro-mentor-forum.firebaseapp.com',
-  projectId: 'guro-mentor-forum',
-  storageBucket: 'guro-mentor-forum.firebasestorage.app',
-  messagingSenderId: '748559493922',
-  appId: '1:748559493922:web:4fb9b26d7f2f41d70ed37b'
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(FIREBASE_CONFIG);
-}
+// Firebase Hosting serves this reserved init script with the web app config.
+// Keeping config out of source avoids committing API keys while preserving push init in production.
+importScripts('/__/firebase/init.js');
 
 const messaging = firebase.messaging();
 const SW_VERSION = '2026-02-25-push-v2';

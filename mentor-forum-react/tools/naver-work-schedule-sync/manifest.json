@@ -14,9 +14,7 @@
     "https://cafe.naver.com/*",
     "https://identitytoolkit.googleapis.com/*",
     "https://securetoken.googleapis.com/*",
-    "https://firestore.googleapis.com/*",
-    "https://script.google.com/*",
-    "https://script.googleusercontent.com/*"
+    "https://firestore.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js",

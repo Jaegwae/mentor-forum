@@ -2,7 +2,6 @@
 // - Resolves direct mentions, @ALL targets, post-author notifications, and
 //   reply-author notifications for newly created comments.
 import { useCallback } from 'react';
-import { pushRelayConfigured, sendPushRelayNotification } from '../../legacy/push-relay.js';
 
 export function usePostNotifications({
   postFirestore,
@@ -239,7 +238,9 @@ export function usePostNotifications({
       }
     });
 
-    const createdNotifications = await Promise.all(
+    // Server-side push note:
+    // this hook only creates notification docs; Firebase Functions sends FCM.
+    await Promise.all(
       [...dedupedByKey.values()].map((eventItem) => writeUserNotification({
         targetUid: eventItem.targetUid,
         type: eventItem.type,
@@ -254,28 +255,6 @@ export function usePostNotifications({
         actorName: commentAuthorName
       }))
     );
-
-    const relayTargets = createdNotifications.filter((item) => item && item.targetUid && item.notificationId);
-    if (relayTargets.length && pushRelayConfigured() && typeof currentUser?.getIdToken === 'function') {
-      try {
-        const idToken = normalizeText(await currentUser.getIdToken());
-        if (idToken) {
-          await Promise.allSettled(
-            relayTargets.map((target) => sendPushRelayNotification({
-              idToken,
-              targetUid: target.targetUid,
-              notificationId: target.notificationId
-            }))
-          );
-        }
-      } catch (err) {
-        logErrorWithOptionalDebug('[push-relay-dispatch-failed]', err, {
-          error: err,
-          postId: postIdValue,
-          commentId: createdCommentId
-        });
-      }
-    }
   }, [
     NOTIFICATION_SUBTYPE.MENTION,
     NOTIFICATION_SUBTYPE.MENTION_ALL,

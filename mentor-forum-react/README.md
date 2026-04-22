@@ -2,15 +2,23 @@
 
 멘토스의 **실서비스용 React + Firebase 커뮤니티 앱**입니다.
 
-- 현재 버전: `0.2 HotFix`
+- 현재 버전: `0.3`
 - 운영 URL: [https://guro-mentor-forum.web.app](https://guro-mentor-forum.web.app)
 - Firebase 프로젝트: `guro-mentor-forum`
 - 주요 라우트: `/app`, `/post`, `/admin`, `/me/posts`, `/me/comments`
-- 기준 문서 업데이트 시점: `2026-04-21`
+- 기준 문서 업데이트 시점: `2026-04-22`
 
 ---
 
 ## 버전별 업데이트
+
+### v0.3
+- 알림 발송 파이프라인을 GAS relay에서 Firebase Cloud Functions + FCM으로 이관
+- 댓글/멘션 알림 문서 생성 시 `dispatchNotificationPush`가 사용자 설정과 푸시 토큰을 확인해 FCM 발송
+- 새 글 알림은 `createPostNotifications`가 게시판 접근 role 대상자만 조회해 알림 문서를 생성하도록 최적화
+- 근무일정 전날/당일 알림을 `workScheduleTomorrowReminder`, `workScheduleTodayReminder` 예약 함수로 이전
+- React 앱과 네이버 근무일정 확장프로그램에서 GAS relay 코드/권한/문서를 제거
+- Firebase Functions, 확장프로그램 background, 알림 이관 경로에 AI가 추적하기 쉬운 주석 보강
 
 ### v0.2 HotFix
 - 글쓰기 모달을 연 뒤 리치 에디터가 초기화되지 않아 본문 입력이 불가능하던 문제 수정
@@ -269,7 +277,7 @@ mentor-forum-react/
 ### 알림/푸시
 - 알림센터(필터/읽음 처리/보드별 on/off)
 - 멘션(`@닉네임`, `@ALL`) 알림
-- 모바일 푸시(FCM) + GAS 릴레이
+- 모바일 푸시(FCM) + Firebase Cloud Functions
 
 ### 테마/엑셀 모드
 - 라이트/다크/엑셀 모드
@@ -340,6 +348,14 @@ npx firebase deploy --only firestore:indexes --project guro-mentor-forum
 npx firebase deploy --only hosting,firestore:rules,firestore:indexes --project guro-mentor-forum
 ```
 
+### Functions 배포
+```bash
+cd functions
+npm install
+cd ..
+npx firebase deploy --only functions --project guro-mentor-forum
+```
+
 ---
 
 ## 9. 트러블슈팅 (실전)
@@ -370,11 +386,17 @@ window.__MENTOR_DEBUG__ = true
 `.env.local` 예시:
 
 ```bash
-VITE_PUSH_RELAY_URL=https://script.google.com/macros/s/xxxxxxxxxxxxxxxx/exec
+VITE_FIREBASE_API_KEY=YOUR_FIREBASE_WEB_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET=YOUR_PROJECT.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=YOUR_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID=YOUR_FIREBASE_WEB_APP_ID
 VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
 ```
 
-- `VITE_PUSH_RELAY_URL`: GAS 릴레이 URL
+- `.env.local`은 커밋하지 않습니다. 새 환경은 `.env.example`을 복사해서 채웁니다.
+- `VITE_FIREBASE_API_KEY` 등 Firebase 웹앱 설정은 브라우저 번들에 포함되는 공개 클라이언트 설정이지만, 소스에는 하드코딩하지 않습니다.
 - `VITE_FIREBASE_MESSAGING_VAPID_KEY`: FCM 웹푸시 VAPID 키
 
 ---
@@ -399,7 +421,6 @@ VITE_FIREBASE_MESSAGING_VAPID_KEY=YOUR_VAPID_KEY
 ## 12. 참고
 
 - 상위 워크스페이스 README: [`../README.md`](../README.md)
-- GAS 릴레이 문서: [`./scripts/gas-push-relay/README.md`](./scripts/gas-push-relay/README.md)
 - 권한 로직: `src/legacy/rbac.js`
 - 규칙/인덱스: `firestore.rules`, `firestore.indexes.json`
 
