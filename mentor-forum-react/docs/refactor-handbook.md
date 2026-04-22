@@ -607,8 +607,8 @@ services/firestore/*   -> Firestore 접근 계층
   - Quill 런타임 wrapper
 - `src/legacy/push-notifications.js`
   - 웹푸시 capability/token 발급
-- `src/legacy/push-relay.js`
-  - GAS relay 전송
+- `functions/index.js`
+  - Firebase Functions FCM 발송
 
 > 이름은 legacy지만 실제로는 현재 핵심 의존성이다.
 

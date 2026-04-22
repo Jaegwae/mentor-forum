@@ -23,7 +23,6 @@ import {
   getWebPushCapability,
   requestWebPushToken
 } from '../../legacy/push-notifications.js';
-import { pushRelayConfigured, sendPushRelayPostCreate } from '../../legacy/push-relay.js';
 import {
   APP_EXCEL_COL_COUNT,
   APP_EXCEL_ROW_COUNT,
