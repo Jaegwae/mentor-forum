@@ -231,7 +231,8 @@ AI가 페이지를 읽을 때는 아래 순서로 보면 빠르다.
 AI가 혼동하기 쉬운 점:
 
 - `legacy` 폴더라고 해서 죽은 코드가 아니다.
-- Firebase SDK export, rich editor wrapper, RBAC, push relay는 전부 활성 경로다.
+- Firebase SDK export, rich editor wrapper, RBAC, 웹푸시 토큰 발급은 활성 경로다.
+- 실제 FCM 발송, 새 글 fan-out, 근무일정 예약 알림은 `functions/index.js`가 담당한다.
 
 ---
 
@@ -471,6 +472,7 @@ App/Post는 split hook으로 나누는 방향이 이미 시작됐다.
 1. `src/legacy/push-notifications.js`
 2. `functions/index.js`
 3. `src/services/firestore/notifications.js`
+4. `public/firebase-messaging-sw.js`
 
 ---
 
@@ -548,20 +550,23 @@ AI가 작업할 때는 새 추상화를 늘리기보다:
 - composer state hook이 제목/날짜/시간/체험관 입력 보유
 - composer actions hook이 validation + post payload 생성
 - Firestore post write
-- 필요 시 push relay post-create fanout
+- `createPostNotifications` Function이 새 글 대상자 fan-out 후 notification docs 생성
+- `dispatchNotificationPush` Function이 notification docs를 FCM으로 발송
 
 ### 댓글 / 멘션 흐름
 - PostPage에서 댓글 composer editor mount
 - mention hook이 `@닉네임` / `@ALL` 감지
 - 댓글 write
 - notification hook이 post author / reply target / mention target fan-out
-- 필요 시 push relay notification dispatch
+- `dispatchNotificationPush` Function이 생성된 notification docs를 FCM으로 발송
 
 ### 알림 흐름
 - notification docs 구독
 - preference docs 구독
-- mention / 댓글 / 새 글 fan-out
-- 필요 시 push relay dispatch
+- mention / 댓글은 클라이언트가 notification docs 생성
+- 새 글은 `createPostNotifications`가 게시판 role 기반 대상자에게 notification docs 생성
+- 모든 FCM 발송은 `dispatchNotificationPush`가 모바일/게시판/타입 preference와 push token을 확인한 뒤 수행
+- 근무일정 전날/당일 푸시는 `workScheduleTomorrowReminder`, `workScheduleTodayReminder` 예약 Function이 담당
 
 ### 관리자 흐름
 - Auth/profile bootstrap
